@@ -1,19 +1,8 @@
 {
-  "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "build/index.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/mcp",
-      "dest": "build/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "build/index.js"
+      "source": "/(.*)",
+      "destination": "/build/index.js"
     }
   ]
 }
