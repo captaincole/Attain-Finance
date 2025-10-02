@@ -1,7 +1,7 @@
 {
-  "name": "express-mcp-server",
+  "name": "personal-finance-mcp-server",
   "version": "1.0.0",
-  "description": "Express MCP Server with Streamable HTTP Transport",
+  "description": "Personal Finance MCP Server with Streamable HTTP Transport",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -9,13 +9,15 @@
     "build": "tsc && shx chmod +x build/*.js",
     "watch": "tsc --watch",
     "start": "node build/index.js",
-    "prepare": "pnpm run build",
+    "prepare": "npm run build",
     "dev": "concurrently \"npm run watch\" \"nodemon --watch build build/index.js\""
   },
   "files": [
-    "build"
+    "build",
+    "public",
+    "src/prompts"
   ],
-  "keywords": [],
+  "keywords": ["mcp", "personal-finance", "model-context-protocol"],
   "author": "",
   "license": "ISC",
   "dependencies": {
@@ -34,6 +36,5 @@
     "nodemon": "^3.1.9",
     "shx": "^0.3.4",
     "typescript": "^5.7.3"
-  },
-  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
+  }
 }

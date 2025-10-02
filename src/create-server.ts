@@ -1,5 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const NWS_API_BASE = "https://api.weather.gov";
 const USER_AGENT = "weather-app/1.0";
@@ -74,9 +80,100 @@ interface ForecastResponse {
 export const createServer = () => {
   // Create server instance
   const server = new McpServer({
-    name: "weather",
+    name: "personal-finance",
     version: "1.0.0",
   });
+
+  // Register resources
+  server.resource(
+    "transactions-csv",
+    "pfinance://data/transactions.csv",
+    {
+      name: "Transactions CSV",
+      description: "Sample credit card transactions CSV with 3 months of data. Save this file locally before processing.",
+      mimeType: "text/csv",
+    },
+    async () => {
+      // Read and return the actual CSV file contents
+      const csvPath = path.join(__dirname, "..", "public", "transactions.csv");
+      const csvContent = fs.readFileSync(csvPath, "utf-8");
+
+      return {
+        contents: [
+          {
+            uri: "pfinance://data/transactions.csv",
+            mimeType: "text/csv",
+            text: csvContent,
+          },
+        ],
+      };
+    }
+  );
+
+  server.resource(
+    "analysis-script",
+    "pfinance://scripts/analyze-subscriptions.js",
+    {
+      name: "Analysis Script",
+      description: "Node.js script to analyze transactions and detect recurring subscriptions. Save this file locally before running.",
+      mimeType: "application/javascript",
+    },
+    async () => {
+      // Read and return the actual script file contents
+      const scriptPath = path.join(__dirname, "..", "public", "analyze-subscriptions.js");
+      const scriptContent = fs.readFileSync(scriptPath, "utf-8");
+
+      return {
+        contents: [
+          {
+            uri: "pfinance://scripts/analyze-subscriptions.js",
+            mimeType: "application/javascript",
+            text: scriptContent,
+          },
+        ],
+      };
+    }
+  );
+
+  // Register subscription tracking tool
+  server.tool(
+    "track-subscriptions",
+    "Initiate subscription tracking analysis on credit card transactions. Returns resources and instructions for identifying recurring subscriptions.",
+    {},
+    async () => {
+      // Read the analysis prompt (from src directory since it's not in build)
+      const promptPath = path.join(__dirname, "..", "src", "prompts", "analyze-subscriptions.txt");
+      const analysisPrompt = fs.readFileSync(promptPath, "utf-8");
+
+      const responseText = `✓ Subscription Tracking Initiated
+
+AVAILABLE MCP RESOURCES:
+
+1. Transaction Data (CSV)
+   MCP Resource URI: pfinance://data/transactions.csv
+   Resource Name: transactions-csv
+   Description: 3 months of credit card transactions (100 rows)
+
+2. Analysis Script (JavaScript)
+   MCP Resource URI: pfinance://scripts/analyze-subscriptions.js
+   Resource Name: analysis-script
+   Description: Automated subscription detection script
+   Usage: node analyze-subscriptions.js [path-to-csv]
+
+---
+
+${analysisPrompt}`;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: responseText,
+          },
+        ],
+      };
+    }
+  );
 
   // Register weather tools
   server.tool(
