@@ -41,9 +41,15 @@ export const createServer = () => {
   // Register tools
   server.tool(
     "track-subscriptions",
-    "Initiate subscription tracking analysis on credit card transactions. Returns resources and instructions for identifying recurring subscriptions.",
+    "Initiate subscription tracking analysis on credit card transactions for the authenticated user. Returns resources and instructions for identifying recurring subscriptions.",
     {},
-    trackSubscriptionsHandler
+    async (_args, { authInfo }) => {
+      // Extract user ID from Clerk OAuth token (available for future use)
+      const userId = authInfo?.extra?.userId as string | undefined;
+      console.log("track-subscriptions called by user:", userId);
+
+      return trackSubscriptionsHandler();
+    }
   );
 
   server.tool(
@@ -55,7 +61,13 @@ export const createServer = () => {
         .length(2)
         .describe("Two-letter state code (e.g. CA, NY)"),
     },
-    getAlertsHandler
+    async (args, { authInfo }) => {
+      // Extract user ID from Clerk OAuth token (available for future use)
+      const userId = authInfo?.extra?.userId as string | undefined;
+      console.log("get-alerts called by user:", userId);
+
+      return getAlertsHandler(args);
+    }
   );
 
   server.tool(
@@ -73,7 +85,13 @@ export const createServer = () => {
         .max(180)
         .describe("Longitude of the location"),
     },
-    getForecastHandler
+    async (args, { authInfo }) => {
+      // Extract user ID from Clerk OAuth token (available for future use)
+      const userId = authInfo?.extra?.userId as string | undefined;
+      console.log("get-forecast called by user:", userId);
+
+      return getForecastHandler(args);
+    }
   );
 
   return { server };

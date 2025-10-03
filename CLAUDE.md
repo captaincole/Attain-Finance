@@ -4,9 +4,11 @@ This file provides guidance to Claude Code when working with the Personal Financ
 
 ## Project Overview
 
-This is a Model Context Protocol (MCP) server built with Express.js and TypeScript that provides personal finance tools and data through the MCP protocol. The server uses Streamable HTTP Transport to communicate with MCP clients.
+This is a Model Context Protocol (MCP) server built with Express.js and TypeScript that provides personal finance tools and data through the MCP protocol. The server uses Streamable HTTP Transport with **Clerk OAuth authentication** to secure user data.
 
 **Production URL**: https://personal-finance-mcp.vercel.app/mcp
+
+**Authentication**: All MCP endpoints require OAuth authentication via Clerk. Unauthenticated requests return `401 Unauthorized`.
 
 ## MVP: Subscription Tracking Test
 
@@ -64,16 +66,33 @@ This pattern allows tools to dynamically provide data and analysis scripts to th
 - **Language**: TypeScript 5.7.3
 - **Framework**: Express 4.21.2
 - **MCP SDK**: @modelcontextprotocol/sdk ^1.10.0
+- **Authentication**: Clerk (@clerk/express, @clerk/mcp-tools)
 - **Validation**: Zod 3.24.2
 - **Dev Tools**: Nodemon, Concurrently, TSC watch mode
 
 ### MCP Protocol
 
 The server implements the Model Context Protocol over HTTP:
-- **Endpoint**: `POST /mcp`
-- **Transport**: StreamableHTTPServerTransport (stateless, no session IDs)
+- **Endpoint**: `POST /mcp` (requires OAuth authentication)
+- **Transport**: Streamable HTTP via Clerk's `streamableHttpHandler`
+- **Authentication**: Bearer token in `Authorization` header
 - **Content Types**: Requires `Accept: application/json, text/event-stream`
 - **Response Format**: Server-Sent Events (SSE) with JSON-RPC 2.0
+
+### OAuth Endpoints
+
+The server exposes OAuth metadata for MCP client discovery:
+
+1. **OAuth Protected Resource Metadata**: `GET /.well-known/oauth-protected-resource/mcp`
+   - Returns metadata about the protected `/mcp` endpoint
+   - Includes Clerk authorization server URL
+   - Specifies supported scopes: `email`, `profile`
+   - Required for MCP clients to discover authentication requirements
+
+2. **OAuth Authorization Server Metadata**: `GET /.well-known/oauth-authorization-server`
+   - Returns Clerk's OAuth server metadata
+   - Includes authorization and token endpoints
+   - Required for older MCP clients that implement earlier spec versions
 
 ## Development Workflow
 
@@ -81,6 +100,13 @@ The server implements the Model Context Protocol over HTTP:
 
 ```bash
 npm install              # Install dependencies
+
+# Create .env file with Clerk credentials
+cp .env.example .env
+# Edit .env and add your Clerk keys:
+# CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+# CLERK_SECRET_KEY=sk_test_xxxxx
+
 npm run build            # Build TypeScript to build/
 ```
 
@@ -161,43 +187,47 @@ curl -X POST https://personal-finance-mcp.vercel.app/mcp \
 
 ### Testing Production
 
-Test the deployed MCP server:
+**Note**: All MCP endpoints now require authentication. Use Claude Desktop or MCP Inspector to test authenticated requests.
+
+Test OAuth metadata endpoints (public, no auth required):
 
 ```bash
-# List available tools
-curl -X POST https://personal-finance-mcp.vercel.app/mcp \
+# Test OAuth protected resource metadata
+curl https://personal-finance-mcp.vercel.app/.well-known/oauth-protected-resource/mcp
+
+# Test OAuth authorization server metadata
+curl https://personal-finance-mcp.vercel.app/.well-known/oauth-authorization-server
+
+# Test unauthenticated request (should return 401)
+curl -v -X POST https://personal-finance-mcp.vercel.app/mcp \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-
-# List available resources
-curl -X POST https://personal-finance-mcp.vercel.app/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}'
-
-# Read a resource
-curl -X POST https://personal-finance-mcp.vercel.app/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"pfinance://data/transactions.csv"}}'
-
-# Call track-subscriptions tool
-curl -X POST https://personal-finance-mcp.vercel.app/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"track-subscriptions","arguments":{}}}'
+# Expected: 401 Unauthorized with WWW-Authenticate header
 ```
 
 ### Testing Locally
 
 Replace production URL with `http://localhost:3000/mcp` in the above commands.
 
+### Testing with Claude Desktop
+
+The recommended way to test the authenticated MCP server:
+
+1. **Open Claude Desktop** → Settings → Connectors → Add Remote Server
+2. **Enter URL**: `http://localhost:3000/mcp` or `https://personal-finance-mcp.vercel.app/mcp`
+3. **OAuth Flow**: Claude will automatically handle authentication:
+   - Opens browser to Clerk login page
+   - User authenticates
+   - Claude receives and stores access token
+4. **Test Tools**: Ask Claude to "track my subscriptions" or use other tools
+
 ### Testing with MCP Inspector
 
 Use the official [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector):
 - Connect to `http://localhost:3000/mcp` (local) or `https://personal-finance-mcp.vercel.app/mcp` (production)
 - Ensure the `/mcp` path is included in the URL
+- MCP Inspector should handle OAuth flow automatically
 - The inspector provides a GUI for testing tools and resources
 
 ### Common Issues
@@ -207,15 +237,25 @@ Use the official [MCP Inspector](https://modelcontextprotocol.io/docs/tools/insp
    lsof -ti:3000 | xargs kill -9
    ```
 
-2. **"Not Acceptable" error**: Missing Accept header
+2. **401 Unauthorized**: Missing or invalid authentication
+   - Ensure Clerk environment variables are set correctly
+   - Test OAuth metadata endpoints to verify Clerk integration
+   - Use Claude Desktop or MCP Inspector to test authenticated flows
+
+3. **"Not Acceptable" error**: Missing Accept header
    - Client must accept both `application/json` and `text/event-stream`
 
-3. **Build errors**: Run `npm run build` manually to see TypeScript errors
+4. **Build errors**: Run `npm run build` manually to see TypeScript errors
 
-4. **"Invalid URL" when reading resources**:
+5. **"Invalid URL" when reading resources**:
    - Resources must use custom URI schemes like `pfinance://`
    - Do not use `http://` or `https://` for MCP resource URIs
    - HTTP URLs will fail with MCP clients
+
+6. **OAuth flow not starting**: Check Dynamic Client Registration
+   - In Clerk Dashboard → OAuth Applications
+   - Ensure "Dynamic Client Registration" is enabled
+   - This allows MCP clients to auto-register
 
 ## Adding New Tools
 
@@ -226,17 +266,28 @@ To add a new personal finance tool:
    - Tool name (kebab-case)
    - Description
    - Input schema (using Zod)
-   - Implementation function
-3. Return MCP response format:
+   - Implementation function that accepts `authInfo`
+3. Access authenticated user context:
    ```typescript
-   return {
-     content: [
-       {
-         type: "text",
-         text: "Your response here"
-       }
-     ]
-   };
+   server.tool(
+     "my-tool",
+     "Tool description",
+     { /* Zod schema */ },
+     async (args, { authInfo }) => {
+       const userId = authInfo?.extra?.userId as string;
+
+       // Use userId for user-specific operations
+
+       return {
+         content: [
+           {
+             type: "text",
+             text: "Your response here"
+           }
+         ]
+       };
+     }
+   );
    ```
 
 ## Adding New Resources
@@ -264,11 +315,84 @@ To add a new MCP resource:
 
 **Important**: Never use `http://` or `https://` URLs as resource URIs - use custom schemes only.
 
+## Authentication Setup
+
+### Clerk Configuration
+
+1. **Create Clerk Account**: Sign up at [clerk.com](https://clerk.com)
+
+2. **Create Application**: Create a new application in Clerk Dashboard
+
+3. **Enable Dynamic Client Registration**:
+   - Go to **User Authentication** → **OAuth Applications**
+   - Toggle on **Dynamic Client Registration**
+   - This allows MCP clients like Claude Desktop to auto-register
+
+4. **Get API Keys**:
+   - Go to **API Keys** in Clerk Dashboard
+   - Copy `CLERK_PUBLISHABLE_KEY` (starts with `pk_`)
+   - Copy `CLERK_SECRET_KEY` (starts with `sk_`)
+
+5. **Add to Environment**:
+   ```bash
+   # .env
+   CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+   CLERK_SECRET_KEY=sk_test_xxxxx
+   ```
+
+### User Authentication Flow
+
+When a user connects to the MCP server:
+
+1. **MCP Client (e.g., Claude Desktop)** attempts to call `/mcp` endpoint
+2. **Server returns 401** with `WWW-Authenticate` header pointing to OAuth metadata
+3. **Client discovers OAuth server** by fetching `/.well-known/oauth-protected-resource/mcp`
+4. **Client auto-registers** with Clerk via Dynamic Client Registration
+5. **Browser opens** to Clerk login page
+6. **User authenticates** with email/password (or social login if enabled)
+7. **Clerk redirects** back to client with authorization code
+8. **Client exchanges code** for access token
+9. **All future requests** include `Authorization: Bearer <token>` header
+10. **Server validates token** and extracts `userId` for user-specific data
+
+### Accessing User Context in Tools
+
+All tool handlers receive authenticated user information:
+
+```typescript
+server.tool(
+  "tool-name",
+  "description",
+  { /* args */ },
+  async (args, { authInfo }) => {
+    const userId = authInfo?.extra?.userId as string;
+    console.log("Tool called by user:", userId);
+
+    // Use userId to fetch user-specific data
+    // from database in the future
+
+    return { /* response */ };
+  }
+);
+```
+
+The `userId` from Clerk can be used to:
+- Query user-specific financial data from database
+- Associate uploaded transactions with user accounts
+- Implement Row Level Security (RLS) in database queries
+
 ## Environment Variables
 
+### Required
+
+- `CLERK_PUBLISHABLE_KEY` - Clerk public key (from Clerk Dashboard)
+- `CLERK_SECRET_KEY` - Clerk secret key (from Clerk Dashboard)
+
+### Optional
+
 - `PORT` - Server port (default: 3000)
-- Add additional variables in `.env` file (create if needed)
-- Variables are loaded via `dotenv` in [src/index.ts](src/index.ts:9)
+
+All variables are loaded via `dotenv` in [src/index.ts](src/index.ts)
 
 ## Deployment to Vercel
 
@@ -285,6 +409,9 @@ To add a new MCP resource:
    - Click "Add New Project"
    - Import your GitHub repository
    - Vercel auto-detects settings from `vercel.json` and `package.json`
+   - **Add Environment Variables**:
+     - `CLERK_PUBLISHABLE_KEY`
+     - `CLERK_SECRET_KEY`
    - Click "Deploy"
 
 3. **Auto-deployment**:

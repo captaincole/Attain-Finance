@@ -1,8 +1,13 @@
 import dotenv from "dotenv";
-import express, { Request, Response } from "express";
+import express from "express";
 import cors from "cors";
-import path from "path";
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { clerkMiddleware } from "@clerk/express";
+import {
+  mcpAuthClerk,
+  protectedResourceHandlerClerk,
+  authServerMetadataHandlerClerk,
+  streamableHttpHandler,
+} from "@clerk/mcp-tools/express";
 import { createServer } from "./create-server.js";
 
 // Environment setup
@@ -12,11 +17,10 @@ const PORT = process.env.PORT || 3000;
 // Initialize Express app
 const app = express();
 
-// Middleware setup
-app.use(express.json());
-app.use(express.static(path.join(process.cwd(), "public")));
+// CORS must expose WWW-Authenticate header for OAuth
 app.use(
   cors({
+    exposedHeaders: ["WWW-Authenticate"],
     origin: true,
     methods: "*",
     allowedHeaders: "Authorization, Origin, Content-Type, Accept, *",
@@ -24,82 +28,34 @@ app.use(
 );
 app.options("*", cors());
 
-// Initialize transport
-const transport = new StreamableHTTPServerTransport({
-  sessionIdGenerator: undefined, // set to undefined for stateless servers
-});
-
-// MCP endpoint
-app.post("/mcp", async (req: Request, res: Response) => {
-  console.log("Received MCP request:", req.body);
-  try {
-    await transport.handleRequest(req, res, req.body);
-  } catch (error) {
-    console.error("Error handling MCP request:", error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32603,
-          message: "Internal server error",
-        },
-        id: null,
-      });
-    }
-  }
-});
-
-// Method not allowed handlers
-const methodNotAllowed = (req: Request, res: Response) => {
-  console.log(`Received ${req.method} MCP request`);
-  res.status(405).json({
-    jsonrpc: "2.0",
-    error: {
-      code: -32000,
-      message: "Method not allowed.",
-    },
-    id: null,
-  });
-};
-
-app.get("/mcp", methodNotAllowed);
-app.delete("/mcp", methodNotAllowed);
+// Clerk authentication middleware
+app.use(clerkMiddleware());
+app.use(express.json());
 
 const { server } = createServer();
 
-// Server setup
-const setupServer = async () => {
-  try {
-    await server.connect(transport);
-    console.log("Server connected successfully");
-  } catch (error) {
-    console.error("Failed to set up the server:", error);
-    throw error;
-  }
-};
+// Protected MCP endpoint (requires authentication)
+app.post("/mcp", mcpAuthClerk, streamableHttpHandler(server));
+
+// OAuth metadata endpoints (must be public for discovery)
+app.get(
+  "/.well-known/oauth-protected-resource/mcp",
+  protectedResourceHandlerClerk({
+    scopes_supported: ["email", "profile"],
+  })
+);
+
+// For older MCP clients that use the older spec
+app.get("/.well-known/oauth-authorization-server", authServerMetadataHandlerClerk);
 
 // Start server
-setupServer()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`MCP Streamable HTTP Server listening on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error("Failed to start server:", error);
-    process.exit(1);
-  });
+app.listen(PORT, () => {
+  console.log(`MCP Server with Clerk Auth listening on port ${PORT}`);
+});
 
 // Handle server shutdown
 process.on("SIGINT", async () => {
   console.log("Shutting down server...");
-  try {
-    console.log(`Closing transport`);
-    await transport.close();
-  } catch (error) {
-    console.error(`Error closing transport:`, error);
-  }
-
   try {
     await server.close();
     console.log("Server shutdown complete");
