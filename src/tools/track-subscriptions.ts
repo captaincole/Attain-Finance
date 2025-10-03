@@ -1,29 +1,32 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { generateSignedUrl } from "../utils/signed-urls.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export async function trackSubscriptionsHandler() {
+export async function trackSubscriptionsHandler(userId: string, baseUrl: string) {
   // Read the analysis prompt (from src directory since it's not in build)
   const promptPath = path.join(__dirname, "..", "prompts", "analyze-subscriptions.txt");
   const analysisPrompt = fs.readFileSync(promptPath, "utf-8");
 
+  // Generate signed download URL (expires in 10 minutes)
+  const transactionsUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
+
+  // Analysis script is served as static file (no authentication needed)
+  const scriptUrl = `${baseUrl}/analyze-subscriptions.js`;
+
   const responseText = `✓ Subscription Tracking Initiated
 
-AVAILABLE MCP RESOURCES:
+STEP 1: Download your transaction data (link expires in 10 minutes)
+curl "${transactionsUrl}" -o transactions.csv
 
-1. Transaction Data (CSV)
-   MCP Resource URI: pfinance://data/transactions.csv
-   Resource Name: transactions-csv
-   Description: 3 months of credit card transactions (100 rows)
+STEP 2: Download the analysis script
+curl "${scriptUrl}" -o analyze-subscriptions.js
 
-2. Analysis Script (JavaScript)
-   MCP Resource URI: pfinance://scripts/analyze-subscriptions.js
-   Resource Name: analysis-script
-   Description: Automated subscription detection script
-   Usage: node analyze-subscriptions.js [path-to-csv]
+STEP 3: Run the analysis
+node analyze-subscriptions.js transactions.csv
 
 ---
 

@@ -31,6 +31,8 @@ The current implementation demonstrates the **Tool → Resource → AI Analysis*
 
 ### Key Pattern: Tool + Resource Workflow
 
+The core differentiation between our service and others is that we provide the code for a users AI to do the analysis. THIS IS IMPORTANT because it enables the user to start from a working system and customize it however they want. 
+
 This pattern allows tools to dynamically provide data and analysis scripts to the AI:
 - **Tools** introduce resources and provide instructions
 - **Resources** deliver actual file contents (CSV, scripts, etc.)

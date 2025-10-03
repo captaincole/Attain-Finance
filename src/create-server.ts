@@ -5,8 +5,13 @@ import { z } from "zod";
 import { trackSubscriptionsHandler } from "./tools/track-subscriptions.js";
 import { getAlertsHandler, getForecastHandler } from "./tools/weather.js";
 
-// Import resource handlers
-import { transactionsCsvHandler, analysisScriptHandler } from "./resources/finance-data.js";
+/**
+ * Helper to get the base URL for generating download links
+ * Uses BASE_URL environment variable or defaults to localhost
+ */
+function getBaseUrl(): string {
+  return process.env.BASE_URL || "http://localhost:3000";
+}
 
 export const createServer = () => {
   // Create server instance
@@ -15,40 +20,28 @@ export const createServer = () => {
     version: "1.0.0",
   });
 
-  // Register resources
-  server.resource(
-    "transactions-csv",
-    "pfinance://data/transactions.csv",
-    {
-      name: "Transactions CSV",
-      description: "Sample credit card transactions CSV with 3 months of data. Save this file locally before processing.",
-      mimeType: "text/csv",
-    },
-    transactionsCsvHandler
-  );
-
-  server.resource(
-    "analysis-script",
-    "pfinance://scripts/analyze-subscriptions.js",
-    {
-      name: "Analysis Script",
-      description: "Node.js script to analyze transactions and detect recurring subscriptions. Save this file locally before running.",
-      mimeType: "application/javascript",
-    },
-    analysisScriptHandler
-  );
+  // Note: MCP resources removed in favor of signed download URLs
+  // See /api/data/transactions endpoint for user-specific data downloads
 
   // Register tools
   server.tool(
     "track-subscriptions",
-    "Initiate subscription tracking analysis on credit card transactions for the authenticated user. Returns resources and instructions for identifying recurring subscriptions.",
+    "Initiate subscription tracking analysis on credit card transactions for the authenticated user. Downloads transaction data and analysis script for local processing.",
     {},
     async (_args, { authInfo }) => {
-      // Extract user ID from Clerk OAuth token (available for future use)
+      // Extract user ID from Clerk OAuth token
       const userId = authInfo?.extra?.userId as string | undefined;
+
+      if (!userId) {
+        throw new Error("User authentication required");
+      }
+
       console.log("track-subscriptions called by user:", userId);
 
-      return trackSubscriptionsHandler();
+      // Get base URL from environment
+      const baseUrl = getBaseUrl();
+
+      return trackSubscriptionsHandler(userId, baseUrl);
     }
   );
 
