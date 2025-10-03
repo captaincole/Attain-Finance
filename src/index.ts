@@ -17,6 +17,9 @@ const PORT = process.env.PORT || 3000;
 // Initialize Express app
 const app = express();
 
+// Trust proxy headers (required for Vercel/serverless environments)
+app.set("trust proxy", true);
+
 // CORS must expose WWW-Authenticate header for OAuth
 app.use(
   cors({
