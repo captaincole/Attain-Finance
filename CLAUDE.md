@@ -12,31 +12,38 @@ This is a Model Context Protocol (MCP) server built with Express.js and TypeScri
 
 ## MVP: Subscription Tracking Test
 
-The current implementation demonstrates the **Tool → Resource → AI Analysis** pattern for detecting recurring subscriptions in credit card transactions.
+The current implementation demonstrates the **Tool → Signed Download URL → AI Analysis** pattern for detecting recurring subscriptions in credit card transactions.
 
 ### How It Works
 
 1. **User calls tool**: `track-subscriptions` (no arguments required)
-2. **Tool returns**:
-   - Instructions for the AI on how to analyze subscriptions
-   - MCP Resource URIs for data and scripts
-   - Analysis criteria and expected output format
-3. **AI fetches resources**:
-   - Reads `pfinance://data/transactions.csv` via MCP
-   - Reads `pfinance://scripts/analyze-subscriptions.js` via MCP
+2. **Tool generates signed URLs**:
+   - Creates JWT-signed download URL for user's transaction data (expires in 10 minutes)
+   - Includes userId in JWT payload for user-specific data
+   - Returns curl download commands and analysis instructions
+3. **AI downloads files**:
+   - Downloads `transactions.csv` using signed URL (user-specific, expiring)
+   - Downloads `analyze-subscriptions.js` analysis script (static, public)
 4. **AI analyzes data**:
-   - Option A: Saves and runs the JavaScript analysis script
-   - Option B: Manually analyzes the CSV data
+   - Runs the JavaScript analysis script locally
+   - Script performs accurate mathematical analysis (no AI calculation errors)
 5. **AI presents results**: Human-readable subscription summary with costs and patterns
 
-### Key Pattern: Tool + Resource Workflow
+### Key Pattern: Tool + Signed URL Workflow
 
-The core differentiation between our service and others is that we provide the code for a users AI to do the analysis. THIS IS IMPORTANT because it enables the user to start from a working system and customize it however they want. 
+**Core Differentiation:** We provide executable analysis code that users can customize, not just AI-generated analysis. This enables users to start with a working system and modify it for their specific needs.
 
-This pattern allows tools to dynamically provide data and analysis scripts to the AI:
-- **Tools** introduce resources and provide instructions
-- **Resources** deliver actual file contents (CSV, scripts, etc.)
-- **AI** processes the data using the provided guidance
+**Why Signed URLs Instead of MCP Resources:**
+- **Efficient**: Large files downloaded directly to disk (no token waste on file content)
+- **Secure**: Time-limited URLs (10-minute expiry) with JWT signatures
+- **User-Specific**: userId embedded in JWT enables per-user data isolation
+- **Scalable**: Works with any file size without MCP protocol limitations
+
+**Pattern Components:**
+- **Tools** generate signed download URLs and provide analysis instructions
+- **Signed URLs** deliver user-specific data securely with time limits
+- **Static Files** serve analysis scripts (public, no expiry needed)
+- **AI** downloads files via curl and executes analysis scripts
 - **Scripts** ensure mathematical accuracy (AI runs them instead of doing manual calculations)
 
 ## Architecture
@@ -134,13 +141,20 @@ npm start                # Run production server
 ```
 personal-finance-mcp/
 ├── src/
-│   ├── index.ts              # Express server setup
-│   ├── create-server.ts      # MCP tools, resources, and logic
+│   ├── index.ts              # Express server + download endpoints
+│   ├── create-server.ts      # MCP tools and business logic
+│   ├── utils/
+│   │   └── signed-urls.ts    # JWT signing/verification
+│   ├── tools/
+│   │   ├── track-subscriptions.ts  # Subscription tracking tool
+│   │   └── weather.ts        # Weather tools (demo)
+│   ├── resources/
+│   │   └── finance-data.ts   # (Archived - MCP resources removed)
 │   └── prompts/
 │       └── analyze-subscriptions.txt  # AI analysis instructions
 ├── public/
 │   ├── transactions.csv      # Sample transaction data
-│   └── analyze-subscriptions.js       # Analysis script
+│   └── analyze-subscriptions.js       # Analysis script (static)
 ├── build/                    # Compiled JavaScript (gitignored)
 ├── package.json
 ├── tsconfig.json
@@ -148,42 +162,157 @@ personal-finance-mcp/
 └── CLAUDE.md               # This file
 ```
 
-## MCP Resources
+## Signed URL Pattern (Recommended)
 
-### Registered Resources
+This server uses **JWT-signed, time-limited download URLs** instead of MCP resources for efficient large file handling.
 
-Resources are registered with custom URI scheme `pfinance://`:
+### Why This Pattern?
 
-1. **transactions-csv** (`pfinance://data/transactions.csv`)
-   - Returns complete CSV file contents
-   - 100 rows of credit card transactions
-   - 3 recurring subscriptions: Netflix ($15.99), Spotify ($10.99), AWS ($23.50)
+**Problems with MCP Resources:**
+- Entire file content loaded into MCP protocol messages
+- Wastes tokens for large datasets
+- AI must manually copy content to files (error-prone)
+- Doesn't scale beyond small files
 
-2. **analysis-script** (`pfinance://scripts/analyze-subscriptions.js`)
-   - Returns complete JavaScript file contents
-   - ES module format (uses `import` syntax)
-   - Detects subscriptions by grouping merchants, checking amounts, and validating monthly patterns
+**Benefits of Signed URLs:**
+- AI downloads files directly to disk using `curl`
+- No token waste on file content
+- Works with any file size
+- Secure with time-limited JWT tokens
+- Ready for user-specific data (userId in JWT)
 
-**Important**: Resources must use custom URI schemes (like `pfinance://`) not `http://` URLs. MCP clients cannot read resources with `http://` URIs.
+### Implementation Components
+
+**1. Signed URL Utility** ([src/utils/signed-urls.ts](src/utils/signed-urls.ts))
+
+```typescript
+import { generateSignedUrl } from "./utils/signed-urls.js";
+
+// Generate download URL (expires in 10 minutes)
+const downloadUrl = generateSignedUrl(
+  baseUrl,      // https://your-server.com
+  userId,       // User's ID from OAuth
+  "transactions", // Resource type
+  600           // Expiry in seconds (default: 600 = 10 min)
+);
+```
+
+**2. Download API Endpoint** ([src/index.ts](src/index.ts))
+
+```typescript
+// GET /api/data/transactions?token=<jwt>
+app.get("/api/data/transactions", (req, res) => {
+  const payload = verifySignedToken(req.query.token);
+
+  if (!payload) {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // Currently: serve static CSV
+  // Future: query database WHERE user_id = payload.userId
+
+  res.setHeader("Content-Type", "text/csv");
+  const fileStream = fs.createReadStream(csvPath);
+  fileStream.pipe(res);
+});
+```
+
+**3. Tool Response Format** ([src/tools/track-subscriptions.ts](src/tools/track-subscriptions.ts))
+
+```typescript
+export async function trackSubscriptionsHandler(userId: string, baseUrl: string) {
+  const transactionsUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
+  const scriptUrl = `${baseUrl}/analyze-subscriptions.js`; // Static file
+
+  return {
+    content: [{
+      type: "text",
+      text: `
+STEP 1: Download your transaction data (expires in 10 minutes)
+curl "${transactionsUrl}" -o transactions.csv
+
+STEP 2: Download analysis script
+curl "${scriptUrl}" -o analyze-subscriptions.js
+
+STEP 3: Run analysis
+node analyze-subscriptions.js transactions.csv
+`
+    }]
+  };
+}
+```
+
+### Security Model
+
+- **JWT Signature**: Prevents URL tampering
+- **Expiration**: 10-minute default (configurable)
+- **User Isolation**: userId embedded in JWT payload
+- **Stateless**: No server-side session storage needed
+- **Secret**: `JWT_SECRET` environment variable
+
+### Reusing This Pattern
+
+To add a new data download endpoint:
+
+1. **Create API endpoint** in [src/index.ts](src/index.ts):
+   ```typescript
+   app.get("/api/data/your-resource", (req, res) => {
+     const payload = verifySignedToken(req.query.token);
+     if (!payload || payload.resource !== "your-resource") {
+       return res.status(401).json({ error: "Invalid token" });
+     }
+     // Return user-specific data using payload.userId
+   });
+   ```
+
+2. **Update tool handler** to generate signed URL:
+   ```typescript
+   const url = generateSignedUrl(baseUrl, userId, "your-resource", 600);
+   ```
+
+3. **Return curl command** in tool response:
+   ```typescript
+   text: `curl "${url}" -o your-file.csv`
+   ```
+
+### Static Files (No Auth Needed)
+
+For non-sensitive files (analysis scripts, templates), serve from `public/` directory:
+- Accessible at `https://your-server.com/filename.js`
+- No authentication required
+- No expiration
+- Use for: Analysis scripts, documentation, public templates
 
 ## MCP Tools
 
 ### track-subscriptions
 
-Initiates the subscription tracking workflow. No arguments required.
+Initiates the subscription tracking workflow for the authenticated user.
+
+**Arguments**: None
+
+**Authentication**: Required (OAuth via Clerk)
 
 **Returns**:
-- MCP resource URIs for data and analysis script
+- Signed download URL for user's transaction data (10-minute expiry)
+- Static download URL for analysis script (no expiry)
+- curl commands for downloading files
 - Complete analysis prompt from [src/prompts/analyze-subscriptions.txt](src/prompts/analyze-subscriptions.txt)
-- Instructions for AI to fetch resources, save files, and run analysis
+- Instructions for running analysis locally
 
-**Example Call**:
-```bash
-curl -X POST https://personal-finance-mcp.vercel.app/mcp \
-  -H "Content-Type: application/json" \
-  -H "Accept: application/json, text/event-stream" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"track-subscriptions","arguments":{}}}'
+**Response Format**:
 ```
+STEP 1: Download your transaction data (expires in 10 minutes)
+curl "https://personal-finance-mcp.vercel.app/api/data/transactions?token=<jwt>" -o transactions.csv
+
+STEP 2: Download analysis script
+curl "https://personal-finance-mcp.vercel.app/analyze-subscriptions.js" -o analyze-subscriptions.js
+
+STEP 3: Run analysis
+node analyze-subscriptions.js transactions.csv
+```
+
+**Implementation**: See [src/tools/track-subscriptions.ts](src/tools/track-subscriptions.ts)
 
 ## Testing
 
@@ -292,30 +421,44 @@ To add a new personal finance tool:
    );
    ```
 
-## Adding New Resources
+## Adding New Data Downloads (Signed URL Pattern)
 
-To add a new MCP resource:
+**Note**: MCP resources have been removed in favor of signed download URLs. See "Signed URL Pattern" section above for implementation details.
 
-1. Open [src/create-server.ts](src/create-server.ts)
-2. Add a new `server.resource()` call with:
-   - Resource name (kebab-case)
-   - URI using custom scheme (e.g., `pfinance://category/filename`)
-   - Metadata (name, description, mimeType)
-   - Handler function that returns file contents
-3. Return MCP resource format:
+To add a new user data download endpoint:
+
+1. **Create API endpoint** in [src/index.ts](src/index.ts):
    ```typescript
-   return {
-     contents: [
-       {
-         uri: "pfinance://category/filename",
-         mimeType: "text/csv", // or application/javascript, etc.
-         text: fileContent
-       }
-     ]
-   };
+   app.get("/api/data/your-resource", (req: Request, res: Response) => {
+     const payload = verifySignedToken(req.query.token as string);
+
+     if (!payload || payload.resource !== "your-resource") {
+       return res.status(401).json({ error: "Invalid or expired token" });
+     }
+
+     const userId = payload.userId; // Use for user-specific queries
+
+     // Set appropriate headers
+     res.setHeader("Content-Type", "text/csv");
+     res.setHeader("Content-Disposition", "attachment; filename=your-file.csv");
+
+     // Stream file or database query results
+     const fileStream = fs.createReadStream(filePath);
+     fileStream.pipe(res);
+   });
    ```
 
-**Important**: Never use `http://` or `https://` URLs as resource URIs - use custom schemes only.
+2. **Update tool** to generate signed URL:
+   ```typescript
+   import { generateSignedUrl } from "../utils/signed-urls.js";
+
+   const downloadUrl = generateSignedUrl(baseUrl, userId, "your-resource", 600);
+   ```
+
+3. **Return curl command** in tool response:
+   ```typescript
+   text: `curl "${downloadUrl}" -o your-file.csv`
+   ```
 
 ## Authentication Setup
 
@@ -389,12 +532,21 @@ The `userId` from Clerk can be used to:
 
 - `CLERK_PUBLISHABLE_KEY` - Clerk public key (from Clerk Dashboard)
 - `CLERK_SECRET_KEY` - Clerk secret key (from Clerk Dashboard)
+- `JWT_SECRET` - Secret for signing download URLs
+  - Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  - Must be 64-character hex string for security
+  - Used to sign time-limited download URLs
 
 ### Optional
 
 - `PORT` - Server port (default: 3000)
+- `BASE_URL` - Base URL for generating download links
+  - Local: `http://localhost:3000`
+  - Production: `https://personal-finance-mcp.vercel.app`
 
 All variables are loaded via `dotenv` in [src/index.ts](src/index.ts)
+
+**Security Note**: Never commit `.env` file. Use `.env.example` as template.
 
 ## Deployment to Vercel
 
@@ -412,8 +564,10 @@ All variables are loaded via `dotenv` in [src/index.ts](src/index.ts)
    - Import your GitHub repository
    - Vercel auto-detects settings from `vercel.json` and `package.json`
    - **Add Environment Variables**:
-     - `CLERK_PUBLISHABLE_KEY`
-     - `CLERK_SECRET_KEY`
+     - `CLERK_PUBLISHABLE_KEY` - From Clerk Dashboard
+     - `CLERK_SECRET_KEY` - From Clerk Dashboard
+     - `JWT_SECRET` - Generate with crypto command
+     - `BASE_URL` - Set to `https://personal-finance-mcp.vercel.app`
    - Click "Deploy"
 
 3. **Auto-deployment**:
