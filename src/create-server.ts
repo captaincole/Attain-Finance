@@ -11,15 +11,6 @@ import {
 } from "./tools/plaid-connection.js";
 import { getPlaidTransactionsHandler } from "./tools/plaid-transactions.js";
 
-// Type definitions for Plaid storage
-interface PendingConnection {
-  userId: string;
-  createdAt: Date;
-  status: "pending" | "completed" | "failed";
-  completedAt?: Date;
-  error?: string;
-}
-
 /**
  * Helper to get the base URL for generating download links
  * Uses BASE_URL environment variable or defaults to localhost
@@ -28,10 +19,7 @@ function getBaseUrl(): string {
   return process.env.BASE_URL || "http://localhost:3000";
 }
 
-export const createServer = (
-  plaidClient: PlaidApi,
-  pendingConnections: Map<string, PendingConnection>
-) => {
+export const createServer = (plaidClient: PlaidApi) => {
   // Create server instance
   const server = new McpServer({
     name: "personal-finance",
@@ -58,12 +46,7 @@ export const createServer = (
 
       const baseUrl = getBaseUrl();
 
-      return connectFinancialInstitutionHandler(
-        userId,
-        baseUrl,
-        plaidClient,
-        pendingConnections
-      );
+      return connectFinancialInstitutionHandler(userId, baseUrl, plaidClient);
     }
   );
 

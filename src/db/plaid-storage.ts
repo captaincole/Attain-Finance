@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { getSupabase } from "./supabase.js";
+import { Tables } from "./database.types.js";
 
 // Encryption configuration
 const ALGORITHM = "aes-256-gcm";
@@ -78,12 +79,7 @@ function decryptAccessToken(encryptedToken: string): string {
 /**
  * Database type for plaid_connections table
  */
-export interface PlaidConnection {
-  user_id: string;
-  access_token_encrypted: string;
-  item_id: string;
-  connected_at: string;
-}
+export type PlaidConnection = Tables<"plaid_connections">;
 
 /**
  * Return type with decrypted access token
@@ -157,7 +153,7 @@ export async function getConnection(
     return null;
   }
 
-  const connection = data as PlaidConnection;
+  const connection = data;
 
   try {
     const decryptedToken = decryptAccessToken(connection.access_token_encrypted);
@@ -166,7 +162,7 @@ export async function getConnection(
       userId: connection.user_id,
       accessToken: decryptedToken,
       itemId: connection.item_id,
-      connectedAt: new Date(connection.connected_at),
+      connectedAt: new Date(connection.connected_at || new Date()),
     };
   } catch (error: any) {
     console.error("Error decrypting access token:", error);

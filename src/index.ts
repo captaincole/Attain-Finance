@@ -17,6 +17,7 @@ import { createServer } from "./create-server.js";
 import { verifySignedToken } from "./utils/signed-urls.js";
 import { userTransactionData } from "./tools/plaid-transactions.js";
 import { saveConnection } from "./db/plaid-storage.js";
+import { getSession, completeSession, failSession } from "./db/plaid-sessions.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,27 +44,6 @@ const plaidConfiguration = new Configuration({
 
 const plaidClient = new PlaidApi(plaidConfiguration);
 
-// Storage for Plaid connection sessions (temporary, in-memory)
-interface PendingConnection {
-  userId: string;
-  createdAt: Date;
-  status: "pending" | "completed" | "failed";
-  completedAt?: Date;
-  error?: string;
-}
-
-const pendingConnections = new Map<string, PendingConnection>();
-
-// Cleanup expired pending connections every 30 minutes
-setInterval(() => {
-  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
-  for (const [sessionId, session] of pendingConnections.entries()) {
-    if (session.createdAt < thirtyMinutesAgo) {
-      pendingConnections.delete(sessionId);
-    }
-  }
-}, 30 * 60 * 1000);
-
 // Initialize Express app
 const app = express();
 
@@ -88,7 +68,7 @@ app.use(express.json());
 // Serve static files from public/ directory (analysis scripts, sample data, etc.)
 app.use(express.static(path.join(__dirname, "..", "public")));
 
-const { server } = createServer(plaidClient, pendingConnections);
+const { server } = createServer(plaidClient);
 
 // Protected MCP endpoint (requires authentication)
 app.post("/mcp", mcpAuthClerk, streamableHttpHandler(server));
@@ -261,7 +241,6 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
     session,
     sessionLength: session?.length,
     sessionType: typeof session,
-    totalPendingSessions: pendingConnections.size
   });
 
   if (!public_token || !session) {
@@ -269,26 +248,25 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Missing public_token or session" });
   }
 
-  // Verify session exists and get userId
-  const pendingConnection = pendingConnections.get(session);
+  // Verify session exists in database and get userId
+  const sessionData = await getSession(session);
 
-  console.log("Session lookup:", {
+  console.log("Session lookup from database:", {
     receivedSession: session,
-    receivedSessionLength: session.length,
-    found: !!pendingConnection,
-    allSessions: Array.from(pendingConnections.keys()),
-    allSessionLengths: Array.from(pendingConnections.keys()).map(s => s.length)
+    found: !!sessionData,
+    userId: sessionData?.user_id,
+    status: sessionData?.status,
   });
 
-  if (!pendingConnection) {
+  if (!sessionData) {
     return res.status(400).json({ error: "Invalid or expired session" });
   }
 
-  if (pendingConnection.status === "completed") {
+  if (sessionData.status === "completed") {
     return res.status(400).json({ error: "Session already completed" });
   }
 
-  const userId = pendingConnection.userId;
+  const userId = sessionData.user_id;
 
   try {
     // Exchange public_token for access_token
@@ -309,9 +287,8 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
 
     const accounts = accountsResponse.data.accounts;
 
-    // Mark session as completed
-    pendingConnection.status = "completed";
-    pendingConnection.completedAt = new Date();
+    // Mark session as completed in database
+    await completeSession(session);
 
     console.log(`✓ Bank connected for user ${userId}: ${itemId}`);
 
@@ -326,8 +303,7 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Error exchanging public token:", error);
-    pendingConnection.status = "failed";
-    pendingConnection.error = error.message;
+    await failSession(session, error.message);
 
     res.status(500).json({
       error: "Failed to connect bank account",

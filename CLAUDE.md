@@ -2,6 +2,26 @@
 
 This file provides guidance to Claude Code when working with the Personal Finance MCP Server.
 
+## Git Commit Guidelines
+
+**Commit Message Format:**
+- Maximum 7 lines total
+- First line: short summary (50-72 characters)
+- Blank line
+- Body: 3-5 lines maximum explaining what/why
+- Always include Claude Code attribution footer
+
+**Example:**
+```
+Fix Plaid callback error in serverless environment
+
+Migrate session storage from in-memory Map to Supabase database.
+Fixes 400 errors caused by stateless Vercel instances.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
 ## Project Overview
 
 This is a Model Context Protocol (MCP) server built with Express.js and TypeScript that provides personal finance tools and data through the MCP protocol. The server uses Streamable HTTP Transport with **Clerk OAuth authentication** to secure user data.

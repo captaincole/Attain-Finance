@@ -1,14 +1,7 @@
 import { PlaidApi, Products, CountryCode } from "plaid";
 import crypto from "crypto";
 import { getConnection, deleteConnection } from "../db/plaid-storage.js";
-
-interface PendingConnection {
-  userId: string;
-  createdAt: Date;
-  status: "pending" | "completed" | "failed";
-  completedAt?: Date;
-  error?: string;
-}
+import { createSession } from "../db/plaid-sessions.js";
 
 /**
  * Connect Financial Institution Tool
@@ -17,20 +10,13 @@ interface PendingConnection {
 export async function connectFinancialInstitutionHandler(
   userId: string,
   baseUrl: string,
-  plaidClient: PlaidApi,
-  pendingConnections: Map<string, PendingConnection>
+  plaidClient: PlaidApi
 ) {
   // Generate unique session ID for this connection attempt
   const sessionId = crypto.randomUUID();
 
-  // Store pending connection (expires in 30 min)
-  pendingConnections.set(sessionId, {
-    userId,
-    createdAt: new Date(),
-    status: "pending",
-  });
-
-  console.log(`Created Plaid session ${sessionId} for user ${userId}`);
+  // Store pending session in database (expires in 30 min)
+  await createSession(sessionId, userId);
 
   try {
     // Generate link_token
@@ -81,9 +67,6 @@ ${linkUrl}
       ],
     };
   } catch (error: any) {
-    // Clean up pending connection on error
-    pendingConnections.delete(sessionId);
-
     // Log detailed error for debugging
     console.error("Plaid linkTokenCreate error:", error.response?.data || error.message);
 

@@ -1,12 +1,13 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "./database.types.js";
 
-let supabaseInstance: SupabaseClient | null = null;
+let supabaseInstance: SupabaseClient<Database> | null = null;
 
 /**
  * Get or create Supabase client instance (lazy initialization)
  * This ensures environment variables are loaded before client creation
  */
-export function getSupabase(): SupabaseClient {
+export function getSupabase(): SupabaseClient<Database> {
   if (supabaseInstance) {
     return supabaseInstance;
   }
@@ -20,6 +21,6 @@ export function getSupabase(): SupabaseClient {
     );
   }
 
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  supabaseInstance = createClient<Database>(supabaseUrl, supabaseAnonKey);
   return supabaseInstance;
 }
