@@ -4,7 +4,6 @@ import { PlaidApi } from "plaid";
 
 // Import tool handlers
 import { trackSubscriptionsHandler } from "./tools/track-subscriptions.js";
-import { getAlertsHandler, getForecastHandler } from "./tools/weather.js";
 import {
   connectFinancialInstitutionHandler,
   checkConnectionStatusHandler,
@@ -36,6 +35,10 @@ export const createServer = (plaidClient: PlaidApi) => {
     "Search for financial tools and capabilities available in this MCP server. Returns information about available financial management tools.",
     {
       query: z.string().describe("Search query for financial tools"),
+    },
+    {
+      readOnlyHint: true,
+      openWorldHint: true,
     },
     async (args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
@@ -82,6 +85,10 @@ export const createServer = (plaidClient: PlaidApi) => {
     "Fetch detailed information about a specific financial tool or capability.",
     {
       id: z.string().describe("Tool ID to fetch details for"),
+    },
+    {
+      readOnlyHint: true,
+      openWorldHint: true,
     },
     async (args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
@@ -143,6 +150,10 @@ export const createServer = (plaidClient: PlaidApi) => {
     "connect-financial-institution",
     "Initiate connection to a financial institution via Plaid. This opens a secure browser flow where the user can authenticate with their bank. Supports sandbox testing with fake bank data.",
     {},
+    {
+      readOnlyHint: true,
+      openWorldHint: true,
+    },
     async (_args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
 
@@ -162,6 +173,10 @@ export const createServer = (plaidClient: PlaidApi) => {
     "check-connection-status",
     "Check if the user has connected a financial institution and view connected account details. Shows account balances and connection status.",
     {},
+    {
+      readOnlyHint: true,
+      openWorldHint: true,
+    },
     async (_args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
 
@@ -190,6 +205,10 @@ export const createServer = (plaidClient: PlaidApi) => {
         .optional()
         .describe("End date in YYYY-MM-DD format (default: today)"),
     },
+    {
+      readOnlyHint: true,
+      openWorldHint: true,
+    },
     async (args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
 
@@ -214,6 +233,10 @@ export const createServer = (plaidClient: PlaidApi) => {
     "track-subscriptions",
     "Initiate subscription tracking analysis on credit card transactions for the authenticated user. Downloads transaction data and analysis script for local processing.",
     {},
+    {
+      readOnlyHint: true,
+      openWorldHint: true,
+    },
     async (_args, { authInfo }) => {
       // Extract user ID from Clerk OAuth token
       const userId = authInfo?.extra?.userId as string | undefined;
@@ -228,48 +251,6 @@ export const createServer = (plaidClient: PlaidApi) => {
       const baseUrl = getBaseUrl();
 
       return trackSubscriptionsHandler(userId, baseUrl);
-    }
-  );
-
-  server.tool(
-    "get-alerts",
-    "Get weather alerts for a state",
-    {
-      state: z
-        .string()
-        .length(2)
-        .describe("Two-letter state code (e.g. CA, NY)"),
-    },
-    async (args, { authInfo }) => {
-      // Extract user ID from Clerk OAuth token (available for future use)
-      const userId = authInfo?.extra?.userId as string | undefined;
-      console.log("get-alerts called by user:", userId);
-
-      return getAlertsHandler(args);
-    }
-  );
-
-  server.tool(
-    "get-forecast",
-    "Get weather forecast for a location",
-    {
-      latitude: z
-        .number()
-        .min(-90)
-        .max(90)
-        .describe("Latitude of the location"),
-      longitude: z
-        .number()
-        .min(-180)
-        .max(180)
-        .describe("Longitude of the location"),
-    },
-    async (args, { authInfo }) => {
-      // Extract user ID from Clerk OAuth token (available for future use)
-      const userId = authInfo?.extra?.userId as string | undefined;
-      console.log("get-forecast called by user:", userId);
-
-      return getForecastHandler(args);
     }
   );
 
