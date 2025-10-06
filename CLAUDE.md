@@ -10,9 +10,74 @@ This is a Model Context Protocol (MCP) server built with Express.js and TypeScri
 
 **Authentication**: All MCP endpoints require OAuth authentication via Clerk. Unauthenticated requests return `401 Unauthorized`.
 
-## MVP: Subscription Tracking Test
+## TODO
 
-The current implementation demonstrates the **Tool → Signed Download URL → AI Analysis** pattern for detecting recurring subscriptions in credit card transactions.
+### Database Migration (Priority)
+
+**Current State:** All Plaid data stored in-memory Maps (lost on server restart)
+- `pendingConnections: Map<sessionId, PendingConnection>` - OAuth session tracking
+- `userPlaidTokens: Map<userId, PlaidConnection>` - Access tokens & account details
+- `userTransactionData: Map<userId, csvContent>` - Temporary transaction downloads
+
+**Required:**
+1. Replace in-memory storage with PostgreSQL/Supabase
+2. Encrypt `access_token` at rest (never store plaintext tokens)
+3. Add Row Level Security (RLS) filtering by `userId` from Clerk
+4. Implement token refresh logic for expired Plaid connections
+5. Add webhook endpoint for Plaid item updates (deactivation, errors)
+
+**Schema Outline:**
+```sql
+CREATE TABLE plaid_items (
+  user_id TEXT PRIMARY KEY,
+  access_token_encrypted TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  connected_at TIMESTAMP DEFAULT NOW(),
+  status TEXT DEFAULT 'active'
+);
+
+CREATE TABLE plaid_accounts (
+  id TEXT PRIMARY KEY,
+  user_id TEXT REFERENCES plaid_items(user_id),
+  account_id TEXT NOT NULL,
+  name TEXT,
+  type TEXT,
+  subtype TEXT,
+  mask TEXT
+);
+
+CREATE TABLE plaid_sessions (
+  session_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT NOW(),
+  expires_at TIMESTAMP
+);
+```
+
+## MVP Features
+
+### 1. Plaid Bank Connection (NEW)
+
+Connect real bank accounts via Plaid API to retrieve live transaction data. Supports sandbox testing with fake bank accounts.
+
+**User Flow:**
+1. User calls `connect-financial-institution` tool
+2. Server generates Plaid Link token and returns clickable URL
+3. User clicks URL → Browser opens Plaid Link UI
+4. User authenticates with bank (Sandbox: `user_good` / `pass_good`)
+5. Plaid automatically redirects to server with public token
+6. Server exchanges token for permanent access token and stores it
+7. User returns to Claude and calls `check-connection-status` to confirm
+
+**Available Tools:**
+- `connect-financial-institution` - Initiate bank connection flow
+- `check-connection-status` - View connected accounts and balances
+- `get-plaid-transactions` - Fetch real transaction data (CSV download)
+
+### 2. Subscription Tracking
+
+The original demo demonstrates the **Tool → Signed Download URL → AI Analysis** pattern for detecting recurring subscriptions in credit card transactions.
 
 ### How It Works
 
@@ -76,6 +141,7 @@ The current implementation demonstrates the **Tool → Signed Download URL → A
 - **Framework**: Express 4.21.2
 - **MCP SDK**: @modelcontextprotocol/sdk ^1.10.0
 - **Authentication**: Clerk (@clerk/express, @clerk/mcp-tools)
+- **Bank Data**: Plaid API (plaid ^29.0.0)
 - **Validation**: Zod 3.24.2
 - **Dev Tools**: Nodemon, Concurrently, TSC watch mode
 
@@ -284,6 +350,95 @@ For non-sensitive files (analysis scripts, templates), serve from `public/` dire
 - Use for: Analysis scripts, documentation, public templates
 
 ## MCP Tools
+
+### connect-financial-institution
+
+Initiates Plaid Link flow to connect a bank account.
+
+**Arguments**: None
+
+**Authentication**: Required (OAuth via Clerk)
+
+**Returns**:
+- Clickable Plaid Link URL with embedded session ID
+- Instructions for sandbox testing credentials
+- Guidance on what happens during the flow
+
+**Example Usage** (via Claude Desktop):
+```
+User: "Connect my bank account"
+Claude: Calls connect-financial-institution tool
+Server: Returns Plaid Link URL
+User: Clicks URL, authenticates with bank, returns to Claude
+```
+
+**Implementation**: See [src/tools/plaid-connection.ts](src/tools/plaid-connection.ts)
+
+### check-connection-status
+
+Check if user has connected a bank account and view account details.
+
+**Arguments**: None
+
+**Authentication**: Required (OAuth via Clerk)
+
+**Returns**:
+- Connection status (connected or not)
+- If connected: Account names, types, balances, item ID
+- Available commands for next steps
+
+**Example Response**:
+```
+✓ Bank Connected
+
+Connected: 12/15/2024, 3:45:00 PM
+Item ID: item-sandbox-abc123
+
+Accounts (3):
+- Plaid Checking (checking): $1,210.45
+- Plaid Savings (savings): $5,320.10
+- Plaid Credit Card (credit): $-450.32
+
+Available Commands:
+- "Get my recent transactions"
+- "Track my subscriptions"
+```
+
+**Implementation**: See [src/tools/plaid-connection.ts](src/tools/plaid-connection.ts)
+
+### get-plaid-transactions
+
+Fetch real transaction data from connected Plaid account.
+
+**Arguments**:
+- `start_date` (optional): Start date in YYYY-MM-DD format (default: 90 days ago)
+- `end_date` (optional): End date in YYYY-MM-DD format (default: today)
+
+**Authentication**: Required (OAuth via Clerk)
+
+**Returns**:
+- Count of transactions found
+- Date range queried
+- Signed download URL for transactions CSV (expires in 10 minutes)
+- curl command to download file
+
+**Example Call**:
+```typescript
+// Get last 30 days of transactions
+get-plaid-transactions({ start_date: "2024-11-15", end_date: "2024-12-15" })
+
+// Get default range (last 90 days)
+get-plaid-transactions({})
+```
+
+**CSV Format**:
+```
+date,description,amount,category,account_name,pending
+2024-12-15,"Netflix",15.99,"Entertainment, Streaming","",false
+2024-12-14,"Whole Foods",45.23,"Food and Drink, Groceries","",false
+```
+
+**Implementation**: See [src/tools/plaid-transactions.ts](src/tools/plaid-transactions.ts)
 
 ### track-subscriptions
 
@@ -536,6 +691,9 @@ The `userId` from Clerk can be used to:
   - Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
   - Must be 64-character hex string for security
   - Used to sign time-limited download URLs
+- `PLAID_CLIENT_ID` - Plaid client ID (from Plaid Dashboard)
+- `PLAID_SECRET` - Plaid secret key (from Plaid Dashboard)
+- `PLAID_ENV` - Plaid environment (`sandbox`, `development`, or `production`)
 
 ### Optional
 
@@ -547,6 +705,20 @@ The `userId` from Clerk can be used to:
 All variables are loaded via `dotenv` in [src/index.ts](src/index.ts)
 
 **Security Note**: Never commit `.env` file. Use `.env.example` as template.
+
+### Getting Plaid Credentials
+
+1. Sign up at [Plaid Dashboard](https://dashboard.plaid.com/signup)
+2. Go to **Team Settings** → **Keys**
+3. Copy your **client_id**
+4. Copy your **Sandbox secret** (starts with `sandbox-...`)
+5. For production, request access to Development or Production environment
+
+**Sandbox Mode:**
+- No real bank connections
+- Free to use
+- Test credentials: `user_good` / `pass_good`
+- Provides fake transaction data for testing
 
 ## Deployment to Vercel
 
@@ -568,6 +740,9 @@ All variables are loaded via `dotenv` in [src/index.ts](src/index.ts)
      - `CLERK_SECRET_KEY` - From Clerk Dashboard
      - `JWT_SECRET` - Generate with crypto command
      - `BASE_URL` - Set to `https://personal-finance-mcp.vercel.app`
+     - `PLAID_CLIENT_ID` - From Plaid Dashboard
+     - `PLAID_SECRET` - From Plaid Dashboard (sandbox or production)
+     - `PLAID_ENV` - Set to `sandbox` for testing, `production` for live
    - Click "Deploy"
 
 3. **Auto-deployment**:
@@ -606,3 +781,144 @@ This works because:
 - Build artifacts in `build/` directory are gitignored
 - `public/` and `src/prompts/` included in deployment via `package.json` files array
 - Package manager: npm (not pnpm)
+
+## Plaid Integration Architecture
+
+### Connection Flow
+
+The Plaid integration uses an automated redirect-based flow to eliminate manual token handling:
+
+1. **Link Token Generation** (`connect-financial-institution` tool)
+   - Creates unique session ID
+   - Stores pending connection in memory (expires in 30 min)
+   - Calls Plaid `linkTokenCreate()` API
+   - Returns branded URL: `{baseUrl}/plaid/link?token={linkToken}&session={sessionId}`
+
+2. **Plaid Link UI** (`GET /plaid/link`)
+   - Serves HTML page with Plaid JavaScript SDK
+   - Automatically opens Plaid Link modal on page load
+   - User selects bank and authenticates
+   - On success: JavaScript sends `public_token` to callback endpoint
+
+3. **Token Exchange** (`POST /plaid/callback`)
+   - Receives `public_token` and `session` from client JavaScript
+   - Verifies session is valid and pending
+   - Calls Plaid `itemPublicTokenExchange()` to get permanent `access_token`
+   - Fetches account details via `accountsGet()`
+   - Stores connection in `userPlaidTokens` Map (keyed by `userId`)
+   - Returns success with account list
+
+4. **Transaction Retrieval** (`get-plaid-transactions` tool)
+   - Looks up user's `access_token` in storage
+   - Calls Plaid `transactionsGet()` with date range
+   - Converts transactions to CSV format
+   - Generates signed download URL
+   - Returns curl command to AI
+
+### Storage Architecture (MVP)
+
+**In-Memory Maps** (replaced by database in production):
+
+```typescript
+// Temporary session tracking (30 min expiry)
+pendingConnections: Map<sessionId, {
+  userId: string,
+  status: 'pending' | 'completed' | 'failed',
+  createdAt: Date
+}>
+
+// Permanent Plaid connections (until server restart)
+userPlaidTokens: Map<userId, {
+  accessToken: string,  // Encrypted in production
+  itemId: string,
+  connectedAt: Date,
+  accounts: Array<{...}>
+}>
+
+// Temporary transaction data (deleted after download)
+userTransactionData: Map<userId, csvContent>
+```
+
+**Production Migration:**
+- Move to PostgreSQL/Supabase
+- Encrypt `access_token` at rest
+- Add Row Level Security (RLS) by `userId`
+- Implement token refresh logic
+- Add webhook handling for Plaid events
+
+### Plaid Endpoints
+
+**New Express Routes:**
+
+1. `GET /plaid/link` - Serves branded Plaid Link UI page
+2. `POST /plaid/callback` - Handles automatic token exchange
+3. `GET /api/data/transactions` - Downloads transaction CSV (updated to support Plaid data)
+
+**New MCP Tools:**
+
+1. `connect-financial-institution` - Initiates Plaid Link flow
+2. `check-connection-status` - Verifies connection and shows accounts
+3. `get-plaid-transactions` - Fetches real transaction data
+
+### Security Considerations
+
+**Plaid Access Tokens:**
+- Stored in-memory (MVP) - **DO NOT use in production**
+- Must be encrypted at rest in database
+- Should implement token rotation
+- Add item webhook to handle token revocation
+
+**Session Management:**
+- Session IDs are UUIDs (cryptographically random)
+- Expire after 30 minutes
+- Single-use (marked as completed after exchange)
+- Automatically cleaned up by interval timer
+
+**Data Privacy:**
+- Transaction data temporarily stored for download
+- Deleted immediately after user downloads CSV
+- User isolation enforced via `userId` from Clerk OAuth
+
+### Testing Plaid Integration
+
+**Local Testing:**
+
+```bash
+# 1. Get Plaid sandbox credentials from dashboard.plaid.com
+# 2. Add to .env file
+PLAID_CLIENT_ID=your_client_id
+PLAID_SECRET=your_sandbox_secret
+PLAID_ENV=sandbox
+
+# 3. Start server
+npm run dev
+
+# 4. Use Claude Desktop to test:
+# - "Connect my bank account"
+# - Click the link
+# - Use credentials: user_good / pass_good
+# - Return to Claude: "Check my connection status"
+# - "Get my recent transactions"
+```
+
+**Sandbox Credentials:**
+- Username: `user_good`
+- Password: `pass_good`
+- 2FA Code (if prompted): `1234`
+- Bank: Select "First Platypus Bank" or any test institution
+
+**Expected Sandbox Data:**
+- 3 accounts: Checking, Savings, Credit Card
+- ~100 transactions spanning 90 days
+- Includes recurring transactions for subscription testing
+
+### Future Enhancements
+
+**Planned Features:**
+1. Database storage for Plaid tokens (encrypted)
+2. Webhook handling for real-time updates
+3. Support for multiple bank connections per user
+4. Token refresh and re-authentication flow
+5. Transaction categorization improvements
+6. Budget tracking based on Plaid data
+7. Investment account support (Plaid Investments API)
