@@ -2,6 +2,14 @@
 
 Model Context Protocol (MCP) server built with Express.js that provides personal finance tools and data.
 
+## ⚠️ Important Notes
+
+### ChatGPT Integration Issue
+ChatGPT OAuth authentication is experiencing intermittent issues. See CLAUDE.md for technical details.
+
+### Chase Bank Production Access
+If using Plaid production environment to access Chase bank accounts, note that **OAuth institution access can take up to 8 weeks** for approval. Check your application status at: http://dashboard.plaid.com/activity/status/oauth-institutions
+
 ## Getting Started
 
 ### Clone and run locally

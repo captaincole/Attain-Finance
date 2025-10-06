@@ -7,6 +7,7 @@ import { trackSubscriptionsHandler } from "./tools/track-subscriptions.js";
 import {
   connectFinancialInstitutionHandler,
   checkConnectionStatusHandler,
+  disconnectFinancialInstitutionHandler,
 } from "./tools/plaid-connection.js";
 import { getPlaidTransactionsHandler } from "./tools/plaid-transactions.js";
 
@@ -55,6 +56,11 @@ export const createServer = (plaidClient: PlaidApi) => {
           id: "tool-check-status",
           title: "Check Connection Status",
           url: `${getBaseUrl()}/docs/check-status`,
+        },
+        {
+          id: "tool-disconnect-bank",
+          title: "Disconnect Financial Institution",
+          url: `${getBaseUrl()}/docs/disconnect-bank`,
         },
         {
           id: "tool-get-transactions",
@@ -106,14 +112,21 @@ export const createServer = (plaidClient: PlaidApi) => {
         "tool-check-status": {
           id: "tool-check-status",
           title: "Check Connection Status",
-          text: "Checks if user has connected a financial institution and displays account details including balances. Use the 'check-connection-status' MCP tool to check status.",
+          text: "Checks if user has connected financial institutions and displays account details including balances. Shows all connected banks. Use the 'check-connection-status' MCP tool to check status.",
           url: `${getBaseUrl()}/docs/check-status`,
           metadata: { tool_name: "check-connection-status" },
+        },
+        "tool-disconnect-bank": {
+          id: "tool-disconnect-bank",
+          title: "Disconnect Financial Institution",
+          text: "Disconnects a financial institution and invalidates its Plaid access token. Removes the connection from the database. Use the 'disconnect-financial-institution' MCP tool with the item_id parameter (get item_id from check-connection-status).",
+          url: `${getBaseUrl()}/docs/disconnect-bank`,
+          metadata: { tool_name: "disconnect-financial-institution" },
         },
         "tool-get-transactions": {
           id: "tool-get-transactions",
           title: "Get Plaid Transactions",
-          text: "Retrieves real transaction data from connected financial institution via Plaid. Returns downloadable CSV file for specified date range. Use the 'get-plaid-transactions' MCP tool with optional start_date and end_date parameters.",
+          text: "Retrieves real transaction data from all connected financial institutions via Plaid. Returns downloadable CSV file for specified date range. Use the 'get-plaid-transactions' MCP tool with optional start_date and end_date parameters.",
           url: `${getBaseUrl()}/docs/transactions`,
           metadata: { tool_name: "get-plaid-transactions" },
         },
@@ -129,7 +142,7 @@ export const createServer = (plaidClient: PlaidApi) => {
       const result = toolDetails[args.id] || {
         id: args.id,
         title: "Unknown Tool",
-        text: "Tool not found. Available tools: connect-financial-institution, check-connection-status, get-plaid-transactions, track-subscriptions.",
+        text: "Tool not found. Available tools: connect-financial-institution, check-connection-status, disconnect-financial-institution, get-plaid-transactions, track-subscriptions.",
         url: `${getBaseUrl()}/docs`,
         metadata: null,
       };
@@ -226,6 +239,27 @@ export const createServer = (plaidClient: PlaidApi) => {
         args,
         plaidClient
       );
+    }
+  );
+
+  server.tool(
+    "disconnect-financial-institution",
+    "Disconnect a financial institution and invalidate its access token. Requires the Plaid item_id which can be obtained from check-connection-status.",
+    {
+      item_id: z
+        .string()
+        .describe("The Plaid item_id to disconnect (get from check-connection-status)"),
+    },
+    async (args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+
+      if (!userId) {
+        throw new Error("User authentication required");
+      }
+
+      console.log("disconnect-financial-institution called by user:", userId, "item:", args.item_id);
+
+      return disconnectFinancialInstitutionHandler(userId, args.item_id, plaidClient);
     }
   );
 

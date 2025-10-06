@@ -89,6 +89,7 @@ export interface PlaidConnectionDecrypted {
   accessToken: string;
   itemId: string;
   connectedAt: Date;
+  plaidEnv: "sandbox" | "development" | "production";
 }
 
 /**
@@ -103,6 +104,7 @@ export async function saveConnection(
   itemId: string
 ): Promise<void> {
   const encryptedToken = encryptAccessToken(accessToken);
+  const plaidEnv = (process.env.PLAID_ENV || "sandbox") as "sandbox" | "development" | "production";
 
   const { error } = await getSupabase()
     .from("plaid_connections")
@@ -112,9 +114,10 @@ export async function saveConnection(
         access_token_encrypted: encryptedToken,
         item_id: itemId,
         connected_at: new Date().toISOString(),
+        plaid_env: plaidEnv,
       },
       {
-        onConflict: "user_id",
+        onConflict: "item_id",
       }
     );
 
@@ -123,39 +126,34 @@ export async function saveConnection(
     throw new Error(`Failed to save connection: ${error.message}`);
   }
 
-  console.log(`✓ Saved Plaid connection for user ${userId}`);
+  console.log(`✓ Saved Plaid connection for user ${userId} (${plaidEnv})`);
 }
 
 /**
- * Get a Plaid connection from the database
+ * Get all Plaid connections for a user
  * @param userId - Clerk user ID
- * @returns Decrypted connection or null if not found
+ * @returns Array of decrypted connections (empty array if none found)
  */
-export async function getConnection(
+export async function getConnections(
   userId: string
-): Promise<PlaidConnectionDecrypted | null> {
+): Promise<PlaidConnectionDecrypted[]> {
   const { data, error } = await getSupabase()
     .from("plaid_connections")
     .select("*")
     .eq("user_id", userId)
-    .single();
+    .order("connected_at", { ascending: false });
 
   if (error) {
-    if (error.code === "PGRST116") {
-      // No rows returned - user hasn't connected yet
-      return null;
-    }
-    console.error("Error fetching Plaid connection:", error);
-    throw new Error(`Failed to fetch connection: ${error.message}`);
+    console.error("Error fetching Plaid connections:", error);
+    throw new Error(`Failed to fetch connections: ${error.message}`);
   }
 
-  if (!data) {
-    return null;
+  if (!data || data.length === 0) {
+    return [];
   }
 
-  const connection = data;
-
-  try {
+  // Decrypt all connections
+  return data.map((connection) => {
     const decryptedToken = decryptAccessToken(connection.access_token_encrypted);
 
     return {
@@ -163,27 +161,56 @@ export async function getConnection(
       accessToken: decryptedToken,
       itemId: connection.item_id,
       connectedAt: new Date(connection.connected_at || new Date()),
+      plaidEnv: (connection.plaid_env || "sandbox") as "sandbox" | "development" | "production",
     };
-  } catch (error: any) {
-    console.error("Error decrypting access token:", error);
-    throw new Error("Failed to decrypt access token");
-  }
+  });
 }
 
 /**
- * Delete a Plaid connection from the database
+ * Get a single Plaid connection (for backward compatibility)
  * @param userId - Clerk user ID
+ * @returns First connection or null if not found
+ * @deprecated Use getConnections() instead to support multiple institutions
  */
-export async function deleteConnection(userId: string): Promise<void> {
+export async function getConnection(
+  userId: string
+): Promise<PlaidConnectionDecrypted | null> {
+  const connections = await getConnections(userId);
+  return connections.length > 0 ? connections[0] : null;
+}
+
+/**
+ * Delete a specific Plaid connection by item ID
+ * @param itemId - Plaid item ID
+ */
+export async function deleteConnectionByItemId(itemId: string): Promise<void> {
   const { error } = await getSupabase()
     .from("plaid_connections")
     .delete()
-    .eq("user_id", userId);
+    .eq("item_id", itemId);
 
   if (error) {
     console.error("Error deleting Plaid connection:", error);
     throw new Error(`Failed to delete connection: ${error.message}`);
   }
 
-  console.log(`✓ Deleted Plaid connection for user ${userId}`);
+  console.log(`✓ Deleted Plaid connection ${itemId}`);
+}
+
+/**
+ * Delete all Plaid connections for a user
+ * @param userId - Clerk user ID
+ */
+export async function deleteAllConnections(userId: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("plaid_connections")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Error deleting Plaid connections:", error);
+    throw new Error(`Failed to delete connections: ${error.message}`);
+  }
+
+  console.log(`✓ Deleted all Plaid connections for user ${userId}`);
 }

@@ -44,18 +44,21 @@ export type Database = {
           access_token_encrypted: string
           connected_at: string | null
           item_id: string
+          plaid_env: string
           user_id: string
         }
         Insert: {
           access_token_encrypted: string
           connected_at?: string | null
           item_id: string
+          plaid_env?: string
           user_id: string
         }
         Update: {
           access_token_encrypted?: string
           connected_at?: string | null
           item_id?: string
+          plaid_env?: string
           user_id?: string
         }
         Relationships: []

@@ -44,6 +44,24 @@ This ensures migration history is preserved and prevents issues when deploying t
 
 ## TODO
 
+### ChatGPT Integration (Blocked)
+
+**Issue:** ChatGPT OAuth authentication experiencing intermittent "Unauthorized - Access token is missing" errors after initial connection.
+
+**Why This Has Been Harder Than Expected:**
+- ChatGPT requires both `search` and `fetch` tools to recognize MCP server (added, but other tools still not visible in regular chat)
+- Tools flagged as "write" actions requiring manual approval - added `readOnlyHint: true` and `openWorldHint: true` annotations
+- OAuth token not being persisted/sent correctly by ChatGPT after delete/re-add connector workflow
+- Clerk OAuth integration works perfectly with Claude Desktop but shows different behavior with ChatGPT
+- Debug logging added to `/mcp` endpoint to diagnose whether Authorization header is present
+- May require ChatGPT Developer Mode to access custom tools beyond `search`/`fetch`
+
+**Next Steps:**
+1. Deploy debug logging and check Vercel logs during ChatGPT connection attempt
+2. Verify Clerk Dashboard shows active sessions when error occurs
+3. Test with ChatGPT Developer Mode (Pro/Team/Enterprise users only) to see if custom tools appear
+4. Consider alternative: Build ChatGPT-specific endpoints that wrap tools in `search`/`fetch` responses
+
 ### Database Migration (Priority)
 
 **Current State:** All Plaid data stored in-memory Maps (lost on server restart)

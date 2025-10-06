@@ -1,6 +1,6 @@
 import { PlaidApi, Products, CountryCode } from "plaid";
 import crypto from "crypto";
-import { getConnection, deleteConnection } from "../db/plaid-storage.js";
+import { getConnections, deleteConnectionByItemId } from "../db/plaid-storage.js";
 import { createSession } from "../db/plaid-sessions.js";
 
 /**
@@ -106,24 +106,24 @@ ${errorDetails}
 
 /**
  * Check Connection Status Tool
- * Verifies if user has connected a bank account
+ * Verifies if user has connected bank accounts
  */
 export async function checkConnectionStatusHandler(
   userId: string,
   plaidClient: PlaidApi
 ) {
-  // Load connection from database
-  const connection = await getConnection(userId);
+  // Load all connections from database
+  const connections = await getConnections(userId);
 
-  if (!connection) {
+  if (connections.length === 0) {
     return {
       content: [
         {
           type: "text" as const,
           text: `
-❌ **No Bank Connected**
+❌ **No Banks Connected**
 
-You haven't connected a bank account yet.
+You haven't connected any bank accounts yet.
 
 To connect, say: "Connect my bank account"
           `.trim(),
@@ -132,61 +132,224 @@ To connect, say: "Connect my bank account"
     };
   }
 
-  // Verify connection is still valid by fetching accounts
+  // Fetch accounts for all connections
+  const institutionData: Array<{
+    itemId: string;
+    institutionName: string;
+    env: string;
+    connectedAt: Date;
+    accounts: any[];
+    error?: string;
+  }> = [];
+
+  for (const connection of connections) {
+    try {
+      const accountsResponse = await plaidClient.accountsGet({
+        access_token: connection.accessToken,
+      });
+
+      const envLabel = connection.plaidEnv === 'sandbox'
+        ? '🧪 Sandbox'
+        : connection.plaidEnv === 'development'
+        ? '🔧 Development'
+        : '✅ Production';
+
+      // Get institution name from Plaid API response
+      const institutionName = accountsResponse.data.item.institution_name || "Unknown Institution";
+
+      institutionData.push({
+        itemId: connection.itemId,
+        institutionName,
+        env: envLabel,
+        connectedAt: connection.connectedAt,
+        accounts: accountsResponse.data.accounts,
+      });
+    } catch (error: any) {
+      // Mark as error but continue processing other connections
+      institutionData.push({
+        itemId: connection.itemId,
+        institutionName: "Unknown Institution",
+        env: '⚠️ Error',
+        connectedAt: connection.connectedAt,
+        accounts: [],
+        error: error.message,
+      });
+    }
+  }
+
+  // Build response
+  const totalAccounts = institutionData.reduce((sum, inst) => sum + inst.accounts.length, 0);
+
+  let responseText = `✓ **Connected Institutions (${connections.length})**\n\n`;
+
+  institutionData.forEach((inst, index) => {
+    responseText += `**${inst.institutionName}** (${inst.env})\n`;
+    responseText += `Connected: ${inst.connectedAt.toLocaleString()}\n`;
+    responseText += `Item ID: ${inst.itemId}\n`;
+
+    if (inst.error) {
+      responseText += `⚠️ Error: ${inst.error}\n`;
+      responseText += `To fix: Say "Disconnect ${inst.itemId}"\n\n`;
+    } else {
+      responseText += `Accounts (${inst.accounts.length}):\n`;
+      inst.accounts.forEach((acc) => {
+        responseText += `  - ${acc.name} (${acc.subtype || acc.type}): $${
+          acc.balances.current?.toFixed(2) || "N/A"
+        }\n`;
+      });
+      responseText += '\n';
+    }
+  });
+
+  responseText += `**Total Accounts:** ${totalAccounts}\n\n`;
+  responseText += `**Available Commands:**\n`;
+  responseText += `- "Get my recent transactions"\n`;
+  responseText += `- "Track my subscriptions"\n`;
+  responseText += `- "Connect another bank"`;
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: responseText.trim(),
+      },
+    ],
+  };
+}
+
+/**
+ * Disconnect Financial Institution Tool
+ * Removes a Plaid connection and invalidates the access token
+ */
+export async function disconnectFinancialInstitutionHandler(
+  userId: string,
+  itemId: string,
+  plaidClient: PlaidApi
+) {
+  // Get all connections for the user
+  const connections = await getConnections(userId);
+
+  // Find the connection to disconnect
+  const connection = connections.find((conn) => conn.itemId === itemId);
+
+  if (!connection) {
+    // Check if user has any connections at all
+    if (connections.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `
+❌ **No Banks Connected**
+
+You don't have any connected banks to disconnect.
+            `.trim(),
+          },
+        ],
+      };
+    }
+
+    // User has connections but specified wrong item ID
+    let responseText = `❌ **Institution Not Found**\n\nItem ID "${itemId}" not found in your connections.\n\n`;
+    responseText += `**Your Connected Institutions:**\n`;
+    connections.forEach((conn, index) => {
+      responseText += `${index + 1}. ${conn.itemId} (connected ${conn.connectedAt.toLocaleDateString()})\n`;
+    });
+    responseText += `\nTo disconnect, use one of the Item IDs listed above.`;
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: responseText.trim(),
+        },
+      ],
+    };
+  }
+
+  // Verify the connection belongs to this user (security check)
+  if (connection.userId !== userId) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `
+⛔ **Unauthorized**
+
+You don't have permission to disconnect this institution.
+          `.trim(),
+        },
+      ],
+    };
+  }
+
   try {
-    const accountsResponse = await plaidClient.accountsGet({
+    // Call Plaid API to invalidate the access token
+    await plaidClient.itemRemove({
       access_token: connection.accessToken,
     });
 
-    const accounts = accountsResponse.data.accounts;
+    // Delete from our database
+    await deleteConnectionByItemId(itemId);
 
     return {
       content: [
         {
           type: "text" as const,
           text: `
-✓ **Bank Connected**
+✓ **Institution Disconnected**
 
-**Connected:** ${connection.connectedAt.toLocaleString()}
-**Item ID:** ${connection.itemId}
+Successfully disconnected and invalidated access token for:
+**Item ID:** ${itemId}
 
-**Accounts (${accounts.length}):**
-${accounts
-  .map(
-    (acc) =>
-      `- ${acc.name} (${acc.subtype || acc.type}): $${
-        acc.balances.current?.toFixed(2) || "N/A"
-      }`
-  )
-  .join("\n")}
+Your financial data from this institution has been removed.
 
-**Available Commands:**
-- "Get my recent transactions"
-- "Track my subscriptions"
-- "Show my account balances"
+**What's next:**
+- Check remaining connections: "Check connection status"
+- Connect another bank: "Connect my bank account"
           `.trim(),
         },
       ],
     };
   } catch (error: any) {
-    // Token might be invalid/expired - delete from database
-    await deleteConnection(userId);
+    // Even if Plaid API fails, still delete from our database
+    // (token might already be invalid on Plaid's side)
+    try {
+      await deleteConnectionByItemId(itemId);
 
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: `
-⚠️ **Connection Expired**
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `
+⚠️ **Partially Disconnected**
 
-Your bank connection has expired or been revoked.
+Removed from our database, but Plaid returned an error:
+${error.message}
 
-Error: ${error.message}
+The connection has been removed from our system. If you're still seeing
+this institution in Plaid, you may need to revoke access through their dashboard.
+            `.trim(),
+          },
+        ],
+      };
+    } catch (dbError: any) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `
+❌ **Disconnect Failed**
 
-Please reconnect by saying: "Connect my bank account"
-          `.trim(),
-        },
-      ],
-    };
+Failed to disconnect institution:
+- Plaid error: ${error.message}
+- Database error: ${dbError.message}
+
+Please contact support if this issue persists.
+            `.trim(),
+          },
+        ],
+      };
+    }
   }
 }

@@ -1,6 +1,6 @@
 import { PlaidApi } from "plaid";
 import { generateSignedUrl } from "../utils/signed-urls.js";
-import { getConnection } from "../db/plaid-storage.js";
+import { getConnections } from "../db/plaid-storage.js";
 
 interface GetTransactionsArgs {
   start_date?: string;
@@ -39,7 +39,7 @@ function convertTransactionsToCSV(transactions: any[]): string {
 
 /**
  * Get Plaid Transactions Tool
- * Fetches real transaction data from connected Plaid account
+ * Fetches real transaction data from all connected Plaid accounts
  */
 export async function getPlaidTransactionsHandler(
   userId: string,
@@ -47,16 +47,16 @@ export async function getPlaidTransactionsHandler(
   args: GetTransactionsArgs,
   plaidClient: PlaidApi
 ) {
-  // Load connection from database
-  const connection = await getConnection(userId);
+  // Load all connections from database
+  const connections = await getConnections(userId);
 
-  if (!connection) {
+  if (connections.length === 0) {
     return {
       content: [
         {
           type: "text" as const,
           text: `
-⚠️ **No Bank Account Connected**
+⚠️ **No Bank Accounts Connected**
 
 Please connect your bank first by saying:
 "Connect my bank account"
@@ -80,103 +80,81 @@ Please connect your bank first by saying:
         return date;
       })();
 
-  try {
-    // Fetch transactions from Plaid
-    const response = await plaidClient.transactionsGet({
-      access_token: connection.accessToken,
-      start_date: startDate.toISOString().split("T")[0],
-      end_date: endDate.toISOString().split("T")[0],
-      options: {
-        count: 500, // Get up to 500 transactions
-        offset: 0,
-      },
-    });
+  // Fetch transactions from all connections
+  const allTransactions: any[] = [];
+  const errors: string[] = [];
 
-    const transactions = response.data.transactions;
+  for (const connection of connections) {
+    try {
+      const response = await plaidClient.transactionsGet({
+        access_token: connection.accessToken,
+        start_date: startDate.toISOString().split("T")[0],
+        end_date: endDate.toISOString().split("T")[0],
+        options: {
+          count: 500,
+          offset: 0,
+        },
+      });
 
-    if (transactions.length === 0) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `
-📊 **No Transactions Found**
+      allTransactions.push(...response.data.transactions);
+    } catch (error: any) {
+      errors.push(`${connection.itemId}: ${error.message}`);
+    }
+  }
 
-No transactions found for the period:
-- Start: ${startDate.toISOString().split("T")[0]}
-- End: ${endDate.toISOString().split("T")[0]}
+  if (allTransactions.length === 0) {
+    let errorMsg = `📊 **No Transactions Found**\n\nNo transactions found for the period:\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}`;
 
-Try adjusting the date range or ensuring your bank account has transaction history.
-            `.trim(),
-          },
-        ],
-      };
+    if (errors.length > 0) {
+      errorMsg += `\n\n**Errors:**\n${errors.map(e => `- ${e}`).join('\n')}`;
     }
 
-    // Convert to CSV format
-    const csvContent = convertTransactionsToCSV(transactions);
-
-    // Generate signed download URL for transactions
-    const transactionsUrl = generateSignedUrl(
-      baseUrl,
-      userId,
-      "transactions",
-      600 // 10 minute expiry
-    );
-
-    // Store CSV for download endpoint
-    userTransactionData.set(userId, csvContent);
-
     return {
       content: [
         {
           type: "text" as const,
-          text: `
-📊 **Transactions Retrieved**
-
-Found ${transactions.length} transactions from ${connection.itemId}
-
-**Date Range:**
-- Start: ${startDate.toISOString().split("T")[0]}
-- End: ${endDate.toISOString().split("T")[0]}
-
-**Download Instructions:**
-
-\`\`\`bash
-curl "${transactionsUrl}" -o transactions.csv
-\`\`\`
-
-**Note:** Download link expires in 10 minutes.
-
-**What you can do next:**
-- Analyze the CSV file
-- Track subscriptions with: "Track my subscriptions"
-- Categorize spending patterns
-          `.trim(),
-        },
-      ],
-    };
-  } catch (error: any) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: `
-❌ **Error Fetching Transactions**
-
-Failed to retrieve transactions: ${error.message}
-
-This could happen if:
-- Your bank connection expired
-- Plaid is experiencing issues
-- The date range is invalid
-
-Try reconnecting your bank or contact support.
-          `.trim(),
+          text: errorMsg.trim(),
         },
       ],
     };
   }
+
+  // Sort transactions by date (newest first)
+  allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  // Convert to CSV format
+  const csvContent = convertTransactionsToCSV(allTransactions);
+
+  // Generate signed download URL for transactions
+  const transactionsUrl = generateSignedUrl(
+    baseUrl,
+    userId,
+    "transactions",
+    600 // 10 minute expiry
+  );
+
+  // Store CSV for download endpoint
+  userTransactionData.set(userId, csvContent);
+
+  let responseText = `📊 **Transactions Retrieved**\n\nFound ${allTransactions.length} transactions from ${connections.length} institution(s)\n\n`;
+  responseText += `**Date Range:**\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}\n\n`;
+
+  if (errors.length > 0) {
+    responseText += `**Warnings:**\n${errors.map(e => `- ${e}`).join('\n')}\n\n`;
+  }
+
+  responseText += `**Download Instructions:**\n\n\`\`\`bash\ncurl "${transactionsUrl}" -o transactions.csv\n\`\`\`\n\n`;
+  responseText += `**Note:** Download link expires in 10 minutes.\n\n`;
+  responseText += `**What you can do next:**\n- Analyze the CSV file\n- Track subscriptions with: "Track my subscriptions"\n- Categorize spending patterns`;
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: responseText.trim(),
+      },
+    ],
+  };
 }
 
 /**

@@ -70,8 +70,17 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 const { server } = createServer(plaidClient);
 
-// Protected MCP endpoint (requires authentication)
-app.post("/mcp", mcpAuthClerk, streamableHttpHandler(server));
+// Debug middleware to log authentication attempts
+app.post("/mcp", (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  console.log("MCP request received:", {
+    hasAuthHeader: !!authHeader,
+    authType: authHeader?.split(" ")[0],
+    tokenPreview: authHeader ? `${authHeader.substring(0, 20)}...` : "none",
+    timestamp: new Date().toISOString(),
+  });
+  next();
+}, mcpAuthClerk, streamableHttpHandler(server));
 
 // OAuth metadata endpoints (must be public for discovery)
 app.get(
@@ -277,15 +286,15 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
     const accessToken = exchangeResponse.data.access_token;
     const itemId = exchangeResponse.data.item_id;
 
-    // Save to database (encrypted)
-    await saveConnection(userId, accessToken, itemId);
-
     // Fetch account details for response
     const accountsResponse = await plaidClient.accountsGet({
       access_token: accessToken,
     });
 
     const accounts = accountsResponse.data.accounts;
+
+    // Save to database (encrypted)
+    await saveConnection(userId, accessToken, itemId);
 
     // Mark session as completed in database
     await completeSession(session);
