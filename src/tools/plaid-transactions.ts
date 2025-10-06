@@ -1,18 +1,6 @@
 import { PlaidApi } from "plaid";
 import { generateSignedUrl } from "../utils/signed-urls.js";
-
-interface PlaidConnection {
-  accessToken: string;
-  itemId: string;
-  connectedAt: Date;
-  accounts: Array<{
-    id: string;
-    name: string;
-    type: string;
-    subtype: string | null;
-    mask: string | null;
-  }>;
-}
+import { getConnection } from "../db/plaid-storage.js";
 
 interface GetTransactionsArgs {
   start_date?: string;
@@ -57,11 +45,10 @@ export async function getPlaidTransactionsHandler(
   userId: string,
   baseUrl: string,
   args: GetTransactionsArgs,
-  plaidClient: PlaidApi,
-  userPlaidTokens: Map<string, PlaidConnection>
+  plaidClient: PlaidApi
 ) {
-  // Check if user has connected Plaid account
-  const connection = userPlaidTokens.get(userId);
+  // Load connection from database
+  const connection = await getConnection(userId);
 
   if (!connection) {
     return {

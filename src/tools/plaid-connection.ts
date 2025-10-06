@@ -1,5 +1,6 @@
 import { PlaidApi, Products, CountryCode } from "plaid";
 import crypto from "crypto";
+import { getConnection, deleteConnection } from "../db/plaid-storage.js";
 
 interface PendingConnection {
   userId: string;
@@ -7,19 +8,6 @@ interface PendingConnection {
   status: "pending" | "completed" | "failed";
   completedAt?: Date;
   error?: string;
-}
-
-interface PlaidConnection {
-  accessToken: string;
-  itemId: string;
-  connectedAt: Date;
-  accounts: Array<{
-    id: string;
-    name: string;
-    type: string;
-    subtype: string | null;
-    mask: string | null;
-  }>;
 }
 
 /**
@@ -60,6 +48,13 @@ export async function connectFinancialInstitutionHandler(
 
     const linkToken = response.data.link_token;
 
+    // URL encode parameters to preserve full session ID
+    const encodedLinkToken = encodeURIComponent(linkToken);
+    const encodedSessionId = encodeURIComponent(sessionId);
+    const linkUrl = `${baseUrl}/plaid/link?token=${encodedLinkToken}&session=${encodedSessionId}`;
+
+    console.log(`Generated Plaid Link URL with session: ${sessionId}`);
+
     return {
       content: [
         {
@@ -68,7 +63,7 @@ export async function connectFinancialInstitutionHandler(
 **Connect Your Bank Account**
 
 Click this link to securely connect your bank:
-${baseUrl}/plaid/link?token=${linkToken}&session=${sessionId}
+${linkUrl}
 
 **For Sandbox Testing (Fake Bank Data):**
 - Username: \`user_good\`
@@ -132,10 +127,10 @@ ${errorDetails}
  */
 export async function checkConnectionStatusHandler(
   userId: string,
-  plaidClient: PlaidApi,
-  userPlaidTokens: Map<string, PlaidConnection>
+  plaidClient: PlaidApi
 ) {
-  const connection = userPlaidTokens.get(userId);
+  // Load connection from database
+  const connection = await getConnection(userId);
 
   if (!connection) {
     return {
@@ -191,8 +186,8 @@ ${accounts
       ],
     };
   } catch (error: any) {
-    // Token might be invalid/expired
-    userPlaidTokens.delete(userId);
+    // Token might be invalid/expired - delete from database
+    await deleteConnection(userId);
 
     return {
       content: [

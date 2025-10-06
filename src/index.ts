@@ -16,6 +16,7 @@ import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 import { createServer } from "./create-server.js";
 import { verifySignedToken } from "./utils/signed-urls.js";
 import { userTransactionData } from "./tools/plaid-transactions.js";
+import { saveConnection } from "./db/plaid-storage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,7 +43,7 @@ const plaidConfiguration = new Configuration({
 
 const plaidClient = new PlaidApi(plaidConfiguration);
 
-// Storage for Plaid connections
+// Storage for Plaid connection sessions (temporary, in-memory)
 interface PendingConnection {
   userId: string;
   createdAt: Date;
@@ -51,21 +52,7 @@ interface PendingConnection {
   error?: string;
 }
 
-interface PlaidConnection {
-  accessToken: string;
-  itemId: string;
-  connectedAt: Date;
-  accounts: Array<{
-    id: string;
-    name: string;
-    type: string;
-    subtype: string | null;
-    mask: string | null;
-  }>;
-}
-
 const pendingConnections = new Map<string, PendingConnection>();
-const userPlaidTokens = new Map<string, PlaidConnection>();
 
 // Cleanup expired pending connections every 30 minutes
 setInterval(() => {
@@ -98,7 +85,10 @@ app.options("*", cors());
 app.use(clerkMiddleware());
 app.use(express.json());
 
-const { server } = createServer(plaidClient, pendingConnections, userPlaidTokens);
+// Serve static files from public/ directory (analysis scripts, sample data, etc.)
+app.use(express.static(path.join(__dirname, "..", "public")));
+
+const { server } = createServer(plaidClient, pendingConnections);
 
 // Protected MCP endpoint (requires authentication)
 app.post("/mcp", mcpAuthClerk, streamableHttpHandler(server));
@@ -269,6 +259,8 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
   console.log("Plaid callback received:", {
     hasPublicToken: !!public_token,
     session,
+    sessionLength: session?.length,
+    sessionType: typeof session,
     totalPendingSessions: pendingConnections.size
   });
 
@@ -281,9 +273,11 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
   const pendingConnection = pendingConnections.get(session);
 
   console.log("Session lookup:", {
-    session,
+    receivedSession: session,
+    receivedSessionLength: session.length,
     found: !!pendingConnection,
-    allSessions: Array.from(pendingConnections.keys())
+    allSessions: Array.from(pendingConnections.keys()),
+    allSessionLengths: Array.from(pendingConnections.keys()).map(s => s.length)
   });
 
   if (!pendingConnection) {
@@ -305,26 +299,15 @@ app.post("/plaid/callback", async (req: Request, res: Response) => {
     const accessToken = exchangeResponse.data.access_token;
     const itemId = exchangeResponse.data.item_id;
 
-    // Fetch account details
+    // Save to database (encrypted)
+    await saveConnection(userId, accessToken, itemId);
+
+    // Fetch account details for response
     const accountsResponse = await plaidClient.accountsGet({
       access_token: accessToken,
     });
 
     const accounts = accountsResponse.data.accounts;
-
-    // Store tokens
-    userPlaidTokens.set(userId, {
-      accessToken,
-      itemId,
-      connectedAt: new Date(),
-      accounts: accounts.map((acc) => ({
-        id: acc.account_id,
-        name: acc.name,
-        type: acc.type,
-        subtype: acc.subtype || null,
-        mask: acc.mask || null,
-      })),
-    });
 
     // Mark session as completed
     pendingConnection.status = "completed";

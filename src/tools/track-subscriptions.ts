@@ -7,8 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export async function trackSubscriptionsHandler(userId: string, baseUrl: string) {
-  // Read the analysis prompt (from src directory since it's not in build)
-  const promptPath = path.join(__dirname, "..", "prompts", "analyze-subscriptions.txt");
+  // Read the analysis prompt
+  // In build: __dirname is /path/to/build/tools
+  // We need to go up to project root, then into src/prompts
+  const promptPath = path.join(__dirname, "..", "..", "src", "prompts", "analyze-subscriptions.txt");
   const analysisPrompt = fs.readFileSync(promptPath, "utf-8");
 
   // Generate signed download URL (expires in 10 minutes)

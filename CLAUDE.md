@@ -10,6 +10,18 @@ This is a Model Context Protocol (MCP) server built with Express.js and TypeScri
 
 **Authentication**: All MCP endpoints require OAuth authentication via Clerk. Unauthenticated requests return `401 Unauthorized`.
 
+## Database Migrations
+
+**IMPORTANT MIGRATION RULES:**
+
+1. **All database migrations must be in the `migrations/` folder**
+2. **Migration naming**: `###_descriptive_name.sql` with zero-padded integers (e.g., `001_create_plaid_connections.sql`, `002_add_user_settings.sql`)
+3. **NEVER edit a migration file that has already been successfully applied**
+4. **Always create a NEW migration file** for schema changes, even if fixing a previous migration
+5. **Migrations are append-only** - treat them as immutable once applied to any environment
+
+This ensures migration history is preserved and prevents issues when deploying to multiple environments.
+
 ## TODO
 
 ### Database Migration (Priority)
@@ -470,6 +482,26 @@ node analyze-subscriptions.js transactions.csv
 **Implementation**: See [src/tools/track-subscriptions.ts](src/tools/track-subscriptions.ts)
 
 ## Testing
+
+### Automated Tests
+
+The project includes automated tests for analysis tools:
+
+```bash
+# Run all tests
+npm test
+
+# Run analysis tests specifically
+npm run test:analysis
+```
+
+**Test Coverage:**
+- Subscription detection algorithm
+- CSV parsing and validation
+- Monthly recurring pattern identification
+- Cost calculations and projections
+
+See [test/README.md](test/README.md) for details on test data and adding new test cases.
 
 ### Testing Production
 

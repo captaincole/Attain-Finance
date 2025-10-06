@@ -20,19 +20,6 @@ interface PendingConnection {
   error?: string;
 }
 
-interface PlaidConnection {
-  accessToken: string;
-  itemId: string;
-  connectedAt: Date;
-  accounts: Array<{
-    id: string;
-    name: string;
-    type: string;
-    subtype: string | null;
-    mask: string | null;
-  }>;
-}
-
 /**
  * Helper to get the base URL for generating download links
  * Uses BASE_URL environment variable or defaults to localhost
@@ -43,8 +30,7 @@ function getBaseUrl(): string {
 
 export const createServer = (
   plaidClient: PlaidApi,
-  pendingConnections: Map<string, PendingConnection>,
-  userPlaidTokens: Map<string, PlaidConnection>
+  pendingConnections: Map<string, PendingConnection>
 ) => {
   // Create server instance
   const server = new McpServer({
@@ -94,7 +80,7 @@ export const createServer = (
 
       console.log("check-connection-status called by user:", userId);
 
-      return checkConnectionStatusHandler(userId, plaidClient, userPlaidTokens);
+      return checkConnectionStatusHandler(userId, plaidClient);
     }
   );
 
@@ -128,8 +114,7 @@ export const createServer = (
         userId,
         baseUrl,
         args,
-        plaidClient,
-        userPlaidTokens
+        plaidClient
       );
     }
   );

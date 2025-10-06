@@ -35,3 +35,4 @@ Be sure to include the `/mcp` path in the connection URL (e.g., `http://localhos
 - `npm run dev` - Start development server with hot reload
 - `npm run build` - Build TypeScript to JavaScript
 - `npm start` - Start production server
+- `npm test` - Run test suite for analysis tools
