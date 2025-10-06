@@ -30,6 +30,114 @@ export const createServer = (plaidClient: PlaidApi) => {
   // See /api/data/transactions endpoint for user-specific data downloads
 
   // Register tools
+  // ChatGPT-compatible search/fetch tools (for Deep Research support)
+  server.tool(
+    "search",
+    "Search for financial tools and capabilities available in this MCP server. Returns information about available financial management tools.",
+    {
+      query: z.string().describe("Search query for financial tools"),
+    },
+    async (args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+      console.log("search called by user:", userId, "query:", args.query);
+
+      // Return list of available financial tools in ChatGPT's required format
+      const results = [
+        {
+          id: "tool-connect-bank",
+          title: "Connect Financial Institution",
+          url: `${getBaseUrl()}/docs/connect-bank`,
+        },
+        {
+          id: "tool-check-status",
+          title: "Check Connection Status",
+          url: `${getBaseUrl()}/docs/check-status`,
+        },
+        {
+          id: "tool-get-transactions",
+          title: "Get Plaid Transactions",
+          url: `${getBaseUrl()}/docs/transactions`,
+        },
+        {
+          id: "tool-track-subscriptions",
+          title: "Track Subscriptions",
+          url: `${getBaseUrl()}/docs/subscriptions`,
+        },
+      ];
+
+      // Must return exactly one text content item with JSON-encoded string
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify({ results }),
+          },
+        ],
+      };
+    }
+  );
+
+  server.tool(
+    "fetch",
+    "Fetch detailed information about a specific financial tool or capability.",
+    {
+      id: z.string().describe("Tool ID to fetch details for"),
+    },
+    async (args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+      console.log("fetch called by user:", userId, "id:", args.id);
+
+      // Map tool IDs to detailed information
+      const toolDetails: Record<string, any> = {
+        "tool-connect-bank": {
+          id: "tool-connect-bank",
+          title: "Connect Financial Institution",
+          text: "Initiates connection to a financial institution via Plaid. Opens a secure browser flow for bank authentication. Supports sandbox testing. Use the 'connect-financial-institution' MCP tool to start this flow.",
+          url: `${getBaseUrl()}/docs/connect-bank`,
+          metadata: { tool_name: "connect-financial-institution" },
+        },
+        "tool-check-status": {
+          id: "tool-check-status",
+          title: "Check Connection Status",
+          text: "Checks if user has connected a financial institution and displays account details including balances. Use the 'check-connection-status' MCP tool to check status.",
+          url: `${getBaseUrl()}/docs/check-status`,
+          metadata: { tool_name: "check-connection-status" },
+        },
+        "tool-get-transactions": {
+          id: "tool-get-transactions",
+          title: "Get Plaid Transactions",
+          text: "Retrieves real transaction data from connected financial institution via Plaid. Returns downloadable CSV file for specified date range. Use the 'get-plaid-transactions' MCP tool with optional start_date and end_date parameters.",
+          url: `${getBaseUrl()}/docs/transactions`,
+          metadata: { tool_name: "get-plaid-transactions" },
+        },
+        "tool-track-subscriptions": {
+          id: "tool-track-subscriptions",
+          title: "Track Subscriptions",
+          text: "Analyzes credit card transactions to identify recurring subscriptions. Downloads transaction data and analysis script for local processing. Use the 'track-subscriptions' MCP tool to start analysis.",
+          url: `${getBaseUrl()}/docs/subscriptions`,
+          metadata: { tool_name: "track-subscriptions" },
+        },
+      };
+
+      const result = toolDetails[args.id] || {
+        id: args.id,
+        title: "Unknown Tool",
+        text: "Tool not found. Available tools: connect-financial-institution, check-connection-status, get-plaid-transactions, track-subscriptions.",
+        url: `${getBaseUrl()}/docs`,
+        metadata: null,
+      };
+
+      // Must return exactly one text content item with JSON-encoded string
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: JSON.stringify(result),
+          },
+        ],
+      };
+    }
+  );
   // Plaid Connection Tools
   server.tool(
     "connect-financial-institution",
