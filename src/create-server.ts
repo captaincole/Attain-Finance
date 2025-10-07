@@ -40,10 +40,8 @@ export const createServer = (plaidClient: PlaidApi) => {
     "Initiate connection to a financial institution via Plaid. This opens a secure browser flow where the user can authenticate with their bank. Supports sandbox testing with fake bank data.",
     {},
     {
-      readOnlyHint: true,
-      openWorldHint: true,
       securitySchemes: [
-        { type: "oauth2", scopes: ["email", "profile"] },
+        { type: "oauth2" },
       ],
     },
     async (_args, { authInfo }) => {
@@ -71,9 +69,8 @@ export const createServer = (plaidClient: PlaidApi) => {
     {},
     {
       readOnlyHint: true,
-      openWorldHint: true,
       securitySchemes: [
-        { type: "oauth2", scopes: ["email", "profile"] },
+        { type: "oauth2" },
       ],
     },
     async (_args, { authInfo }) => {
@@ -106,9 +103,8 @@ export const createServer = (plaidClient: PlaidApi) => {
     },
     {
       readOnlyHint: true,
-      openWorldHint: true,
       securitySchemes: [
-        { type: "oauth2", scopes: ["email", "profile"] },
+        { type: "oauth2" },
       ],
     },
     async (args, { authInfo }) => {
@@ -141,7 +137,7 @@ export const createServer = (plaidClient: PlaidApi) => {
     },
     {
       securitySchemes: [
-        { type: "oauth2", scopes: ["email", "profile"] },
+        { type: "oauth2" },
       ],
     },
     async (args, { authInfo }) => {
@@ -163,9 +159,8 @@ export const createServer = (plaidClient: PlaidApi) => {
     {},
     {
       readOnlyHint: true,
-      openWorldHint: true,
       securitySchemes: [
-        { type: "oauth2", scopes: ["email", "profile"] },
+        { type: "oauth2" },
       ],
     },
     async (_args, { authInfo }) => {
