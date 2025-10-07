@@ -4,8 +4,17 @@ Model Context Protocol (MCP) server built with Express.js that provides personal
 
 ## ⚠️ Important Notes
 
-### ChatGPT Integration Issue
-ChatGPT OAuth authentication is experiencing intermittent issues. See CLAUDE.md for technical details.
+### ChatGPT Integration (Blocked - Known Bug)
+
+**Status:** ChatGPT has a known bug preventing custom MCP tools from appearing in chat.
+
+- **Issue:** Tools are registered and returned correctly by the server, but ChatGPT doesn't display them
+- **Cause:** Known ChatGPT MCP implementation bug (not our server)
+- **Tracking:** https://community.openai.com/t/custom-mcp-connector-no-longer-showing-all-tools-as-enabled/1361121
+- **Workaround:** Server works perfectly with Claude Desktop and MCP Inspector
+- **Status:** Waiting for OpenAI fix (no timeline provided)
+
+See [CLAUDE.md](CLAUDE.md) for detailed technical information and verification logs.
 
 ### Chase Bank Production Access
 If using Plaid production environment to access Chase bank accounts, note that **OAuth institution access can take up to 8 weeks** for approval. Check your application status at: http://dashboard.plaid.com/activity/status/oauth-institutions

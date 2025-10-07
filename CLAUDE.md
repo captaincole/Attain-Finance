@@ -137,23 +137,36 @@ To modify sandbox data:
 
 ## TODO
 
-### ChatGPT Integration (Blocked)
+### ChatGPT Integration (Blocked - Known ChatGPT Bug)
 
-**Issue:** ChatGPT OAuth authentication experiencing intermittent "Unauthorized - Access token is missing" errors after initial connection.
+**Status:** Waiting for OpenAI to fix MCP connector bug before integration.
 
-**Why This Has Been Harder Than Expected:**
-- ChatGPT requires both `search` and `fetch` tools to recognize MCP server (added, but other tools still not visible in regular chat)
-- Tools flagged as "write" actions requiring manual approval - added `readOnlyHint: true` and `openWorldHint: true` annotations
-- OAuth token not being persisted/sent correctly by ChatGPT after delete/re-add connector workflow
-- Clerk OAuth integration works perfectly with Claude Desktop but shows different behavior with ChatGPT
-- Debug logging added to `/mcp` endpoint to diagnose whether Authorization header is present
-- May require ChatGPT Developer Mode to access custom tools beyond `search`/`fetch`
+**Issue:** ChatGPT is not displaying custom MCP tools in the chat interface, despite successful OAuth authentication and tools/list responses.
+
+**Root Cause:** Known bug in ChatGPT's MCP implementation (not our server):
+- OpenAI Community Thread: https://community.openai.com/t/custom-mcp-connector-no-longer-showing-all-tools-as-enabled/1361121
+- Started around Friday, October 4th 2025 after ChatGPT deployment
+- Affects all users with custom MCP connectors
+- Tools are greyed out/unavailable even though server is working correctly
+- Same server works perfectly with Claude Desktop and MCP Inspector
+
+**Verified Working:**
+- ✅ OAuth authentication (Clerk integration)
+- ✅ Server responds to `initialize` and `tools/list` requests
+- ✅ All 5 tools registered and returned in response
+- ✅ Protocol version negotiation (2025-06-18)
+- ✅ Security schemes configured correctly
+
+**OpenAI's Response:**
+- Team acknowledged the issue
+- Documentation being updated
+- Suggested Developer Mode as potential workaround (requires Pro/Team/Enterprise)
+- No timeline for fix provided
 
 **Next Steps:**
-1. Deploy debug logging and check Vercel logs during ChatGPT connection attempt
-2. Verify Clerk Dashboard shows active sessions when error occurs
-3. Test with ChatGPT Developer Mode (Pro/Team/Enterprise users only) to see if custom tools appear
-4. Consider alternative: Build ChatGPT-specific endpoints that wrap tools in `search`/`fetch` responses
+1. Monitor OpenAI Community thread for updates
+2. Test again when OpenAI announces fix
+3. Consider Developer Mode if available once issue is resolved
 
 ### Database Migration (Priority)
 
