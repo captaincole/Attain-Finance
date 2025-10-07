@@ -87,6 +87,7 @@ app.post("/mcp", (req, res, next) => {
 app.get(
   "/.well-known/oauth-protected-resource",
   protectedResourceHandlerClerk({
+    resource_url: `${process.env.BASE_URL || "http://localhost:3000"}/mcp`,
     scopes_supported: ["email", "profile"],
   })
 );
