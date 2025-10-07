@@ -12,8 +12,12 @@ const userTransactionData = new Map<string, string>();
 
 /**
  * Convert Plaid transactions to CSV format
+ * accountMap: Map<account_id, human_readable_name>
  */
-function convertTransactionsToCSV(transactions: any[]): string {
+function convertTransactionsToCSV(
+  transactions: any[],
+  accountMap: Map<string, string>
+): string {
   const headers = [
     "date",
     "description",
@@ -24,12 +28,13 @@ function convertTransactionsToCSV(transactions: any[]): string {
   ];
 
   const rows = transactions.map((tx) => {
+    const accountName = accountMap.get(tx.account_id) || tx.account_id;
     return [
       tx.date,
       `"${tx.name.replace(/"/g, '""')}"`, // Escape quotes in description
       tx.amount,
       tx.category ? `"${tx.category.join(", ")}"` : '""',
-      tx.account_id,
+      `"${accountName}"`,
       tx.pending ? "true" : "false",
     ].join(",");
   });
@@ -80,12 +85,32 @@ Please connect your bank first by saying:
         return date;
       })();
 
-  // Fetch transactions from all connections
+  // Fetch transactions from all connections and build account name map
   const allTransactions: any[] = [];
   const errors: string[] = [];
+  const accountMap = new Map<string, string>(); // account_id -> readable name
 
   for (const connection of connections) {
     try {
+      // Get account details for this connection
+      const accountsResponse = await plaidClient.accountsGet({
+        access_token: connection.accessToken,
+      });
+
+      const institutionName = accountsResponse.data.item.institution_name || "Unknown";
+
+      // Build account name map: "Institution - Account Type (****1234)"
+      for (const account of accountsResponse.data.accounts) {
+        const accountType = account.subtype || account.type || "Account";
+        const mask = account.mask ? `****${account.mask}` : "";
+        const accountLabel = mask
+          ? `${institutionName} - ${accountType} (${mask})`
+          : `${institutionName} - ${accountType}`;
+
+        accountMap.set(account.account_id, accountLabel);
+      }
+
+      // Get transactions
       const response = await plaidClient.transactionsGet({
         access_token: connection.accessToken,
         start_date: startDate.toISOString().split("T")[0],
@@ -122,8 +147,8 @@ Please connect your bank first by saying:
   // Sort transactions by date (newest first)
   allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Convert to CSV format
-  const csvContent = convertTransactionsToCSV(allTransactions);
+  // Convert to CSV format with account names
+  const csvContent = convertTransactionsToCSV(allTransactions, accountMap);
 
   // Generate signed download URL for transactions
   const transactionsUrl = generateSignedUrl(

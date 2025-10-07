@@ -42,6 +42,75 @@ This is a Model Context Protocol (MCP) server built with Express.js and TypeScri
 
 This ensures migration history is preserved and prevents issues when deploying to multiple environments.
 
+## Custom Sandbox Test Data
+
+You can create realistic Plaid Sandbox users with custom transaction data from real bank exports.
+
+### Quick Start
+
+```bash
+# Generate Plaid configuration from CSV files
+npm run sandbox:create
+
+# Validate the configuration
+npm run sandbox:validate
+```
+
+### Workflow
+
+1. **CSV Files are provided** in `sandbox/data/`:
+   - `bankofamerica.csv` - Bank of America checking account
+   - `chasedata.CSV` - Chase credit card
+   - `VenmoStatement_*.csv` - Venmo transactions (3 monthly files)
+
+2. **Run generator** to create Plaid configuration:
+   ```bash
+   npm run sandbox:create
+   ```
+   - Parses all CSV files
+   - Converts to Plaid custom user schema v2
+   - Limits Chase transactions to 150 (to stay under 250 total limit)
+   - Outputs `sandbox/custom-user-config.json`
+
+3. **Validate** the configuration:
+   ```bash
+   npm run sandbox:validate
+   ```
+   - Checks total transaction count ≤250
+   - Verifies schema matches Plaid requirements
+   - Shows account summary
+
+4. **Upload to Plaid Dashboard**:
+   - Go to https://dashboard.plaid.com/developers/sandbox
+   - Click "Create new custom user"
+   - Set username: `user_custom_bofa_chase_venmo`
+   - Copy/paste JSON from `sandbox/custom-user-config.json`
+   - Save
+
+5. **Use in Plaid Link**:
+   - When testing in sandbox, use username: `user_custom_bofa_chase_venmo`
+   - Any password works (e.g., `pass`)
+   - Your real transaction data will appear in the connected accounts
+
+### Transaction Counts
+
+Current CSV data (as of implementation):
+- Bank of America: ~28 transactions
+- Chase Credit Card: ~150 transactions (filtered from 321)
+- Venmo: ~25 transactions
+- **Total: ~203 transactions** (under 250 limit ✓)
+
+### Updating Test Data
+
+To modify sandbox data:
+
+1. Edit CSV files in `sandbox/data/`
+2. Run `npm run sandbox:create` to regenerate config
+3. Run `npm run sandbox:validate` to verify
+4. Re-upload to Plaid Dashboard
+
+**Note:** The generator will warn if total transactions exceed 250.
+
 ## TODO
 
 ### ChatGPT Integration (Blocked)
