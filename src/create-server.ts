@@ -26,6 +26,10 @@ export const createServer = (plaidClient: PlaidApi) => {
     version: "1.0.0",
   });
 
+  console.log("=== MCP SERVER CREATED ===");
+  console.log("Server name:", "personal-finance");
+  console.log("Server version:", "1.0.0");
+
   // Note: MCP resources removed in favor of signed download URLs
   // See /api/data/transactions endpoint for user-specific data downloads
 
@@ -43,9 +47,13 @@ export const createServer = (plaidClient: PlaidApi) => {
       ],
     },
     async (_args, { authInfo }) => {
+      console.log("=== TOOL CALLED: connect-financial-institution ===");
       const userId = authInfo?.extra?.userId as string | undefined;
+      console.log("User ID:", userId);
+      console.log("Auth info:", JSON.stringify(authInfo, null, 2));
 
       if (!userId) {
+        console.log("ERROR: User authentication required");
         throw new Error("User authentication required");
       }
 
@@ -176,6 +184,10 @@ export const createServer = (plaidClient: PlaidApi) => {
       return trackSubscriptionsHandler(userId, baseUrl);
     }
   );
+
+  console.log("=== TOOLS REGISTERED ===");
+  console.log("Total tools registered: 5");
+  console.log("Tools: connect-financial-institution, check-connection-status, get-plaid-transactions, disconnect-financial-institution, track-subscriptions");
 
   return { server };
 };

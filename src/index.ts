@@ -73,12 +73,22 @@ const { server } = createServer(plaidClient);
 // Debug middleware to log authentication attempts
 app.post("/mcp", (req, res, next) => {
   const authHeader = req.headers.authorization;
-  console.log("MCP request received:", {
+  console.log("=== MCP REQUEST START ===");
+  console.log("Timestamp:", new Date().toISOString());
+  console.log("Method:", req.method);
+  console.log("Path:", req.path);
+  console.log("Headers:", {
+    authorization: authHeader ? `${authHeader.substring(0, 30)}...` : "none",
+    "content-type": req.headers["content-type"],
+    accept: req.headers.accept,
+    "user-agent": req.headers["user-agent"],
+  });
+  console.log("Body preview:", JSON.stringify(req.body).substring(0, 200));
+  console.log("Auth status:", {
     hasAuthHeader: !!authHeader,
     authType: authHeader?.split(" ")[0],
-    tokenPreview: authHeader ? `${authHeader.substring(0, 20)}...` : "none",
-    timestamp: new Date().toISOString(),
   });
+  console.log("=== MCP REQUEST END ===");
   next();
 }, mcpAuthClerk, streamableHttpHandler(server));
 

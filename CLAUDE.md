@@ -30,6 +30,30 @@ This is a Model Context Protocol (MCP) server built with Express.js and TypeScri
 
 **Authentication**: All MCP endpoints require OAuth authentication via Clerk. Unauthenticated requests return `401 Unauthorized`.
 
+## Monitoring Vercel Deployments
+
+Use the Vercel MCP server to check deployment status without leaving Claude Code:
+
+```typescript
+// Get your team ID
+mcp__vercel__list_teams()
+
+// Get project details and latest deployment
+mcp__vercel__get_project({
+  projectId: "prj_n09eCw9WwelhsBJCik2TNHB3XteP",
+  teamId: "team_TCcYEvV7cx7Xit3TzghhciW7"
+})
+```
+
+The `latestDeployment.readyState` field shows deployment status:
+- `BUILDING` - Deployment in progress
+- `READY` - Deployment complete and live
+- `ERROR` - Deployment failed
+
+**Project IDs:**
+- **personal-finance-mcp**: `prj_n09eCw9WwelhsBJCik2TNHB3XteP`
+- **Team ID**: `team_TCcYEvV7cx7Xit3TzghhciW7`
+
 ## Database Migrations
 
 **IMPORTANT MIGRATION RULES:**
