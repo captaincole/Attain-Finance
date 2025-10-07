@@ -87,12 +87,37 @@ app.post("/mcp", (req, res, next) => {
     "content-type": req.headers["content-type"],
     accept: req.headers.accept,
     "user-agent": req.headers["user-agent"],
+    "mcp-protocol-version": req.headers["mcp-protocol-version"],
   });
-  console.log("Body preview:", JSON.stringify(req.body).substring(0, 200));
+  console.log("Body:", JSON.stringify(req.body));
   console.log("Auth status:", {
     hasAuthHeader: !!authHeader,
     authType: authHeader?.split(" ")[0],
   });
+
+  // Intercept response to log what we're sending back
+  const originalJson = res.json.bind(res);
+  const originalSend = res.send.bind(res);
+  const originalWrite = res.write.bind(res);
+
+  res.json = function(body: any) {
+    console.log("=== MCP RESPONSE (JSON) ===");
+    console.log(JSON.stringify(body).substring(0, 500));
+    return originalJson(body);
+  };
+
+  res.send = function(body: any) {
+    console.log("=== MCP RESPONSE (SEND) ===");
+    console.log(typeof body === 'string' ? body.substring(0, 500) : JSON.stringify(body).substring(0, 500));
+    return originalSend(body);
+  };
+
+  res.write = function(chunk: any) {
+    console.log("=== MCP RESPONSE (WRITE/STREAM) ===");
+    console.log(typeof chunk === 'string' ? chunk.substring(0, 500) : chunk.toString().substring(0, 500));
+    return originalWrite(chunk);
+  };
+
   console.log("=== MCP REQUEST END ===");
   next();
 }, mcpAuthClerk, streamableHttpHandler(server));
