@@ -113,8 +113,13 @@ app.post("/mcp", (req, res, next) => {
   };
 
   res.write = function(chunk: any) {
+    const content = typeof chunk === 'string' ? chunk : chunk.toString();
     console.log("=== MCP RESPONSE (WRITE/STREAM) ===");
-    console.log(typeof chunk === 'string' ? chunk.substring(0, 500) : chunk.toString().substring(0, 500));
+    console.log("Length:", content.length);
+    console.log("Content:", content.substring(0, 2000)); // Increased to 2000 chars
+    if (content.length > 2000) {
+      console.log("... (truncated, total length:", content.length, ")");
+    }
     return originalWrite(chunk);
   };
 
