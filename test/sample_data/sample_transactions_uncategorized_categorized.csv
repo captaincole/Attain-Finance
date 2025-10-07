@@ -1,0 +1,204 @@
+date,description,amount,category,custom_category,account_name,pending
+2025-10-05,"CLOUDFLARE",10.46,"","Business","",false
+2025-10-05,"Comcast",98,"","Housing","",false
+2025-10-04,"Sept bills (Alex Owens)",190,"","Housing","",false
+2025-10-04,"CURSOR AI POWERED IDE",20,"","Business","",false
+2025-10-04,"REVEILLE COFFEE CO.",4.46,"","Food & Dining","",false
+2025-10-04,"TST* INDIGO",127.09,"","Food & Dining","",false
+2025-10-03,"APPLE.COM/US",270.48,"","Shopping","",false
+2025-10-03,"Chipotle Mexican Grill",16.59,"","Food & Dining","",false
+2025-10-03,"FACEBK *6WJGT2MBF2",3,"","Entertainment","",false
+2025-10-03,"MICHAEL SCOTT DOES HA",138,"","Entertainment","",false
+2025-10-03,"SEXTANT COFFEE ROASTE",5.43,"","Food & Dining","",false
+2025-10-03,"TESLA SUPERCHARGER US",14.92,"","Transportation","",false
+2025-10-02,"ADS9912848435",10,"","Business","",false
+2025-10-02,"APPLE.COM/BILL",2.99,"","Entertainment","",false
+2025-10-02,"AWS",0.33,"","Business","",false
+2025-10-02,"Amazon.com*NJ5Q90R41",37.64,"","Shopping","",false
+2025-10-02,"LOCALE",135.5,"","Food & Dining","",false
+2025-10-02,"QUICKSILVER SCIENTIFIC",80.73,"","Healthcare","",false
+2025-10-02,"SP VUORI CLOTHING",106.46,"","Shopping","",false
+2025-10-01,"ANTHEM BLUE CA5C DES:CLAIMREIMB ID:XXXXX03688 INDN:ANDREW T COLE CO ID:XXXXX60980 PPD",-366.87,"","Healthcare","",false
+2025-10-01,"ESCOBAR BROS",60,"","Food & Dining","",false
+2025-10-01,"FACEBK *KV3PC39CF2",4.25,"","Entertainment","",false
+2025-10-01,"MARINA SUPERMARKET",24.25,"","Food & Dining","",false
+2025-10-01,"NOAH'S BAGELS #2103",8.96,"","Food & Dining","",false
+2025-10-01,"TCB*MTA METER MTA MCK",6.5,"","Transportation","",false
+2025-09-30,"""Zelle Recurring payment to Alex Owens for ""Feb Rent""; Conf# p1psodx6x""",3050,"","Housing","",false
+2025-09-30,"BLACK TIE TUXEDO & FOR",170,"","Shopping","",false
+2025-09-30,"DD *DOORDASH MIXTSALAD",26.66,"","Food & Dining","",false
+2025-09-30,"FACEBK *S252C2HBF2",3.01,"","Entertainment","",false
+2025-09-30,"GOLDEN GATE DISP & Y",39.59,"","Housing","",false
+2025-09-30,"Lululemon",119.46,"","Shopping","",false
+2025-09-30,"TRIBE PLATFORM INC.",100,"","Business","",false
+2025-09-30,"UMW FOUNDATION",1000,"","Other","",false
+2025-09-29,"Internet October (Andrew Cole)",-49,"","Housing","",false
+2025-09-29,"Recology for October (Andrew Cole)",-19,"","Housing","",false
+2025-09-29,"Transfer WEALTHFRONT BROKERAGE LLC",-8000,"","Other","",false
+2025-09-29,"Venmo",75,"","Other","",false
+2025-09-29,"CLOUDFLARE",45,"","Business","",false
+2025-09-29,"DOORDASH*09/28-2 ORDER",63.92,"","Food & Dining","",false
+2025-09-29,"REGENCORE",875.5,"","Healthcare","",false
+2025-09-29,"REVEILLE COFFEE CO.",18.98,"","Food & Dining","",false
+2025-09-28,"DD *DOORDASH BONITATAQ",55.08,"","Food & Dining","",false
+2025-09-28,"SP BOBBY LONDON APPARE",67.46,"","Shopping","",false
+2025-09-27,"Espresso Martinis and Spritz (Cody Normyle)",75,"","Food & Dining","",false
+2025-09-27,"Amazon Prime",2.99,"","Entertainment","",false
+2025-09-27,"MADEWELL #3031",112.8,"","Shopping","",false
+2025-09-27,"SP TAYLOR STITCH",296.55,"","Shopping","",false
+2025-09-27,"TST* EARTHBAR - CHESTNUT",14.51,"","Food & Dining","",false
+2025-09-26,"MARINA SUPERMARKET",54.44,"","Food & Dining","",false
+2025-09-26,"OPENAI *CHATGPT SUBSCR",185.98,"","Business","",false
+2025-09-26,"PALMETTO SUPERFOODS U",9.5,"","Food & Dining","",false
+2025-09-26,"REVEILLE COFFEE CO.",18.98,"","Food & Dining","",false
+2025-09-26,"SEETICKET* ALLAN RAY",65.8,"","Entertainment","",false
+2025-09-26,"WRECKING BALL COFFEE",4,"","Food & Dining","",false
+2025-09-25,"LOCALE",135.5,"","Food & Dining","",false
+2025-09-23,"Google One",19.99,"","Entertainment","",false
+2025-09-23,"MARINA SUPERMARKET",42.85,"","Food & Dining","",false
+2025-09-22,"CHASE CREDIT CRD DES:EPAY ID:XXXXX09479 INDN:ANDREW T COLE CO ID:XXXXX39224 WEB",5097.75,"","Other","",false
+2025-09-22,"DD *DOORDASH PACIFICCA",50.73,"","Food & Dining","",false
+2025-09-22,"DD *DOORDASHTACKO",25.09,"","Food & Dining","",false
+2025-09-22,"ODYSSEY CHIROPRACTIC",125,"","Healthcare","",false
+2025-09-22,"TESLA SUBSCRIPTION US",107.54,"","Transportation","",false
+2025-09-22,"TST*LITTLE ORIGINAL JOE",94.6,"","Food & Dining","",false
+2025-09-21,"DD *DOORDASH THEITALIA",24.97,"","Food & Dining","",false
+2025-09-21,"MARINA SUPERMARKET",17.86,"","Food & Dining","",false
+2025-09-21,"Netflix",24.99,"","Entertainment","",false
+2025-09-21,"REVEILLE COFFEE CO.",18.98,"","Food & Dining","",false
+2025-09-21,"WAR ON THE ROCKS MEDIA",15,"","Entertainment","",false
+2025-09-20,"DD *DOORDASH TACKO",28.53,"","Food & Dining","",false
+2025-09-20,"FI JQDBCx",75.05,"","Other","",false
+2025-09-20,"HAYES VALLEY",12.49,"","Food & Dining","",false
+2025-09-20,"I'A POKE - FILLMORE S",22.76,"","Food & Dining","",false
+2025-09-20,"RITUAL COFFEE ROASTER",6.5,"","Food & Dining","",false
+2025-09-20,"YouTube",13.99,"","Entertainment","",false
+2025-09-19,"Venmo",200,"","Other","",false
+2025-09-19,"Venmo",280,"","Other","",false
+2025-09-19,"DOORDASH*09/18-2 ORDER",55.18,"","Food & Dining","",false
+2025-09-19,"FASTRAK CSC",10,"","Transportation","",false
+2025-09-19,"Payment Thank You-Mobile",-5097.75,"","Other","",false
+2025-09-19,"Strava Run Bik",11.99,"","Entertainment","",false
+2025-09-19,"TRIBE PLATFORM INC.",25,"","Entertainment","",false
+2025-09-19,"TST*MARINA SUBMARINE",19.01,"","Food & Dining","",false
+2025-09-19,"Tesla Insurance Services",159.7,"","Transportation","",false
+2025-09-19,"WRECKING BALL COFFEE",4,"","Food & Dining","",false
+2025-09-19,"WRECKING BALL COFFEE",5,"","Food & Dining","",false
+2025-09-18,"Sept 17 (Sean McBride)",200,"","Other","",false
+2025-09-18,"September (Marina Teplova)",280,"","Other","",false
+2025-09-18,"Venmo",281,"","Other","",false
+2025-09-18,"FASTRAK CSC",10,"","Transportation","",false
+2025-09-18,"LOCALE",135.5,"","Food & Dining","",false
+2025-09-18,"WRECKING BALL COFFEE",4,"","Food & Dining","",false
+2025-09-17,"Hilton",281,"","Travel","",false
+2025-09-17,"Venmo",182,"","Other","",false
+2025-09-17,"AMAZON MKTPL*TQ7R69MS3",96.68,"","Shopping","",false
+2025-09-17,"Amazon.com*102DL43G3",141.2,"","Shopping","",false
+2025-09-17,"Amazon.com*BC2UX1RR3",19.69,"","Shopping","",false
+2025-09-17,"Amazon.com*KD3W445D3",108.61,"","Shopping","",false
+2025-09-17,"CLAUDE.AI SUBSCRIPTION",200,"","Business","",false
+2025-09-17,"OPENAI *CHATGPT SUBSCR",20,"","Business","",false
+2025-09-17,"REVEILLE COFFEE CO.",4.46,"","Food & Dining","",false
+2025-09-17,"SP DYGMA LAB SL",449,"","Shopping","",false
+2025-09-17,"Safeway",28.2,"","Food & Dining","",false
+2025-09-16,"Fooooootball 🏈 (Brian O'Donnell)",20,"","Entertainment","",false
+2025-09-16,"Utilities (Alex Owens)",182,"","Housing","",false
+2025-09-16,"DD *DOORDASH SQUAREPIE",25.23,"","Food & Dining","",false
+2025-09-15,"Wealthfront DES:EDI PYMNTS ID:2FDB070294D147 INDN:Andrew Cole CO ID:XXXXX67207 WEB",500,"","Other","",false
+2025-09-15,"ANTHROPIC",25,"","Business","",false
+2025-09-15,"DD *DOORDASH BONITATAQ",27.15,"","Food & Dining","",false
+2025-09-15,"MARINA SUPERMARKET",19.96,"","Food & Dining","",false
+2025-09-15,"MIXT FILLMORE",18.96,"","Food & Dining","",false
+2025-09-15,"REVEILLE COFFEE CO.",18.98,"","Food & Dining","",false
+2025-09-15,"SP DRINK LMNT INC.",135,"","Personal Care","",false
+2025-09-14,"DD *DOORDASH SOUVLA",28.34,"","Food & Dining","",false
+2025-09-14,"TESLA SUPERCHARGER US",5.31,"","Transportation","",false
+2025-09-14,"Target",13.34,"","Shopping","",false
+2025-09-13,"Poke (Justin Moore)",90,"","Food & Dining","",false
+2025-09-13,"TESLA SUPERCHARGER US",16.88,"","Transportation","",false
+2025-09-12,"CERVIPEDIC",97.75,"","Healthcare","",false
+2025-09-12,"DD *DOORDASH PACIFICCA",38.02,"","Food & Dining","",false
+2025-09-12,"MARINA SUPERMARKET",21.86,"","Food & Dining","",false
+2025-09-12,"ODYSSEY CHIROPRACTIC",125,"","Healthcare","",false
+2025-09-12,"TAQUERIA CANCUN 3",16.57,"","Food & Dining","",false
+2025-09-11,"DD *DOORDASH BONITATAQ",27.15,"","Food & Dining","",false
+2025-09-11,"FACEBK *8V8QEZ4CF2",2.64,"","Entertainment","",false
+2025-09-11,"REVEILLE COFFEE CO.",4.46,"","Food & Dining","",false
+2025-09-11,"TRIBE PLATFORM INC.",25,"","Business","",false
+2025-09-11,"WRECKING BALL COFFEE",4,"","Food & Dining","",false
+2025-09-10,"AMAZON MKTPL*RB3RA1SS3",19.54,"","Shopping","",false
+2025-09-10,"FACEBK *FWLFA3DCF2",3.33,"","Entertainment","",false
+2025-09-09,"DD *DOORDASH KITAVA",34.54,"","Food & Dining","",false
+2025-09-09,"FACEBK *AMBX73DCF2",2.95,"","Entertainment","",false
+2025-09-09,"FILLMORE",5.43,"","Food & Dining","",false
+2025-09-09,"MARINA SUPERMARKET",43.24,"","Food & Dining","",false
+2025-09-09,"PYN*honsvr",49.95,"","Entertainment","",false
+2025-09-09,"REGENCORE",1545,"","Healthcare","",false
+2025-09-08,"COINBASE INC. DES:FD268E3F ID:RTL-RFGWKXKJ INDN:ANDREW THIEL COLE CO ID:XXXXX00623 WEB",29.99,"","Other","",false
+2025-09-08,"DOORDASH*09/07-2 ORDER",46.5,"","Food & Dining","",false
+2025-09-08,"FACEBK *Q6YPY2DCF2",3,"","Entertainment","",false
+2025-09-08,"FACEBK *QV337Z4CF2",3,"","Entertainment","",false
+2025-09-08,"NOAH'S BAGELS #2103",4.48,"","Food & Dining","",false
+2025-09-08,"THE MILL",5.73,"","Food & Dining","",false
+2025-09-07,"DOORDASH*09/06-2 ORDER",53.84,"","Food & Dining","",false
+2025-09-07,"LOCALE",83.8,"","Food & Dining","",false
+2025-09-07,"TST* HORSEFEATHER",113.96,"","Food & Dining","",false
+2025-09-06,"NOTION LABS INC.",12,"","Business","",false
+2025-09-06,"SP POLYMAKER 3D PRIN",45.38,"","Shopping","",false
+2025-09-06,"SPO*BLUEBARN-STEINER",22.34,"","Food & Dining","",false
+2025-09-06,"Spotify",11.99,"","Entertainment","",false
+2025-09-06,"TST* THE INTERVAL",34.16,"","Food & Dining","",false
+2025-09-06,"WAYMO",18.36,"","Transportation","",false
+2025-09-05,"BINIS KITCHEN LLC",46.71,"","Food & Dining","",false
+2025-09-05,"CENTO",5.5,"","Food & Dining","",false
+2025-09-05,"Comcast",98,"","Housing","",false
+2025-09-05,"DD *DOORDASH TACKO",26.74,"","Food & Dining","",false
+2025-09-05,"FACEBK *DLVYCZ8CF2",1,"","Shopping","",false
+2025-09-05,"RYE ON THE ROAD",11.95,"","Food & Dining","",false
+2025-09-05,"TST* PROPER FOOD - 100 FI",18.85,"","Food & Dining","",false
+2025-09-05,"YMCA",91,"","Personal Care","",false
+2025-09-04,"ANDYTOWN COFFEE ROAST",4,"","Food & Dining","",false
+2025-09-04,"CURSOR AI POWERED IDE",20,"","Business","",false
+2025-09-04,"D26483444",30.61,"","Other","",false
+2025-09-03,"FACEBK *DL47P2DCF2",2.37,"","Shopping","",false
+2025-09-03,"Prusa Research",104.95,"","Shopping","",false
+2025-09-03,"TST*PIXLCAT COFFEE",7.6,"","Food & Dining","",false
+2025-09-03,"Trader Joe's",28.91,"","Food & Dining","",false
+2025-09-02,"""Zelle Recurring payment to Alex Owens for ""Feb Rent""; Conf# k5tjlf737""",3050,"","Housing","",false
+2025-09-02,"CHASE CREDIT CRD DES:EPAY ID:XXXXX21519 INDN:ANDREW T COLE CO ID:XXXXX39224 WEB",11133.77,"","Other","",false
+2025-09-02,"Venmo",250,"","Other","",false
+2025-09-02,"WageWorks, Inc DES:WEB PMTS ID:Z8P2ZQ INDN:Andrew Cole CO ID:XXXXX10047 WEB",4241.2,"","Healthcare","",false
+2025-09-02,"Wealthfront DES:EDI PYMNTS ID:B41B5F5ED00E41 INDN:Andrew Cole CO ID:XXXXX67207 WEB",500,"","Other","",false
+2025-09-02,"APPLE.COM/BILL",2.99,"","Entertainment","",false
+2025-09-02,"DD *DOORDASH WAGOSUSHI",46.27,"","Food & Dining","",false
+2025-09-02,"FACEBK *JJ5C9YYBF2",3.93,"","Shopping","",false
+2025-09-02,"MARINA SUPERMARKET",54.44,"","Food & Dining","",false
+2025-09-02,"ODYSSEY CHIROPRACTIC",125,"","Healthcare","",false
+2025-09-02,"REVEILLE COFFEE CO.",18.98,"","Food & Dining","",false
+2025-08-31,"Margarita Thursday (Cody Normyle)",90,"","Food & Dining","",false
+2025-08-30,"August (Marina Teplova)",250,"","Other","",false
+2025-08-30,"Marina August (Andrew Cole)",-90,"","Other","",false
+2025-08-28,"Venmo",200,"","Other","",false
+2025-08-27,"Last week (Sean McBride)",200,"","Other","",false
+2025-08-27,"Skiing is easy 🎿 (Ali Gerrard)",166,"","Entertainment","",false
+2025-08-27,"Wildseed (Cody Normyle)",45,"","Food & Dining","",false
+2025-08-27,"""Zelle payment from Christopher M Cole for ""Flight to Outer Banks. Glad you came!""; Conf# XXXXX9211""",-825,"","Travel","",false
+2025-08-27,"Venmo",595,"","Other","",false
+2025-08-26,"Package of 3 (Marty Morales)",595,"","Other","",false
+2025-08-21,"Attack the pawns (Fidel Corrales Jimenez)",250,"","Entertainment","",false
+2025-08-21,"Costco",46.5,"","Shopping","",false
+2025-08-21,"CHASE CREDIT CRD DES:EPAY ID:XXXXX22503 INDN:ANDREW T COLE CO ID:XXXXX39224 WEB",5574.49,"","Other","",false
+2025-08-19,"Gift (Andrew Cole)",-105,"","Other","",false
+2025-08-18,"Wealthfront DES:EDI PYMNTS ID:EC12CD81F42740 INDN:Andrew Cole CO ID:XXXXX67207 WEB",500,"","Other","",false
+2025-08-17,"Pickleball yesterday (Andrew Cole)",-18,"","Entertainment","",false
+2025-08-15,"GOOGLE LLC DES:PAYROLL ID:XXXXX0803 INDN:Cole Andrew CO ID:JXXXXX3581 PPD",-53.08,"","Other","",false
+2025-08-09,"Half the rental car (Andrew Cole)",-189,"","Transportation","",false
+2025-08-09,"Venmo",555,"","Other","",false
+2025-08-06,"Neck Stuff (Sean McBride)",200,"","Healthcare","",false
+2025-08-06,"COINBASE INC. DES:E0F19E23 ID:RTL-WSBJ3MWA INDN:ANDREW THIEL COLE CO ID:XXXXX00623 WEB",29.99,"","Other","",false
+2025-08-05,"Morgan Stanley DES:ACH CREDIT ID:XXXXX05561n7zzw INDN:Andrew Thiel Cole CO ID:XXXXX37001 PPD",-24726.78,"","Other","",false
+2025-08-04,"CHASE CREDIT CRD DES:EPAY ID:XXXXX64095 INDN:ANDREW T COLE CO ID:XXXXX39224 WEB",4199.56,"","Other","",false
+2025-08-04,"Wealthfront DES:EDI PYMNTS ID:4BCEE06D625F44 INDN:Andrew Cole CO ID:XXXXX67207 WEB",500,"","Other","",false
+2025-08-01,"July bills (Alex Owens)",191.38,"","Housing","",false
+2025-08-01,"GOOGLE LLC DES:PAYROLL ID:XXXXX0803 INDN:Cole Andrew CO ID:JXXXXX3581 PPD",-10032.31,"","Other","",false
+2025-08-01,"GOOGLE LLC DES:PAYROLL ID:XXXXX0803 INDN:Cole Andrew CO ID:JXXXXX3581 PPD",-82.5,"","Other","",false

@@ -39,6 +39,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      categorization_prompts: {
+        Row: {
+          custom_rules: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          custom_rules?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          custom_rules?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       plaid_connections: {
         Row: {
           access_token_encrypted: string
@@ -89,6 +107,24 @@ export type Database = {
           expires_at?: string | null
           session_id?: string
           status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_visualizations: {
+        Row: {
+          script_content: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          script_content: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          script_content?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []

@@ -1,0 +1,38 @@
+You are helping a user customize their personal finance data visualization bash script.
+
+# Task
+Modify the provided bash script according to the user's customization request.
+
+# Current Script
+The user has a bash script that visualizes spending by category in a terminal bar chart.
+
+Key features:
+- Reads CSV transactions with columns: date, description, amount, category, custom_category, account_name, pending
+- Groups spending by custom_category (column 5)
+- Shows top N categories with bar charts
+- Excludes Income, Transfer, and Payment categories
+- Only includes positive amounts (expenses)
+
+# Customization Request
+{USER_REQUEST}
+
+# Instructions
+1. Read the current script carefully
+2. Apply the requested changes precisely
+3. Preserve all existing functionality unless explicitly asked to change it
+4. Ensure the script remains valid bash syntax
+5. Keep comments clear and helpful
+6. Return ONLY the complete modified script, no explanations
+
+# Common Customizations
+- **Colors**: Change BAR_CHAR to colored unicode blocks (use ANSI color codes)
+- **Bar style**: Modify BAR_CHAR variable (e.g., "█", "▓", "▒", "░", "●", "■")
+- **Number of items**: Change TOP_N variable
+- **Bar width**: Modify BAR_WIDTH variable
+- **Exclude categories**: Update EXCLUDE_CATEGORIES variable
+- **Formatting**: Adjust printf statements for different layouts
+- **Sorting**: Change sort parameters (currently -rn for numeric descending)
+
+# Output Format
+Return ONLY the complete bash script. Do not add markdown code blocks, explanations, or any text before/after the script.
+The first line must be: #!/bin/bash

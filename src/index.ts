@@ -18,6 +18,7 @@ import { verifySignedToken } from "./utils/signed-urls.js";
 import { userTransactionData } from "./tools/plaid-transactions.js";
 import { saveConnection } from "./db/plaid-storage.js";
 import { getSession, completeSession, failSession } from "./db/plaid-sessions.js";
+import { getVisualization } from "./db/visualization-storage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -437,6 +438,30 @@ app.get("/api/data/transactions", (req: Request, res: Response) => {
       res.status(500).json({ error: "Error streaming file" });
     }
   });
+});
+
+// Download endpoint for user's visualization script
+app.get("/api/visualization/:userId", async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing userId parameter" });
+  }
+
+  try {
+    // Get user's custom visualization or default
+    const scriptContent = await getVisualization(userId);
+
+    // Set appropriate headers for bash script download
+    res.setHeader("Content-Type", "text/plain");
+    res.setHeader("Content-Disposition", "attachment; filename=visualize-spending.sh");
+
+    // Send script content
+    res.send(scriptContent);
+  } catch (error: any) {
+    console.error("Error fetching visualization:", error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Start server

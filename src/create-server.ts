@@ -10,6 +10,9 @@ import {
   disconnectFinancialInstitutionHandler,
 } from "./tools/plaid-connection.js";
 import { getPlaidTransactionsHandler } from "./tools/plaid-transactions.js";
+import { updateCategorizationRulesHandler } from "./tools/update-categorization.js";
+import { updateVisualizationHandler, resetVisualizationHandler } from "./tools/visualization-tools.js";
+import { getVisualization } from "./db/visualization-storage.js";
 
 /**
  * Helper to get the base URL for generating download links
@@ -30,8 +33,9 @@ export const createServer = (plaidClient: PlaidApi) => {
   console.log("Server name:", "personal-finance");
   console.log("Server version:", "1.0.0");
 
-  // Note: MCP resources removed in favor of signed download URLs
-  // See /api/data/transactions endpoint for user-specific data downloads
+  // Note: MCP resources removed in favor of signed download URLs and tools
+  // Users can customize visualizations via update-visualization tool
+  // Download customized scripts via /api/visualization/:userId endpoint
 
   // Register tools
   // Plaid Connection Tools
@@ -154,6 +158,34 @@ export const createServer = (plaidClient: PlaidApi) => {
   );
 
   server.tool(
+    "update-categorization-rules",
+    "Update your custom transaction categorization rules. After updating, your transaction data will be automatically re-categorized with the new rules. Use this to customize how transactions are grouped (e.g., 'Put Amazon Prime in Business category').",
+    {
+      rules: z
+        .string()
+        .describe("Custom categorization instructions (e.g., 'Categorize all Amazon Prime as Business expenses')"),
+    },
+    {
+      securitySchemes: [
+        { type: "oauth2" },
+      ],
+    },
+    async (args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+
+      if (!userId) {
+        throw new Error("User authentication required");
+      }
+
+      console.log("update-categorization-rules called by user:", userId);
+
+      const baseUrl = getBaseUrl();
+
+      return updateCategorizationRulesHandler(userId, baseUrl, args, plaidClient);
+    }
+  );
+
+  server.tool(
     "track-subscriptions",
     "Initiate subscription tracking analysis on credit card transactions for the authenticated user. Downloads transaction data and analysis script for local processing.",
     {},
@@ -180,9 +212,120 @@ export const createServer = (plaidClient: PlaidApi) => {
     }
   );
 
+  // Visualization customization tools
+  server.tool(
+    "update-visualization",
+    "Customize your spending visualization with natural language. Examples: 'Make all the bars green', 'Show top 15 categories', 'Change bar character to circles'. Uses AI to modify the bash script and saves your custom version.",
+    {
+      request: z
+        .string()
+        .describe("Natural language customization request (e.g., 'make bars green')"),
+    },
+    {
+      securitySchemes: [
+        { type: "oauth2" },
+      ],
+    },
+    async (args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+
+      if (!userId) {
+        throw new Error("User authentication required");
+      }
+
+      console.log("update-visualization called by user:", userId);
+
+      const baseUrl = getBaseUrl();
+
+      return updateVisualizationHandler(userId, baseUrl, args);
+    }
+  );
+
+  server.tool(
+    "reset-visualization",
+    "Reset your visualization script to the default version. Use this if you want to start over with customizations.",
+    {},
+    {
+      securitySchemes: [
+        { type: "oauth2" },
+      ],
+    },
+    async (_args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+
+      if (!userId) {
+        throw new Error("User authentication required");
+      }
+
+      console.log("reset-visualization called by user:", userId);
+
+      const baseUrl = getBaseUrl();
+
+      return resetVisualizationHandler(userId, baseUrl);
+    }
+  );
+
+  // Legacy tool for downloading default visualization (kept for backward compatibility)
+  server.tool(
+    "visualize-spending",
+    "Download the default spending visualization script. For customized versions, use 'update-visualization' instead.",
+    {},
+    {
+      readOnlyHint: true,
+      securitySchemes: [
+        { type: "oauth2" },
+      ],
+    },
+    async (_args, _extra) => {
+      const baseUrl = getBaseUrl();
+      const scriptUrl = `${baseUrl}/visualize-spending.sh`;
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `
+## Terminal Spending Visualizer
+
+Download and run this script to see a bar chart of your spending by category:
+
+\`\`\`bash
+# Download the visualization script
+curl "${scriptUrl}" -o visualize-spending.sh
+
+# Make it executable
+chmod +x visualize-spending.sh
+
+# Run it with your transactions CSV
+./visualize-spending.sh transactions.csv
+\`\`\`
+
+**What it shows:**
+- Top 10 spending categories (AI categorized)
+- Dollar amounts and percentages
+- Visual bar charts
+- Transaction counts per category
+
+**Customize it:**
+Instead of editing manually, say:
+- "Make all the bars green"
+- "Show top 15 categories instead of 10"
+- "Change the bar character to circles"
+
+This will call the \`update-visualization\` tool to save your custom version.
+
+**Get your transactions first:**
+Run \`get-plaid-transactions\` to download your categorized transaction data.
+            `.trim(),
+          },
+        ],
+      };
+    }
+  );
+
   console.log("=== TOOLS REGISTERED ===");
-  console.log("Total tools registered: 5");
-  console.log("Tools: connect-financial-institution, check-connection-status, get-plaid-transactions, disconnect-financial-institution, track-subscriptions");
+  console.log("Total tools registered: 9");
+  console.log("Tools: connect-financial-institution, check-connection-status, get-plaid-transactions, disconnect-financial-institution, update-categorization-rules, track-subscriptions, update-visualization, reset-visualization, visualize-spending");
 
   return { server };
 };
