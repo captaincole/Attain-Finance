@@ -68,6 +68,11 @@ app.use(express.json());
 // Serve static files from public/ directory (analysis scripts, sample data, etc.)
 app.use(express.static(path.join(__dirname, "..", "public")));
 
+// Favicon route (serve SVG for both .ico and .svg requests)
+app.get("/favicon.ico", (_req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "..", "public", "favicon.svg"));
+});
+
 const { server } = createServer(plaidClient);
 
 // Debug middleware to log authentication attempts

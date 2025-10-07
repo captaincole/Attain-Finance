@@ -6,3 +6,4 @@ build/
 
 # Sandbox data (contains real transaction CSVs)
 sandbox/data/
+.vercel
