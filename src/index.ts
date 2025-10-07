@@ -83,6 +83,15 @@ app.post("/mcp", (req, res, next) => {
 }, mcpAuthClerk, streamableHttpHandler(server));
 
 // OAuth metadata endpoints (must be public for discovery)
+// ChatGPT expects the protected resource endpoint WITHOUT /mcp suffix
+app.get(
+  "/.well-known/oauth-protected-resource",
+  protectedResourceHandlerClerk({
+    scopes_supported: ["email", "profile"],
+  })
+);
+
+// Keep the /mcp suffix version for backwards compatibility with Claude Desktop
 app.get(
   "/.well-known/oauth-protected-resource/mcp",
   protectedResourceHandlerClerk({
@@ -90,7 +99,10 @@ app.get(
   })
 );
 
-// For older MCP clients that use the older spec
+// OpenID Configuration (ChatGPT's preferred discovery method)
+app.get("/.well-known/openid-configuration", authServerMetadataHandlerClerk);
+
+// OAuth Authorization Server metadata (for older MCP clients)
 app.get("/.well-known/oauth-authorization-server", authServerMetadataHandlerClerk);
 
 // Plaid Link UI endpoint
