@@ -35,15 +35,15 @@ export const createServer = (plaidClient: PlaidApi) => {
   console.log("Server name:", "personal-finance");
   console.log("Server version:", "1.0.0");
 
-  // Load built widget assets
+  // Load built widget assets from public directory
   const CONNECTED_INSTITUTIONS_JS = readFileSync(
-    "src/widgets/chatgpt/dist/connected-institutions.js",
+    "public/widgets/connected-institutions.js",
     "utf8"
   );
   const CONNECTED_INSTITUTIONS_CSS = (() => {
     try {
       return readFileSync(
-        "src/widgets/chatgpt/dist/connected-institutions.css",
+        "public/widgets/connected-institutions.css",
         "utf8"
       );
     } catch {
