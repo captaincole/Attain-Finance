@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { PlaidApi } from "plaid";
+import { readFileSync } from "node:fs";
 
 // Import tool handlers
 import { trackSubscriptionsHandler } from "./tools/track-subscriptions.js";
@@ -33,6 +34,50 @@ export const createServer = (plaidClient: PlaidApi) => {
   console.log("=== MCP SERVER CREATED ===");
   console.log("Server name:", "personal-finance");
   console.log("Server version:", "1.0.0");
+
+  // Load built widget assets
+  const CONNECTED_INSTITUTIONS_JS = readFileSync(
+    "src/widgets/chatgpt/dist/connected-institutions.js",
+    "utf8"
+  );
+  const CONNECTED_INSTITUTIONS_CSS = (() => {
+    try {
+      return readFileSync(
+        "src/widgets/chatgpt/dist/connected-institutions.css",
+        "utf8"
+      );
+    } catch {
+      return "";
+    }
+  })();
+
+  // Register widget resource
+  server.resource(
+    "connected-institutions-widget",
+    "ui://widget/connected-institutions.html",
+    {},
+    async () => ({
+      contents: [
+        {
+          uri: "ui://widget/connected-institutions.html",
+          mimeType: "text/html+skybridge",
+          text: `
+<div id="connected-institutions-root"></div>
+${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : ""}
+<script type="module">${CONNECTED_INSTITUTIONS_JS}</script>
+          `.trim(),
+          _meta: {
+            "openai/widgetDescription": "Interactive cards showing connected financial institutions with account balances",
+            "openai/widgetPrefersBorder": true,
+            "openai/widgetCSP": {
+              connect_domains: [],
+              resource_domains: []
+            }
+          }
+        }
+      ]
+    })
+  );
 
   // Note: MCP resources removed in favor of signed download URLs and tools
   // Users can customize visualizations via update-visualization tool
@@ -77,6 +122,11 @@ export const createServer = (plaidClient: PlaidApi) => {
       securitySchemes: [
         { type: "oauth2" },
       ],
+      _meta: {
+        "openai/outputTemplate": "ui://widget/connected-institutions.html",
+        "openai/toolInvocation/invoking": "Loading your connected institutions...",
+        "openai/toolInvocation/invoked": "Connected institutions loaded"
+      }
     },
     async (_args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;

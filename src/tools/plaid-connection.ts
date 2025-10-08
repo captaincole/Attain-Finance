@@ -214,6 +214,10 @@ To connect, say: "Connect my bank account"
         text: responseText.trim(),
       },
     ],
+    structuredContent: {
+      institutions: institutionData,
+      totalAccounts,
+    },
   };
 }
 
