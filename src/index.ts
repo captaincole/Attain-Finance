@@ -124,7 +124,13 @@ app.post("/mcp", (req, res, next) => {
       const dataMatch = content.match(/data: ({.*})/);
       if (dataMatch) {
         const parsed = JSON.parse(dataMatch[1]);
-        if (parsed.result) {
+
+        // Log initialize response fully (small and important for debugging)
+        if (parsed.result && parsed.result.capabilities) {
+          console.log("INITIALIZE RESPONSE:", JSON.stringify(parsed.result, null, 2));
+        }
+        // Log tool response summary
+        else if (parsed.result) {
           const summary: any = {
             hasContent: !!parsed.result.content,
             contentLength: parsed.result.content ? JSON.stringify(parsed.result.content).length : 0,
