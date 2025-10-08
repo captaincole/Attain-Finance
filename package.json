@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node test/run-analysis-tests.js",
     "test:analysis": "node test/run-analysis-tests.js",
-    "build": "tsc && shx chmod +x build/*.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
+    "build:widgets": "cd src/widgets/chatgpt && npm install && npm run build:all",
+    "build": "npm run build:widgets && tsc && shx chmod +x build/*.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
     "watch": "tsc --watch",
     "start": "node build/index.js",
     "prepare": "npm run build",
