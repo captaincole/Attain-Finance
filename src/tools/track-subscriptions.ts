@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { generateSignedUrl } from "../utils/signed-urls.js";
+import { getOpinionsByTool, formatOpinionList } from "../db/opinion-storage.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,12 @@ export async function trackSubscriptionsHandler(userId: string, baseUrl: string)
   // Analysis script is served as static file (no authentication needed)
   const scriptUrl = `${baseUrl}/analyze-subscriptions.js`;
 
+  // Fetch available opinions for this tool
+  const opinions = await getOpinionsByTool("track-subscriptions");
+  const opinionsSection = opinions.length > 0
+    ? `\n\n---\n\n## Expert Opinions Available\n\n${formatOpinionList(opinions)}\n\nAfter running the basic analysis, you can apply an expert opinion for additional insights.`
+    : "";
+
   const responseText = `✓ Subscription Tracking Initiated
 
 STEP 1: Download your transaction data (link expires in 10 minutes)
@@ -32,7 +39,7 @@ node analyze-subscriptions.js transactions.csv
 
 ---
 
-${analysisPrompt}`;
+${analysisPrompt}${opinionsSection}`;
 
   return {
     content: [

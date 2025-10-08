@@ -231,11 +231,125 @@ Connect real bank accounts via Plaid API to retrieve live transaction data. Supp
 - `check-connection-status` - View connected accounts and balances
 - `get-plaid-transactions` - Fetch real transaction data (CSV download)
 
-### 2. Subscription Tracking
+### 2. AI-Powered Transaction Categorization
+
+Automatically categorizes transactions using Claude 3.5 Sonnet with user-customizable categorization rules.
+
+**User Experience Flow:**
+
+1. **User requests spending data**: "Get my recent transactions"
+2. **System fetches and categorizes**:
+   - Retrieves transactions from Plaid
+   - Loads user's custom categorization rules (if any)
+   - Calls Claude API to categorize all transactions
+   - Returns CSV with `custom_category` column
+3. **User visualizes data**: Downloads and runs visualization script
+4. **User customizes categories**: "Put Amazon Prime in Business category"
+5. **System updates rules**:
+   - Saves updated categorization prompt to user profile
+   - Automatically re-fetches and re-categorizes transactions
+   - Returns new CSV with updated categories
+6. **User sees updated visualization**: Re-runs script with new categories
+
+**Key Features:**
+- Parallel batch processing (50 transactions per batch) for speed
+- User-specific categorization rules stored in database
+- Default categories: Housing, Transportation, Food & Dining, Shopping, Entertainment, Healthcare, Personal Care, Travel, Business, Income, Transfer, Other
+- No transaction data caching (privacy-first design)
+
+**Available Tools:**
+- `get-transactions` - Fetch and categorize transactions (CSV download)
+- `update-categorization-rules` - Customize category assignments with natural language
+
+### 3. Expert Opinions System
+
+Layer expert analysis methodologies on top of financial tools. Opinions are shareable prompts that guide AI analysis using specific frameworks (e.g., "Exclude large expenses from budget").
+
+**Architecture:**
+- **Opinions** = Text prompts stored in database
+- Applied to existing tool outputs (visualizations, budgets, etc.)
+- Manually curated (no self-service yet)
+- Generic system works with any tool
+
+**User Experience Flow:**
+
+1. **User calls a tool**: "Visualize my spending"
+2. **Tool suggests opinions**: Shows available expert methodologies
+3. **User applies opinion**: "Use the exclude large expenses method"
+4. **System returns prompt**: Full analysis instructions
+5. **AI applies methodology**: Analyzes data using expert framework
+6. **User sees results**: Deeper insights beyond raw data
+
+**Example Opinion:**
+```
+Name: Exclude Large Expenses from Budget
+Tool: visualize-spending
+Purpose: Separate recurring monthly spending from one-time large purchases
+
+The opinion teaches AI to:
+- Identify expenses over $500
+- Categorize as one-time, irregular, or emergency
+- Create two budget views (full vs. recurring)
+- Calculate monthly savings for irregular expenses
+```
+
+**Database Schema:**
+```sql
+CREATE TABLE opinions (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  author TEXT NOT NULL,
+  tool_name TEXT NOT NULL,  -- Which tool this applies to
+  description TEXT,
+  prompt TEXT NOT NULL,      -- The actual analysis instructions
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Available Tools:**
+- `get-opinion` - Retrieve an expert opinion prompt by ID
+- All tools suggest relevant opinions in their responses
+
+**Adding New Opinions:**
+```sql
+INSERT INTO opinions (id, name, author, tool_name, description, prompt)
+VALUES ('opinion-id', 'Name', 'Author', 'tool-name', 'Description', 'Full prompt text');
+```
+
+### 4. Customizable Data Visualizations
+
+Users can customize spending visualizations using natural language or direct script editing.
+
+**User Experience Flow:**
+
+1. **User visualizes data**: Downloads default visualization script and runs it
+2. **User requests customization**: "Show top 15 categories instead of 10" or "Change bar color to blue"
+3. **System updates script**:
+   - Loads user's current custom script (or default)
+   - Calls Claude API to apply requested changes
+   - Validates output is valid bash script
+   - Saves customized script to user profile
+4. **User downloads updated script**: Gets personalized visualization
+5. **User runs updated visualization**: Sees customized output
+6. **User can reset anytime**: Returns to default visualization
+
+**Key Features:**
+- Per-user script storage in database
+- Natural language customization ("exclude Income category")
+- Direct code editing support (AI modifies bash script)
+- Common customizations: colors, bar style, TOP_N count, category filtering
+- Default excludes: Income, Transfer, Payment categories
+
+**Available Tools:**
+- `visualize-spending` - Download visualization script (default or custom)
+- `update-visualization` - Customize script with natural language
+- `reset-visualization` - Return to default script
+
+### 5. Subscription Tracking
 
 The original demo demonstrates the **Tool → Signed Download URL → AI Analysis** pattern for detecting recurring subscriptions in credit card transactions.
 
-### How It Works
+**How It Works:**
 
 1. **User calls tool**: `track-subscriptions` (no arguments required)
 2. **Tool generates signed URLs**:
@@ -562,9 +676,9 @@ Available Commands:
 
 **Implementation**: See [src/tools/plaid-connection.ts](src/tools/plaid-connection.ts)
 
-### get-plaid-transactions
+### get-transactions
 
-Fetch real transaction data from connected Plaid account.
+Fetch real transaction data from connected financial institution with AI-powered categorization.
 
 **Arguments**:
 - `start_date` (optional): Start date in YYYY-MM-DD format (default: 90 days ago)
@@ -575,26 +689,59 @@ Fetch real transaction data from connected Plaid account.
 **Returns**:
 - Count of transactions found
 - Date range queried
-- Signed download URL for transactions CSV (expires in 10 minutes)
+- Signed download URL for transactions CSV with custom categories (expires in 10 minutes)
 - curl command to download file
 
 **Example Call**:
 ```typescript
 // Get last 30 days of transactions
-get-plaid-transactions({ start_date: "2024-11-15", end_date: "2024-12-15" })
+get-transactions({ start_date: "2024-11-15", end_date: "2024-12-15" })
 
 // Get default range (last 90 days)
-get-plaid-transactions({})
+get-transactions({})
 ```
 
 **CSV Format**:
 ```
-date,description,amount,category,account_name,pending
-2024-12-15,"Netflix",15.99,"Entertainment, Streaming","",false
-2024-12-14,"Whole Foods",45.23,"Food and Drink, Groceries","",false
+date,description,amount,category,account_name,pending,custom_category
+2024-12-15,"Netflix",15.99,"Entertainment, Streaming","",false,"Entertainment"
+2024-12-14,"Whole Foods",45.23,"Food and Drink, Groceries","",false,"Food & Dining"
 ```
 
 **Implementation**: See [src/tools/plaid-transactions.ts](src/tools/plaid-transactions.ts)
+
+### get-opinion
+
+Retrieve an expert opinion prompt to apply to financial analysis. Returns full analysis instructions for a specific methodology.
+
+**Arguments**:
+- `opinion_id` (required): The ID of the opinion to retrieve (e.g., 'exclude-large-expenses-budgeting')
+
+**Authentication**: Required (OAuth via Clerk)
+
+**Returns**:
+- Opinion name and author
+- Description
+- Full analysis prompt with instructions
+
+**Example Call**:
+```typescript
+get-opinion({ opinion_id: "exclude-large-expenses-budgeting" })
+```
+
+**Response Format**:
+```
+## Exclude Large Expenses from Budget
+By Personal Finance Influencer
+
+Remove one-time large purchases to see your true recurring monthly budget
+
+---
+
+[Full analysis methodology and instructions]
+```
+
+**Implementation**: See [src/create-server.ts](src/create-server.ts) and [src/db/opinion-storage.ts](src/db/opinion-storage.ts)
 
 ### track-subscriptions
 

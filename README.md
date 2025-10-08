@@ -31,12 +31,56 @@ npm run dev
 
 ## Features
 
-This MCP server provides personal finance tools (currently based on weather template - to be customized):
+This MCP server provides AI-powered personal finance tools with OAuth authentication:
 
-- **get-alerts**: Get weather alerts for a US state (requires 2-letter state code)
-- **get-forecast**: Get weather forecast for a location (requires latitude/longitude)
+### 1. Plaid Bank Connection
+- **connect-financial-institution**: Initiate secure bank connection via Plaid Link
+- **check-connection-status**: View connected accounts and balances
+- **get-plaid-transactions**: Fetch real transaction data with AI categorization
+- **disconnect-financial-institution**: Remove bank connection
 
-_Note: These are template tools and will be replaced with personal finance functionality._
+### 2. AI-Powered Transaction Categorization
+
+**User Experience:**
+1. User requests spending data → System fetches from Plaid and categorizes via Claude API
+2. User receives CSV with custom categories
+3. User customizes: "Put Amazon Prime in Business category"
+4. System updates categorization rules and auto-recategorizes
+5. User gets updated data instantly
+
+**Tools:**
+- **update-categorization-rules**: Customize category assignments with natural language
+
+**Features:**
+- Parallel batch processing for speed (50 transactions/batch)
+- User-specific rules stored in database
+- 12 default categories: Housing, Transportation, Food & Dining, Shopping, Entertainment, Healthcare, Personal Care, Travel, Business, Income, Transfer, Other
+- No transaction data caching (privacy-first)
+
+### 3. Customizable Data Visualizations
+
+**User Experience:**
+1. User downloads default visualization script
+2. User requests customization: "Show top 15 categories" or "Change bar color to blue"
+3. System uses Claude API to modify bash script
+4. User gets personalized visualization
+5. User can reset to default anytime
+
+**Tools:**
+- **visualize-spending**: Download visualization script (default or custom)
+- **update-visualization**: Customize script with natural language
+- **reset-visualization**: Return to default
+
+**Features:**
+- Per-user script storage
+- Natural language customization
+- Terminal bar charts with configurable colors, TOP_N, filtering
+- Excludes Income/Transfer/Payment by default
+
+### 4. Subscription Tracking
+- **track-subscriptions**: Analyze recurring charges and subscriptions
+
+**Pattern:** Tool → Signed Download URL → AI Analysis with executable scripts users can customize
 
 ## Testing
 

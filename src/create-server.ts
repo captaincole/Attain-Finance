@@ -13,6 +13,7 @@ import { getPlaidTransactionsHandler } from "./tools/plaid-transactions.js";
 import { updateCategorizationRulesHandler } from "./tools/update-categorization.js";
 import { updateVisualizationHandler, resetVisualizationHandler } from "./tools/visualization-tools.js";
 import { getVisualization } from "./db/visualization-storage.js";
+import { getOpinionById, getOpinionsByTool, formatOpinionList } from "./db/opinion-storage.js";
 
 /**
  * Helper to get the base URL for generating download links
@@ -91,8 +92,8 @@ export const createServer = (plaidClient: PlaidApi) => {
   );
 
   server.tool(
-    "get-plaid-transactions",
-    "Retrieve real transaction data from the user's connected financial institution via Plaid. Returns a downloadable CSV file of transactions for the specified date range.",
+    "get-transactions",
+    "Retrieve real transaction data from the user's connected financial institution. Returns a downloadable CSV file of transactions for the specified date range.",
     {
       start_date: z
         .string()
@@ -118,7 +119,7 @@ export const createServer = (plaidClient: PlaidApi) => {
         throw new Error("User authentication required");
       }
 
-      console.log("get-plaid-transactions called by user:", userId);
+      console.log("get-transactions called by user:", userId);
 
       const baseUrl = getBaseUrl();
 
@@ -265,6 +266,59 @@ export const createServer = (plaidClient: PlaidApi) => {
     }
   );
 
+  // Opinion tools
+  server.tool(
+    "get-opinion",
+    "Get an expert opinion prompt to apply to your financial analysis. Returns the full analysis instructions for a specific methodology (e.g., Graham Stephan's 20% Rule, Minimalist budgeting).",
+    {
+      opinion_id: z
+        .string()
+        .describe("The ID of the opinion to retrieve (e.g., 'graham-20-percent-rule')"),
+    },
+    {
+      readOnlyHint: true,
+      securitySchemes: [
+        { type: "oauth2" },
+      ],
+    },
+    async (args, { authInfo }) => {
+      const userId = authInfo?.extra?.userId as string | undefined;
+
+      if (!userId) {
+        throw new Error("User authentication required");
+      }
+
+      console.log("get-opinion called by user:", userId, "opinion:", args.opinion_id);
+
+      const opinion = await getOpinionById(args.opinion_id);
+
+      if (!opinion) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `Opinion '${args.opinion_id}' not found.`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `## ${opinion.name}
+By ${opinion.author}${opinion.author_url ? ` (${opinion.author_url})` : ""}
+
+${opinion.description ? `${opinion.description}\n\n` : ""}---
+
+${opinion.prompt}`,
+          },
+        ],
+      };
+    }
+  );
+
   // Legacy tool for downloading default visualization (kept for backward compatibility)
   server.tool(
     "visualize-spending",
@@ -279,6 +333,12 @@ export const createServer = (plaidClient: PlaidApi) => {
     async (_args, _extra) => {
       const baseUrl = getBaseUrl();
       const scriptUrl = `${baseUrl}/visualize-spending.sh`;
+
+      // Fetch available opinions for this tool
+      const opinions = await getOpinionsByTool("visualize-spending");
+      const opinionsSection = opinions.length > 0
+        ? `\n\n---\n\n## Expert Opinions Available\n\n${formatOpinionList(opinions)}\n\nAfter visualizing your spending, you can apply an expert opinion for deeper budget analysis.`
+        : "";
 
       return {
         content: [
@@ -315,7 +375,7 @@ Instead of editing manually, say:
 This will call the \`update-visualization\` tool to save your custom version.
 
 **Get your transactions first:**
-Run \`get-plaid-transactions\` to download your categorized transaction data.
+Run \`get-plaid-transactions\` to download your categorized transaction data.${opinionsSection}
             `.trim(),
           },
         ],
@@ -324,8 +384,8 @@ Run \`get-plaid-transactions\` to download your categorized transaction data.
   );
 
   console.log("=== TOOLS REGISTERED ===");
-  console.log("Total tools registered: 9");
-  console.log("Tools: connect-financial-institution, check-connection-status, get-plaid-transactions, disconnect-financial-institution, update-categorization-rules, track-subscriptions, update-visualization, reset-visualization, visualize-spending");
+  console.log("Total tools registered: 10");
+  console.log("Tools: connect-financial-institution, check-connection-status, get-transactions, disconnect-financial-institution, update-categorization-rules, track-subscriptions, update-visualization, reset-visualization, get-opinion, visualize-spending");
 
   return { server };
 };
