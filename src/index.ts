@@ -117,10 +117,29 @@ app.post("/mcp", (req, res, next) => {
     const content = typeof chunk === 'string' ? chunk : chunk.toString();
     console.log("=== MCP RESPONSE (WRITE/STREAM) ===");
     console.log("Length:", content.length);
-    console.log("Content:", content.substring(0, 2000)); // Increased to 2000 chars
-    if (content.length > 2000) {
-      console.log("... (truncated, total length:", content.length, ")");
+
+    // Try to parse and extract key fields without full data
+    try {
+      // MCP responses are SSE format: "event: message\ndata: {...}"
+      const dataMatch = content.match(/data: ({.*})/);
+      if (dataMatch) {
+        const parsed = JSON.parse(dataMatch[1]);
+        if (parsed.result) {
+          const summary: any = {
+            hasContent: !!parsed.result.content,
+            contentLength: parsed.result.content ? JSON.stringify(parsed.result.content).length : 0,
+            hasStructuredContent: !!parsed.result.structuredContent,
+            structuredContentKeys: parsed.result.structuredContent ? Object.keys(parsed.result.structuredContent) : [],
+            _meta: parsed.result._meta || null
+          };
+          console.log("Response summary:", JSON.stringify(summary, null, 2));
+        }
+      }
+    } catch (e) {
+      // Fallback to truncated content if parsing fails
+      console.log("Content (first 500 chars):", content.substring(0, 500));
     }
+
     return originalWrite(chunk);
   };
 
