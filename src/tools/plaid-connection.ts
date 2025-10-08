@@ -218,6 +218,9 @@ To connect, say: "Connect my bank account"
       institutions: institutionData,
       totalAccounts,
     },
+    _meta: {
+      "openai/outputTemplate": "ui://widget/connected-institutions.html"
+    }
   };
 }
 
