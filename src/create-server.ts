@@ -2,9 +2,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
+  ListToolsRequestSchema,
   ReadResourceRequestSchema,
   type ListResourcesRequest,
   type ListResourceTemplatesRequest,
+  type ListToolsRequest,
   type ReadResourceRequest
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -78,6 +80,15 @@ export const createServer = (plaidClient: PlaidApi) => {
     }
   };
 
+  // Tool metadata for check-connection-status
+  const checkConnectionStatusToolMeta = {
+    "openai/outputTemplate": widgetUri,
+    "openai/toolInvocation/invoking": "Loading your connected institutions...",
+    "openai/toolInvocation/invoked": "Connected institutions loaded",
+    "openai/widgetAccessible": true,
+    "openai/resultCanProduceWidget": true
+  };
+
   const widgetHTML = `
 <div id="connected-institutions-root"></div>
 ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : ""}
@@ -131,6 +142,9 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
       }
     ]
   }));
+
+  // We need to manually return tools/list with _meta because McpServer.tool() doesn't include it
+  // This will be set up AFTER all tools are registered below
 
   // Note: MCP resources removed in favor of signed download URLs and tools
   // Users can customize visualizations via update-visualization tool
@@ -491,6 +505,31 @@ Run \`get-plaid-transactions\` to download your categorized transaction data.${o
   console.log("=== TOOLS REGISTERED ===");
   console.log("Total tools registered: 10");
   console.log("Tools: connect-financial-institution, check-connection-status, get-transactions, disconnect-financial-institution, update-categorization-rules, track-subscriptions, update-visualization, reset-visualization, get-opinion, visualize-spending");
+
+  // NOW override tools/list to inject _meta into check-connection-status
+  // We do this after all tools are registered so we can access the internal tool list
+  const serverInternal = server.server as any;
+  if (serverInternal._requestHandlers) {
+    const originalToolsHandler = serverInternal._requestHandlers.get("tools/list");
+
+    serverInternal._requestHandlers.set("tools/list", async (request: any) => {
+      const result = await originalToolsHandler(request);
+
+      // Add _meta to check-connection-status tool
+      result.tools = result.tools.map((tool: any) => {
+        if (tool.name === "check-connection-status") {
+          return { ...tool, _meta: checkConnectionStatusToolMeta };
+        }
+        return tool;
+      });
+
+      console.log("=== tools/list wrapped handler ===");
+      console.log("check-connection-status has _meta:",
+        !!result.tools.find((t: any) => t.name === "check-connection-status")?._meta);
+
+      return result;
+    });
+  }
 
   return { server };
 };
