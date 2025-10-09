@@ -309,3 +309,52 @@ server.resource("name", "uri", {}, async () => ({ contents: [...] }));
 ## Next Action
 
 Check Vercel logs for ANY request with "template" in the method name during initialization.
+
+## UPDATE 3: Still Not Working After Multiple Fixes
+
+### Changes Made:
+1. ✅ Added `openai/widgetAccessible: true` to tool response `_meta`
+2. ✅ Added `openai/resultCanProduceWidget: true` to tool response `_meta`
+3. ✅ Added widget metadata to resource registration (not just contents)
+
+### Current Tool Response:
+```json
+{
+  "_meta": {
+    "openai/outputTemplate": "ui://widget/connected-institutions.html",
+    "openai/widgetAccessible": true,
+    "openai/resultCanProduceWidget": true
+  }
+}
+```
+
+### Still Seeing:
+- ❌ ChatGPT never calls `resources/list`
+- ❌ ChatGPT never calls `resources/read`
+- ❌ Widget not displayed
+
+### Remaining Hypothesis: API Pattern Mismatch
+
+**OpenAI uses low-level `setRequestHandler`:**
+```typescript
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  resources: [...]
+}));
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => ({
+  contents: [...]
+}));
+```
+
+**We use high-level `server.resource()`:**
+```typescript
+server.resource("name", "uri", metadata, async () => ({
+  contents: [...]
+}));
+```
+
+**Question:** Does `McpServer.resource()` properly register the handlers that ChatGPT expects?
+
+### Next Test: Switch to Low-Level API
+
+Try implementing resources using `setRequestHandler` pattern to exactly match OpenAI's working example.

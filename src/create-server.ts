@@ -1,4 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import {
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  type ListResourcesRequest,
+  type ReadResourceRequest
+} from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { PlaidApi } from "plaid";
 import { readFileSync } from "node:fs";
@@ -51,7 +57,8 @@ export const createServer = (plaidClient: PlaidApi) => {
     }
   })();
 
-  // Register widget resource
+  // Widget resource definition
+  const widgetUri = "ui://widget/connected-institutions.html";
   const widgetMeta = {
     "openai/widgetDescription": "Interactive cards showing connected financial institutions with account balances",
     "openai/widgetPrefersBorder": true,
@@ -61,25 +68,41 @@ export const createServer = (plaidClient: PlaidApi) => {
     }
   };
 
-  server.resource(
-    "connected-institutions-widget",
-    "ui://widget/connected-institutions.html",
-    widgetMeta,
-    async () => ({
-      contents: [
-        {
-          uri: "ui://widget/connected-institutions.html",
-          mimeType: "text/html+skybridge",
-          text: `
+  const widgetHTML = `
 <div id="connected-institutions-root"></div>
 ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : ""}
 <script type="module">${CONNECTED_INSTITUTIONS_JS}</script>
-          `.trim(),
+  `.trim();
+
+  // Register widget resource handlers (matching OpenAI Pizzaz pattern)
+  server.server.setRequestHandler(ListResourcesRequestSchema, async (_request: ListResourcesRequest) => ({
+    resources: [
+      {
+        uri: widgetUri,
+        name: "Connected Institutions Widget",
+        description: "Interactive widget showing connected financial institutions with account balances",
+        mimeType: "text/html+skybridge",
+        _meta: widgetMeta
+      }
+    ]
+  }));
+
+  server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
+    if (request.params.uri !== widgetUri) {
+      throw new Error(`Unknown resource: ${request.params.uri}`);
+    }
+
+    return {
+      contents: [
+        {
+          uri: widgetUri,
+          mimeType: "text/html+skybridge",
+          text: widgetHTML,
           _meta: widgetMeta
         }
       ]
-    })
-  );
+    };
+  });
 
   // Note: MCP resources removed in favor of signed download URLs and tools
   // Users can customize visualizations via update-visualization tool
