@@ -52,10 +52,19 @@ export const createServer = (plaidClient: PlaidApi) => {
   })();
 
   // Register widget resource
+  const widgetMeta = {
+    "openai/widgetDescription": "Interactive cards showing connected financial institutions with account balances",
+    "openai/widgetPrefersBorder": true,
+    "openai/widgetCSP": {
+      connect_domains: [],
+      resource_domains: []
+    }
+  };
+
   server.resource(
     "connected-institutions-widget",
     "ui://widget/connected-institutions.html",
-    {},
+    widgetMeta,
     async () => ({
       contents: [
         {
@@ -66,14 +75,7 @@ export const createServer = (plaidClient: PlaidApi) => {
 ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : ""}
 <script type="module">${CONNECTED_INSTITUTIONS_JS}</script>
           `.trim(),
-          _meta: {
-            "openai/widgetDescription": "Interactive cards showing connected financial institutions with account balances",
-            "openai/widgetPrefersBorder": true,
-            "openai/widgetCSP": {
-              connect_domains: [],
-              resource_domains: []
-            }
-          }
+          _meta: widgetMeta
         }
       ]
     })

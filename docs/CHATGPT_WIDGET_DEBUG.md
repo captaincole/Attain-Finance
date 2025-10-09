@@ -265,3 +265,47 @@ server.resource("connected-institutions-widget", "ui://widget/...", {}, async ()
 2. **MEDIUM PRIORITY:** Consider switching from `server.resource()` to `setRequestHandler(ListResourcesRequestSchema)` and `setRequestHandler(ReadResourceRequestSchema)` pattern
 
 3. **LOW PRIORITY:** Investigate `Server` vs `McpServer` class differences
+
+## UPDATE: Resource Templates Discovery
+
+### Critical Finding: They Register BOTH Resources AND Resource Templates
+
+**OpenAI Example registers THREE handlers:**
+
+```typescript
+// 1. List resources
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+  resources: [
+    { uri: "ui://widget/pizza-map.html", name: "...", mimeType: "text/html+skybridge" }
+  ]
+}));
+
+// 2. List resource TEMPLATES  ← WE DON'T HAVE THIS!
+server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({
+  resourceTemplates: [
+    { uriTemplate: "ui://widget/pizza-map.html", name: "...", mimeType: "text/html+skybridge" }
+  ]
+}));
+
+// 3. Read specific resource
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  return { contents: [{ uri, mimeType, text: html }] };
+});
+```
+
+**Our Implementation:**
+```typescript
+// Only this:
+server.resource("name", "uri", {}, async () => ({ contents: [...] }));
+```
+
+**Key Question:** What does `server.resource()` actually register? Does it register handlers for:
+- ListResourcesRequestSchema? 
+- ListResourceTemplatesRequestSchema?
+- ReadResourceRequestSchema?
+
+**Hypothesis:** ChatGPT might be calling `resources/listTemplates` instead of (or in addition to) `resources/list`, and we're not handling that request!
+
+## Next Action
+
+Check Vercel logs for ANY request with "template" in the method name during initialization.
