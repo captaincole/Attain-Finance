@@ -7,3 +7,6 @@ build/
 # Sandbox data (contains real transaction CSVs)
 sandbox/data/
 .vercel
+
+# OpenAI example repository (local reference copy)
+openai-apps-sdk-examples/

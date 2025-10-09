@@ -1,8 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   type ListResourcesRequest,
+  type ListResourceTemplatesRequest,
   type ReadResourceRequest
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -111,6 +113,18 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
       ]
     };
   });
+
+  server.server.setRequestHandler(ListResourceTemplatesRequestSchema, async (_request: ListResourceTemplatesRequest) => ({
+    resourceTemplates: [
+      {
+        uriTemplate: widgetUri,
+        name: "Connected Institutions Widget",
+        description: "Interactive widget showing connected financial institutions with account balances",
+        mimeType: "text/html+skybridge",
+        _meta: widgetMeta
+      }
+    ]
+  }));
 
   // Note: MCP resources removed in favor of signed download URLs and tools
   // Users can customize visualizations via update-visualization tool
