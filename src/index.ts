@@ -91,6 +91,12 @@ app.post("/mcp", (req, res, next) => {
     "mcp-protocol-version": req.headers["mcp-protocol-version"],
   });
   console.log("Body:", JSON.stringify(req.body));
+
+  // Log MCP method being called
+  if (req.body && req.body.method) {
+    console.log("=== MCP Method:", req.body.method, "===");
+  }
+
   console.log("Auth status:", {
     hasAuthHeader: !!authHeader,
     authType: authHeader?.split(" ")[0],
@@ -128,6 +134,19 @@ app.post("/mcp", (req, res, next) => {
         // Log initialize response fully (small and important for debugging)
         if (parsed.result && parsed.result.capabilities) {
           console.log("INITIALIZE RESPONSE:", JSON.stringify(parsed.result, null, 2));
+        }
+        // Log tools/list response to check _meta
+        else if (parsed.result && parsed.result.tools) {
+          console.log("=== tools/list RESPONSE ===");
+          console.log("Number of tools:", parsed.result.tools.length);
+          parsed.result.tools.forEach((tool: any) => {
+            console.log(`Tool: ${tool.name}`);
+            console.log(`  Has _meta:`, !!tool._meta);
+            if (tool._meta) {
+              console.log(`  _meta keys:`, Object.keys(tool._meta));
+              console.log(`  openai/outputTemplate:`, tool._meta["openai/outputTemplate"]);
+            }
+          });
         }
         // Log tool response summary
         else if (parsed.result) {

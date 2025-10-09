@@ -85,19 +85,25 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
   `.trim();
 
   // Register widget resource handlers (matching OpenAI Pizzaz pattern)
-  server.server.setRequestHandler(ListResourcesRequestSchema, async (_request: ListResourcesRequest) => ({
-    resources: [
-      {
-        uri: widgetUri,
-        name: "Connected Institutions Widget",
-        description: "Interactive widget showing connected financial institutions with account balances",
-        mimeType: "text/html+skybridge",
-        _meta: widgetMeta
-      }
-    ]
-  }));
+  server.server.setRequestHandler(ListResourcesRequestSchema, async (_request: ListResourcesRequest) => {
+    console.log("=== resources/list called ===");
+    return {
+      resources: [
+        {
+          uri: widgetUri,
+          name: "Connected Institutions Widget",
+          description: "Interactive widget showing connected financial institutions with account balances",
+          mimeType: "text/html+skybridge",
+          _meta: widgetMeta
+        }
+      ]
+    };
+  });
 
   server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
+    console.log("=== resources/read called ===");
+    console.log("Requested URI:", request.params.uri);
+
     if (request.params.uri !== widgetUri) {
       throw new Error(`Unknown resource: ${request.params.uri}`);
     }
