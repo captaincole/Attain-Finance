@@ -31,11 +31,19 @@ function getBaseUrl(): string {
 }
 
 export const createServer = (plaidClient: PlaidApi) => {
-  // Create server instance
-  const server = new McpServer({
-    name: "personal-finance",
-    version: "1.0.0",
-  });
+  // Create server instance with explicit capabilities
+  const server = new McpServer(
+    {
+      name: "personal-finance",
+      version: "1.0.0",
+    },
+    {
+      capabilities: {
+        resources: {},
+        tools: {}
+      }
+    }
+  );
 
   console.log("=== MCP SERVER CREATED ===");
   console.log("Server name:", "personal-finance");
