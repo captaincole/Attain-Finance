@@ -110,7 +110,9 @@ ${errorDetails}
  */
 export async function checkConnectionStatusHandler(
   userId: string,
-  plaidClient: PlaidApi
+  plaidClient: PlaidApi,
+  widgetHTML?: string,
+  widgetUri?: string
 ) {
   // Load all connections from database
   const connections = await getConnections(userId);
@@ -207,13 +209,28 @@ To connect, say: "Connect my bank account"
   responseText += `- "Track my subscriptions"\n`;
   responseText += `- "Connect another bank"`;
 
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: responseText.trim(),
+  // Build content array with text and optional embedded widget
+  const content: any[] = [
+    {
+      type: "text" as const,
+      text: responseText.trim(),
+    },
+  ];
+
+  // Add embedded resource if widget HTML provided
+  if (widgetHTML && widgetUri) {
+    content.push({
+      type: "resource" as const,
+      resource: {
+        uri: widgetUri,
+        mimeType: "text/html+skybridge",
+        text: widgetHTML,
       },
-    ],
+    });
+  }
+
+  return {
+    content,
     structuredContent: {
       institutions: institutionData,
       totalAccounts,

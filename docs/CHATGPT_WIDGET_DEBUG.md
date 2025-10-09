@@ -358,3 +358,37 @@ server.resource("name", "uri", metadata, async () => ({
 ### Next Test: Switch to Low-Level API
 
 Try implementing resources using `setRequestHandler` pattern to exactly match OpenAI's working example.
+
+## CRITICAL DISCOVERY: Embedded Resources
+
+From MCP spec docs:
+> Resources MAY be embedded to provide additional context or data using a suitable URI scheme.
+
+**Tool responses can include embedded resources directly**, not just references to them!
+
+Example format:
+```json
+{
+  "content": [...],
+  "structuredContent": {...},
+  "_meta": {
+    "openai/outputTemplate": "ui://widget/..."
+  },
+  // ← ADD THIS:
+  "embeddedResources": [{
+    "type": "resource",
+    "resource": {
+      "uri": "ui://widget/pizza-map.html",
+      "mimeType": "text/html+skybridge",
+      "text": "<div>...</div><script>...</script>"
+    }
+  }]
+}
+```
+
+**Theory:** ChatGPT might be expecting the widget HTML to be embedded in the tool response, NOT fetched separately via resources/read!
+
+This would explain why:
+- ChatGPT never calls resources/list or resources/read
+- All our _meta flags are correct but widget doesn't render
+- OpenAI example might work differently than we thought

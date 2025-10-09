@@ -172,7 +172,7 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
 
       console.log("check-connection-status called by user:", userId);
 
-      return checkConnectionStatusHandler(userId, plaidClient);
+      return checkConnectionStatusHandler(userId, plaidClient, widgetHTML, widgetUri);
     }
   );
 
