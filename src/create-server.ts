@@ -158,7 +158,9 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
       _meta: {
         "openai/outputTemplate": "ui://widget/connected-institutions.html",
         "openai/toolInvocation/invoking": "Loading your connected institutions...",
-        "openai/toolInvocation/invoked": "Connected institutions loaded"
+        "openai/toolInvocation/invoked": "Connected institutions loaded",
+        "openai/widgetAccessible": true,
+        "openai/resultCanProduceWidget": true
       }
     },
     async (_args, { authInfo }) => {
