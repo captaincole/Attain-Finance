@@ -219,7 +219,9 @@ To connect, say: "Connect my bank account"
       totalAccounts,
     },
     _meta: {
-      "openai/outputTemplate": "ui://widget/connected-institutions.html"
+      "openai/outputTemplate": "ui://widget/connected-institutions.html",
+      "openai/widgetAccessible": true,
+      "openai/resultCanProduceWidget": true
     }
   };
 }
