@@ -1,0 +1,136 @@
+/* src/connected-institutions.css */
+.institutions-widget {
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  padding: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #e5e7eb;
+}
+.widget-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #111827;
+}
+.total-accounts {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+.institutions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.institution-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.2s;
+}
+.institution-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+.institution-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.institution-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.env-badge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  background: #dbeafe;
+  color: #1e40af;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+.account-count {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+.error-badge {
+  font-size: 0.875rem;
+  color: #dc2626;
+  font-weight: 500;
+}
+.institution-error {
+  padding: 1rem;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+.accounts-list {
+  padding: 1rem;
+}
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.account-row:last-child {
+  border-bottom: none;
+}
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.account-name {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #111827;
+}
+.account-type {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  text-transform: capitalize;
+}
+.account-balance {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #059669;
+}
+.institution-footer {
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border-top: 1px solid #e5e7eb;
+}
+.connected-date {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+.empty-state p {
+  margin: 0;
+  font-size: 0.9375rem;
+}
