@@ -8,7 +8,7 @@
     "test": "node test/run-analysis-tests.js",
     "test:analysis": "node test/run-analysis-tests.js",
     "build:widgets": "cd widgets && npm install && npm run build:all",
-    "build": "npm run build:widgets && tsc && shx chmod +x build/*.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/ && shx mkdir -p build/widgets/dist && shx cp widgets/dist/* build/widgets/dist/",
+    "build": "shx mkdir -p public/widgets && npm run build:widgets && tsc && shx chmod +x build/*.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
     "watch": "tsc --watch",
     "start": "node build/index.js",
     "prepare": "npm run build",

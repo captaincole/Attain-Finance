@@ -74,11 +74,11 @@ export const createServer = (plaidClient: PlaidApi) => {
   };
 
   // Lazy-load widget assets (only when requested, not at module load time)
-  // This prevents errors during deployment when widgets/dist/ doesn't exist yet
-  // Widgets are copied to build/widgets/dist/ during build for Vercel deployment
+  // This prevents errors during deployment when public/widgets/ doesn't exist yet
+  // Widgets build directly to public/widgets/ for reliable Vercel deployment
   function getWidgetHTML(): string {
-    const widgetJsPath = join(__dirname, "widgets/dist/connected-institutions.js");
-    const widgetCssPath = join(__dirname, "widgets/dist/connected-institutions.css");
+    const widgetJsPath = join(__dirname, "..", "public/widgets/connected-institutions.js");
+    const widgetCssPath = join(__dirname, "..", "public/widgets/connected-institutions.css");
 
     const CONNECTED_INSTITUTIONS_JS = readFileSync(widgetJsPath, "utf8");
     const CONNECTED_INSTITUTIONS_CSS = (() => {

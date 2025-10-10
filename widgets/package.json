@@ -4,8 +4,8 @@
   "description": "ChatGPT widgets for Personal Finance MCP",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/connected-institutions.tsx --bundle --format=esm --outfile=dist/connected-institutions.js",
-    "build:css": "esbuild src/connected-institutions.css --bundle --outfile=dist/connected-institutions.css",
+    "build": "esbuild src/connected-institutions.tsx --bundle --format=esm --outfile=../public/widgets/connected-institutions.js",
+    "build:css": "esbuild src/connected-institutions.css --bundle --outfile=../public/widgets/connected-institutions.css",
     "build:all": "npm run build && npm run build:css",
     "watch": "npm run build -- --watch"
   },

@@ -4,9 +4,6 @@ build/
 .env
 .env.local
 
-# Widget build artifacts (removed widgets/dist/ - needed for Vercel deployment)
-public/widgets/
-
 # Sandbox data (contains real transaction CSVs)
 sandbox/data/
 .vercel
