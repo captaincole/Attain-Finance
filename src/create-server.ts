@@ -2,11 +2,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import {
   ListResourcesRequestSchema,
   ListResourceTemplatesRequestSchema,
-  ListToolsRequestSchema,
   ReadResourceRequestSchema,
   type ListResourcesRequest,
   type ListResourceTemplatesRequest,
-  type ListToolsRequest,
   type ReadResourceRequest
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -23,7 +21,6 @@ import {
 import { getPlaidTransactionsHandler } from "./tools/plaid-transactions.js";
 import { updateCategorizationRulesHandler } from "./tools/update-categorization.js";
 import { updateVisualizationHandler, resetVisualizationHandler } from "./tools/visualization-tools.js";
-import { getVisualization } from "./db/visualization-storage.js";
 import { getOpinionById, getOpinionsByTool, formatOpinionList } from "./db/opinion-storage.js";
 
 /**
@@ -50,15 +47,15 @@ export const createServer = (plaidClient: PlaidApi) => {
   );
 
 
-  // Load built widget assets from public directory
+  // Load built widget assets from widgets build directory
   const CONNECTED_INSTITUTIONS_JS = readFileSync(
-    "public/widgets/connected-institutions.js",
+    "widgets/dist/connected-institutions.js",
     "utf8"
   );
   const CONNECTED_INSTITUTIONS_CSS = (() => {
     try {
       return readFileSync(
-        "public/widgets/connected-institutions.css",
+        "widgets/dist/connected-institutions.css",
         "utf8"
       );
     } catch {

@@ -4,6 +4,10 @@ build/
 .env
 .env.local
 
+# Widget build artifacts
+widgets/dist/
+public/widgets/
+
 # Sandbox data (contains real transaction CSVs)
 sandbox/data/
 .vercel

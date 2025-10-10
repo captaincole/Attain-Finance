@@ -135,6 +135,87 @@ To modify sandbox data:
 
 **Note:** The generator will warn if total transactions exceed 250.
 
+## ChatGPT Widget Development
+
+### Project Structure
+
+Widgets are organized as a separate workspace from the server code:
+
+```
+personal-finance-mcp/
+├── widgets/                      # Widget workspace
+│   ├── package.json             # Widget dependencies and build scripts
+│   ├── tsconfig.json            # TypeScript config for widgets
+│   ├── src/                     # Widget source code
+│   │   ├── connected-institutions.tsx
+│   │   └── connected-institutions.css
+│   └── dist/                    # Build output (gitignored)
+│       ├── connected-institutions.js
+│       └── connected-institutions.css
+├── src/                         # Server source code
+│   ├── create-server.ts         # Loads widgets from widgets/dist/
+│   └── tools/
+└── build/                       # Server build output (gitignored)
+```
+
+### Development Workflow
+
+**1. Create a new widget:**
+```bash
+cd widgets/src
+# Create your-widget.tsx and your-widget.css
+```
+
+**2. Update widget package.json:**
+```json
+{
+  "scripts": {
+    "build:your-widget": "esbuild src/your-widget.tsx --bundle --format=esm --outfile=dist/your-widget.js",
+    "build:all": "npm run build && npm run build:your-widget"
+  }
+}
+```
+
+**3. Register widget in server** (src/create-server.ts):
+```typescript
+// Load widget assets
+const YOUR_WIDGET_JS = readFileSync("widgets/dist/your-widget.js", "utf8");
+
+// Register resource handler
+server.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  if (request.params.uri === "ui://widget/your-widget.html") {
+    return {
+      contents: [{
+        uri: "ui://widget/your-widget.html",
+        mimeType: "text/html+skybridge",
+        text: `<div id="root"></div><script type="module">${YOUR_WIDGET_JS}</script>`
+      }]
+    };
+  }
+});
+```
+
+**4. Build and test:**
+```bash
+npm run build          # Builds widgets and server
+npm start              # Start server
+# Test in ChatGPT
+```
+
+### Widget Best Practices
+
+- **Read data from** `window.openai.toolOutput` (injected by ChatGPT)
+- **Persist state via** `window.openai.setWidgetState()` for user preferences
+- **Trigger actions via** `window.openai.callTool()` for server calls
+- **Support themes** by listening to `window.openai.theme`
+- **Handle layouts** with `window.openai.displayMode` (inline/fullscreen)
+
+### Build Output
+
+- Widget builds go to `widgets/dist/` (gitignored)
+- Server reads from `widgets/dist/` at runtime
+- No file copying needed - single source of truth
+
 ## TODO
 
 ### ChatGPT Widget Integration - Understanding the Pattern and Refactoring
