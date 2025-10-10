@@ -10,6 +10,12 @@ import {
 import { z } from "zod";
 import { PlaidApi } from "plaid";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+// Get the directory of the current module (build/ directory in production)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Import tool handlers
 import { trackSubscriptionsHandler } from "./tools/track-subscriptions.js";
@@ -69,17 +75,15 @@ export const createServer = (plaidClient: PlaidApi) => {
 
   // Lazy-load widget assets (only when requested, not at module load time)
   // This prevents errors during deployment when widgets/dist/ doesn't exist yet
+  // Widgets are copied to build/widgets/dist/ during build for Vercel deployment
   function getWidgetHTML(): string {
-    const CONNECTED_INSTITUTIONS_JS = readFileSync(
-      "widgets/dist/connected-institutions.js",
-      "utf8"
-    );
+    const widgetJsPath = join(__dirname, "widgets/dist/connected-institutions.js");
+    const widgetCssPath = join(__dirname, "widgets/dist/connected-institutions.css");
+
+    const CONNECTED_INSTITUTIONS_JS = readFileSync(widgetJsPath, "utf8");
     const CONNECTED_INSTITUTIONS_CSS = (() => {
       try {
-        return readFileSync(
-          "widgets/dist/connected-institutions.css",
-          "utf8"
-        );
+        return readFileSync(widgetCssPath, "utf8");
       } catch {
         return "";
       }
