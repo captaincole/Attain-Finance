@@ -29,11 +29,27 @@ function ConnectedInstitutionsWidget() {
   // Read data from window.openai.toolOutput
   const toolOutput = (window as any).openai?.toolOutput as ConnectedInstitutionsOutput | undefined;
 
+  // DEBUG: Log what we're receiving
+  console.log("=== Widget Debug Info ===");
+  console.log("window.openai exists:", !!(window as any).openai);
+  console.log("window.openai.toolOutput:", toolOutput);
+  console.log("Full window.openai:", (window as any).openai);
+
   if (!toolOutput || !toolOutput.institutions || toolOutput.institutions.length === 0) {
     return (
       <div className="institutions-widget">
         <div className="empty-state">
           <p>No institutions connected</p>
+          <details style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#666' }}>
+            <summary>Debug Info (click to expand)</summary>
+            <pre style={{ fontSize: '0.7rem', overflow: 'auto' }}>
+              {JSON.stringify({
+                hasOpenAI: !!(window as any).openai,
+                toolOutput: toolOutput,
+                fullOpenAI: (window as any).openai
+              }, null, 2)}
+            </pre>
+          </details>
         </div>
       </div>
     );
