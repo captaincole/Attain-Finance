@@ -49,9 +49,6 @@ export const createServer = (plaidClient: PlaidApi) => {
     }
   );
 
-  console.log("=== MCP SERVER CREATED ===");
-  console.log("Server name:", "personal-finance");
-  console.log("Server version:", "1.0.0");
 
   // Load built widget assets from public directory
   const CONNECTED_INSTITUTIONS_JS = readFileSync(
@@ -97,7 +94,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
 
   // Register widget resource handlers (matching OpenAI Pizzaz pattern)
   server.server.setRequestHandler(ListResourcesRequestSchema, async (_request: ListResourcesRequest) => {
-    console.log("=== resources/list called ===");
     return {
       resources: [
         {
@@ -112,8 +108,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
   });
 
   server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
-    console.log("=== resources/read called ===");
-    console.log("Requested URI:", request.params.uri);
 
     if (request.params.uri !== widgetUri) {
       throw new Error(`Unknown resource: ${request.params.uri}`);
@@ -162,17 +156,11 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
       ],
     },
     async (_args, { authInfo }) => {
-      console.log("=== TOOL CALLED: connect-financial-institution ===");
       const userId = authInfo?.extra?.userId as string | undefined;
-      console.log("User ID:", userId);
-      console.log("Auth info:", JSON.stringify(authInfo, null, 2));
-
       if (!userId) {
-        console.log("ERROR: User authentication required");
         throw new Error("User authentication required");
       }
 
-      console.log("connect-financial-institution called by user:", userId);
 
       const baseUrl = getBaseUrl();
 
@@ -204,7 +192,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("check-connection-status called by user:", userId);
 
       return checkConnectionStatusHandler(userId, plaidClient, widgetHTML, widgetUri);
     }
@@ -238,7 +225,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("get-transactions called by user:", userId);
 
       const baseUrl = getBaseUrl();
 
@@ -271,7 +257,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("disconnect-financial-institution called by user:", userId, "item:", args.item_id);
 
       return disconnectFinancialInstitutionHandler(userId, args.item_id, plaidClient);
     }
@@ -297,7 +282,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("update-categorization-rules called by user:", userId);
 
       const baseUrl = getBaseUrl();
 
@@ -323,7 +307,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("track-subscriptions called by user:", userId);
 
       // Get base URL from environment
       const baseUrl = getBaseUrl();
@@ -353,7 +336,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("update-visualization called by user:", userId);
 
       const baseUrl = getBaseUrl();
 
@@ -377,7 +359,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("reset-visualization called by user:", userId);
 
       const baseUrl = getBaseUrl();
 
@@ -407,7 +388,6 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         throw new Error("User authentication required");
       }
 
-      console.log("get-opinion called by user:", userId, "opinion:", args.opinion_id);
 
       const opinion = await getOpinionById(args.opinion_id);
 
@@ -502,11 +482,7 @@ Run \`get-plaid-transactions\` to download your categorized transaction data.${o
     }
   );
 
-  console.log("=== TOOLS REGISTERED ===");
-  console.log("Total tools registered: 10");
-  console.log("Tools: connect-financial-institution, check-connection-status, get-transactions, disconnect-financial-institution, update-categorization-rules, track-subscriptions, update-visualization, reset-visualization, get-opinion, visualize-spending");
-
-  // NOW override tools/list to inject _meta into check-connection-status
+  // Override tools/list to inject _meta into check-connection-status
   // We do this after all tools are registered so we can access the internal tool list
   const serverInternal = server.server as any;
   if (serverInternal._requestHandlers) {
@@ -522,10 +498,6 @@ Run \`get-plaid-transactions\` to download your categorized transaction data.${o
         }
         return tool;
       });
-
-      console.log("=== tools/list wrapped handler ===");
-      console.log("check-connection-status has _meta:",
-        !!result.tools.find((t: any) => t.name === "check-connection-status")?._meta);
 
       return result;
     });

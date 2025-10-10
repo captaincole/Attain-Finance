@@ -76,99 +76,11 @@ app.get("/favicon.ico", (_req: Request, res: Response) => {
 
 const { server } = createServer(plaidClient);
 
-// Debug middleware to log authentication attempts
+// Minimal logging middleware for MCP requests
 app.post("/mcp", (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  console.log("=== MCP REQUEST START ===");
-  console.log("Timestamp:", new Date().toISOString());
-  console.log("Method:", req.method);
-  console.log("Path:", req.path);
-  console.log("Headers:", {
-    authorization: authHeader ? `${authHeader.substring(0, 30)}...` : "none",
-    "content-type": req.headers["content-type"],
-    accept: req.headers.accept,
-    "user-agent": req.headers["user-agent"],
-    "mcp-protocol-version": req.headers["mcp-protocol-version"],
-  });
-  console.log("Body:", JSON.stringify(req.body));
-
-  // Log MCP method being called
   if (req.body && req.body.method) {
-    console.log("=== MCP Method:", req.body.method, "===");
+    console.log(`[MCP] ${req.body.method}`);
   }
-
-  console.log("Auth status:", {
-    hasAuthHeader: !!authHeader,
-    authType: authHeader?.split(" ")[0],
-  });
-
-  // Intercept response to log what we're sending back
-  const originalJson = res.json.bind(res);
-  const originalSend = res.send.bind(res);
-  const originalWrite = res.write.bind(res);
-
-  res.json = function(body: any) {
-    console.log("=== MCP RESPONSE (JSON) ===");
-    console.log(JSON.stringify(body).substring(0, 500));
-    return originalJson(body);
-  };
-
-  res.send = function(body: any) {
-    console.log("=== MCP RESPONSE (SEND) ===");
-    console.log(typeof body === 'string' ? body.substring(0, 500) : JSON.stringify(body).substring(0, 500));
-    return originalSend(body);
-  };
-
-  res.write = function(chunk: any) {
-    const content = typeof chunk === 'string' ? chunk : chunk.toString();
-    console.log("=== MCP RESPONSE (WRITE/STREAM) ===");
-    console.log("Length:", content.length);
-
-    // Try to parse and extract key fields without full data
-    try {
-      // MCP responses are SSE format: "event: message\ndata: {...}"
-      const dataMatch = content.match(/data: ({.*})/);
-      if (dataMatch) {
-        const parsed = JSON.parse(dataMatch[1]);
-
-        // Log initialize response fully (small and important for debugging)
-        if (parsed.result && parsed.result.capabilities) {
-          console.log("INITIALIZE RESPONSE:", JSON.stringify(parsed.result, null, 2));
-        }
-        // Log tools/list response to check _meta
-        else if (parsed.result && parsed.result.tools) {
-          console.log("=== tools/list RESPONSE ===");
-          console.log("Number of tools:", parsed.result.tools.length);
-          parsed.result.tools.forEach((tool: any) => {
-            console.log(`Tool: ${tool.name}`);
-            console.log(`  Has _meta:`, !!tool._meta);
-            if (tool._meta) {
-              console.log(`  _meta keys:`, Object.keys(tool._meta));
-              console.log(`  openai/outputTemplate:`, tool._meta["openai/outputTemplate"]);
-            }
-          });
-        }
-        // Log tool response summary
-        else if (parsed.result) {
-          const summary: any = {
-            hasContent: !!parsed.result.content,
-            contentLength: parsed.result.content ? JSON.stringify(parsed.result.content).length : 0,
-            hasStructuredContent: !!parsed.result.structuredContent,
-            structuredContentKeys: parsed.result.structuredContent ? Object.keys(parsed.result.structuredContent) : [],
-            _meta: parsed.result._meta || null
-          };
-          console.log("Response summary:", JSON.stringify(summary, null, 2));
-        }
-      }
-    } catch (e) {
-      // Fallback to truncated content if parsing fails
-      console.log("Content (first 500 chars):", content.substring(0, 500));
-    }
-
-    return originalWrite(chunk);
-  };
-
-  console.log("=== MCP REQUEST END ===");
   next();
 }, mcpAuthClerk, streamableHttpHandler(server));
 

@@ -137,36 +137,160 @@ To modify sandbox data:
 
 ## TODO
 
-### ChatGPT Integration (Blocked - Known ChatGPT Bug)
+### ChatGPT Widget Integration - Understanding the Pattern and Refactoring
 
-**Status:** Waiting for OpenAI to fix MCP connector bug before integration.
+**Status:** ✅ Widget rendering works with current workaround. Refactor recommended for cleaner code.
 
-**Issue:** ChatGPT is not displaying custom MCP tools in the chat interface, despite successful OAuth authentication and tools/list responses.
+## How ChatGPT Widget Initialization Works
 
-**Root Cause:** Known bug in ChatGPT's MCP implementation (not our server):
-- OpenAI Community Thread: https://community.openai.com/t/custom-mcp-connector-no-longer-showing-all-tools-as-enabled/1361121
-- Started around Friday, October 4th 2025 after ChatGPT deployment
-- Affects all users with custom MCP connectors
-- Tools are greyed out/unavailable even though server is working correctly
-- Same server works perfectly with Claude Desktop and MCP Inspector
+When ChatGPT connects to an MCP server with widgets, it follows this exact initialization sequence:
 
-**Verified Working:**
-- ✅ OAuth authentication (Clerk integration)
-- ✅ Server responds to `initialize` and `tools/list` requests
-- ✅ All 5 tools registered and returned in response
-- ✅ Protocol version negotiation (2025-06-18)
-- ✅ Security schemes configured correctly
+### 1. Initialize Connection
+```
+Client → Server: POST /mcp { "method": "initialize", "params": { "protocolVersion": "2025-06-18", "capabilities": {} } }
+Server → Client: { "capabilities": { "resources": {}, "tools": {} }, "serverInfo": { ... } }
+Client → Server: POST /mcp { "method": "notifications/initialized" }
+```
 
-**OpenAI's Response:**
-- Team acknowledged the issue
-- Documentation being updated
-- Suggested Developer Mode as potential workaround (requires Pro/Team/Enterprise)
-- No timeline for fix provided
+### 2. Discover Tools (CRITICAL STEP FOR WIDGETS)
+```
+Client → Server: POST /mcp { "method": "tools/list" }
+Server → Client: {
+  "tools": [
+    {
+      "name": "check-connection-status",
+      "description": "Check if user has connected financial institutions...",
+      "inputSchema": { ... },
+      "_meta": {                                      ← REQUIRED FOR WIDGETS!
+        "openai/outputTemplate": "ui://widget/...",   ← Widget URI - triggers pre-fetch
+        "openai/widgetAccessible": true,
+        "openai/resultCanProduceWidget": true
+      }
+    },
+    // ... other tools without _meta
+  ]
+}
+```
 
-**Next Steps:**
-1. Monitor OpenAI Community thread for updates
-2. Test again when OpenAI announces fix
-3. Consider Developer Mode if available once issue is resolved
+**KEY REQUIREMENT:** ChatGPT scans the `tools/list` response for any tool with `_meta["openai/outputTemplate"]`. If found, it immediately triggers Step 3.
+
+### 3. Pre-fetch Widget HTML (Automatic if `outputTemplate` found)
+```
+Client → Server: POST /mcp { "method": "resources/read", "params": { "uri": "ui://widget/connected-institutions.html" } }
+Server → Client: {
+  "contents": [{
+    "uri": "ui://widget/connected-institutions.html",
+    "mimeType": "text/html+skybridge",
+    "text": "<div id='root'></div><script type='module'>...</script>",
+    "_meta": {
+      "openai/widgetDescription": "Interactive cards showing...",
+      "openai/widgetPrefersBorder": true
+    }
+  }]
+}
+```
+
+ChatGPT caches the widget HTML and is now ready to render it when the tool is called.
+
+### 4. User Calls Tool (Later in conversation)
+```
+User: "Check my connection status"
+Client → Server: POST /mcp { "method": "tools/call", "params": { "name": "check-connection-status" } }
+Server → Client: {
+  "content": [{ "type": "text", "text": "✓ Connected to 2 institutions..." }],
+  "structuredContent": {
+    "institutions": [
+      { "itemId": "...", "institutionName": "Chase", "accounts": [...] },
+      { "itemId": "...", "institutionName": "Bank of America", "accounts": [...] }
+    ],
+    "totalAccounts": 5
+  },
+  "_meta": {
+    "openai/outputTemplate": "ui://widget/connected-institutions.html",
+    "openai/widgetAccessible": true,
+    "openai/resultCanProduceWidget": true
+  }
+}
+```
+
+ChatGPT:
+1. Sees `outputTemplate` URI in tool response
+2. Looks up cached widget HTML
+3. Injects `structuredContent` as `window.openai.toolOutput` in the widget's iframe
+4. Renders the widget in the chat
+
+## Why Our Current Implementation Works (But Needs Refactoring)
+
+**Current Implementation:**
+We wrap the `tools/list` handler to inject `_meta` after tool registration (see [src/create-server.ts:509-532](src/create-server.ts)):
+
+```typescript
+// Workaround: Inject _meta into tools/list response
+const serverInternal = server.server as any;
+const originalToolsHandler = serverInternal._requestHandlers.get("tools/list");
+serverInternal._requestHandlers.set("tools/list", async (request) => {
+  const result = await originalToolsHandler(request);
+  result.tools = result.tools.map((tool) => {
+    if (tool.name === "check-connection-status") {
+      return { ...tool, _meta: checkConnectionStatusToolMeta };
+    }
+    return tool;
+  });
+  return result;
+});
+```
+
+**Why This Works:**
+- `McpServer.tool()` doesn't include `_meta` in `tools/list` responses by default
+- ChatGPT needs `openai/outputTemplate` in `tools/list` to pre-fetch widget HTML via `resources/read`
+- Our workaround manually injects `_meta` into the response
+
+**Recommended Refactor:**
+Switch to the pattern used by OpenAI's Pizzaz example (see `openai-apps-sdk-examples/pizzaz_server_node/src/server.ts`):
+
+1. **Manually build tools array** with `_meta`:
+   ```typescript
+   const tools: Tool[] = [
+     {
+       name: "check-connection-status",
+       description: "...",
+       inputSchema: { ... },
+       _meta: {
+         "openai/outputTemplate": "ui://widget/connected-institutions.html",
+         "openai/widgetAccessible": true,
+         "openai/resultCanProduceWidget": true
+       }
+     },
+     // ... other tools
+   ];
+   ```
+
+2. **Register custom handler** instead of using `server.tool()`:
+   ```typescript
+   server.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+     tools
+   }));
+
+   server.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+     // Manual routing to tool handlers
+     switch (request.params.name) {
+       case "check-connection-status":
+         return checkConnectionStatusHandler(...);
+       // ... other tools
+     }
+   });
+   ```
+
+**Benefits of Refactoring:**
+- Cleaner, more explicit code
+- No internal API access (`serverInternal._requestHandlers`)
+- Matches official OpenAI example pattern
+- Easier to add multiple widget-enabled tools in the future
+
+**Trade-offs:**
+- More boilerplate code (manual tool routing)
+- Loses some of the convenience of `server.tool()` abstraction
+- Need to maintain tools list separately from handlers
 
 ### Database Migration (Priority)
 
