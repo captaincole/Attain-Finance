@@ -180,7 +180,7 @@ export const createServer = (plaidClient: PlaidApi) => {
       }
 
 
-      return checkConnectionStatusHandler(userId, plaidClient, getWidgetHTML(), widgetUri);
+      return checkConnectionStatusHandler(userId, plaidClient);
     }
   );
 

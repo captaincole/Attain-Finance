@@ -26,20 +26,27 @@ interface ConnectedInstitutionsOutput {
 }
 
 // Hook to subscribe to window.openai.toolOutput changes
+// Matches the pattern from OpenAI's official examples
 function useToolOutput(): ConnectedInstitutionsOutput | null {
   return useSyncExternalStore(
     (onChange) => {
-      // ChatGPT fires this event when toolOutput changes
-      const handleToolResponse = () => {
-        onChange();
+      if (typeof window === "undefined") {
+        return () => {};
+      }
+
+      // ChatGPT fires "openai:set_globals" event when toolOutput changes
+      const handleSetGlobals = (event: CustomEvent) => {
+        if (event.detail?.globals?.toolOutput !== undefined) {
+          onChange();
+        }
       };
 
-      window.addEventListener("openai:tool_response", handleToolResponse);
+      window.addEventListener("openai:set_globals", handleSetGlobals as EventListener);
       return () => {
-        window.removeEventListener("openai:tool_response", handleToolResponse);
+        window.removeEventListener("openai:set_globals", handleSetGlobals as EventListener);
       };
     },
-    () => (window as any).openai?.toolOutput as ConnectedInstitutionsOutput | null,
+    () => (window as any).openai?.toolOutput ?? null,
     () => null // Server-side rendering fallback
   );
 }

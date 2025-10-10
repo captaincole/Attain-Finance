@@ -23557,15 +23557,21 @@ var import_client = __toESM(require_client(), 1);
 function useToolOutput() {
   return (0, import_react.useSyncExternalStore)(
     (onChange) => {
-      const handleToolResponse = () => {
-        onChange();
+      if (typeof window === "undefined") {
+        return () => {
+        };
+      }
+      const handleSetGlobals = (event) => {
+        if (event.detail?.globals?.toolOutput !== void 0) {
+          onChange();
+        }
       };
-      window.addEventListener("openai:tool_response", handleToolResponse);
+      window.addEventListener("openai:set_globals", handleSetGlobals);
       return () => {
-        window.removeEventListener("openai:tool_response", handleToolResponse);
+        window.removeEventListener("openai:set_globals", handleSetGlobals);
       };
     },
-    () => window.openai?.toolOutput,
+    () => window.openai?.toolOutput ?? null,
     () => null
     // Server-side rendering fallback
   );
