@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 
 // Types matching our tool output
@@ -25,13 +25,31 @@ interface ConnectedInstitutionsOutput {
   totalAccounts: number;
 }
 
+// Hook to subscribe to window.openai.toolOutput changes
+function useToolOutput(): ConnectedInstitutionsOutput | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      // ChatGPT fires this event when toolOutput changes
+      const handleToolResponse = () => {
+        onChange();
+      };
+
+      window.addEventListener("openai:tool_response", handleToolResponse);
+      return () => {
+        window.removeEventListener("openai:tool_response", handleToolResponse);
+      };
+    },
+    () => (window as any).openai?.toolOutput as ConnectedInstitutionsOutput | null,
+    () => null // Server-side rendering fallback
+  );
+}
+
 function ConnectedInstitutionsWidget() {
-  // Read data from window.openai.toolOutput (this is what ChatGPT injects)
-  const toolOutput = (window as any).openai?.toolOutput as ConnectedInstitutionsOutput | undefined;
+  // Subscribe to toolOutput changes
+  const toolOutput = useToolOutput();
 
   // DEBUG: Log everything
-  console.log("=== Widget Mounted ===");
-  console.log("window.openai:", (window as any).openai);
+  console.log("=== Widget Render ===");
   console.log("toolOutput:", toolOutput);
 
   // Extract data with defaults

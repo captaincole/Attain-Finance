@@ -1137,7 +1137,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useId();
         }
-        function useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot) {
+        function useSyncExternalStore2(subscribe, getSnapshot, getServerSnapshot) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
         }
@@ -1887,7 +1887,7 @@ var require_react_development = __commonJS({
         exports.useReducer = useReducer;
         exports.useRef = useRef;
         exports.useState = useState;
-        exports.useSyncExternalStore = useSyncExternalStore;
+        exports.useSyncExternalStore = useSyncExternalStore2;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop === "function") {
@@ -23554,10 +23554,25 @@ var require_client = __commonJS({
 // src/connected-institutions.tsx
 var import_react = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
+function useToolOutput() {
+  return (0, import_react.useSyncExternalStore)(
+    (onChange) => {
+      const handleToolResponse = () => {
+        onChange();
+      };
+      window.addEventListener("openai:tool_response", handleToolResponse);
+      return () => {
+        window.removeEventListener("openai:tool_response", handleToolResponse);
+      };
+    },
+    () => window.openai?.toolOutput,
+    () => null
+    // Server-side rendering fallback
+  );
+}
 function ConnectedInstitutionsWidget() {
-  const toolOutput = window.openai?.toolOutput;
-  console.log("=== Widget Mounted ===");
-  console.log("window.openai:", window.openai);
+  const toolOutput = useToolOutput();
+  console.log("=== Widget Render ===");
   console.log("toolOutput:", toolOutput);
   const institutions = toolOutput?.institutions || [];
   const totalAccounts = toolOutput?.totalAccounts || 0;

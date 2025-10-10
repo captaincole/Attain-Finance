@@ -9,13 +9,6 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { PlaidApi } from "plaid";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
-
-// Get the directory of the current module (build/ directory in production)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Import tool handlers
 import { trackSubscriptionsHandler } from "./tools/track-subscriptions.js";
@@ -73,26 +66,16 @@ export const createServer = (plaidClient: PlaidApi) => {
     "openai/resultCanProduceWidget": true
   };
 
-  // Lazy-load widget assets (only when requested, not at module load time)
-  // This prevents errors during deployment when public/widgets/ doesn't exist yet
-  // Widgets build directly to public/widgets/ for reliable Vercel deployment
+  // Generate widget HTML with external script references (not inline)
+  // ChatGPT fetches widget assets via HTTP, matching the OpenAI Pizzaz pattern
+  // Widget files are served from public/widgets/ via Express static middleware
   function getWidgetHTML(): string {
-    const widgetJsPath = join(__dirname, "..", "public/widgets/connected-institutions.js");
-    const widgetCssPath = join(__dirname, "..", "public/widgets/connected-institutions.css");
-
-    const CONNECTED_INSTITUTIONS_JS = readFileSync(widgetJsPath, "utf8");
-    const CONNECTED_INSTITUTIONS_CSS = (() => {
-      try {
-        return readFileSync(widgetCssPath, "utf8");
-      } catch {
-        return "";
-      }
-    })();
+    const baseUrl = getBaseUrl();
 
     return `
 <div id="connected-institutions-root"></div>
-${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : ""}
-<script type="module">${CONNECTED_INSTITUTIONS_JS}</script>
+<link rel="stylesheet" href="${baseUrl}/widgets/connected-institutions.css">
+<script type="module" src="${baseUrl}/widgets/connected-institutions.js"></script>
     `.trim();
   }
 
