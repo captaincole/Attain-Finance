@@ -59,70 +59,68 @@ function ConnectedInstitutionsWidget() {
   console.log("=== Widget Render ===");
   console.log("toolOutput:", toolOutput);
 
-  // Extract data with defaults
-  const institutions = toolOutput?.institutions || [];
-  const totalAccounts = toolOutput?.totalAccounts || 0;
+  // While waiting for data, show a simple loading state
+  // ChatGPT already shows "Loading your connected institutions..." via _meta
+  if (toolOutput === null) {
+    return (
+      <div className="institutions-widget">
+        <div className="loading-state" style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Extract data - toolOutput is guaranteed to exist here
+  const institutions = toolOutput.institutions || [];
+  const totalAccounts = toolOutput.totalAccounts || 0;
 
   return (
     <div className="institutions-widget">
-      <div className="widget-header">
-        <h3>Connected Financial Institutions</h3>
-        <div className="total-accounts">{totalAccounts} accounts</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #e0e0e0' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>Connected Accounts</h3>
+        <div style={{ fontSize: '0.85rem', color: '#666' }}>{totalAccounts} total</div>
       </div>
 
       {institutions.length === 0 ? (
         <div className="empty-state">
           <p>No institutions connected</p>
-          <details style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#666' }}>
-            <summary>Debug: Click to see raw data</summary>
-            <pre style={{ fontSize: '0.7rem', overflow: 'auto', maxHeight: '300px' }}>
-              {JSON.stringify({
-                toolOutput,
-                fullWindow: (window as any).openai
-              }, null, 2)}
-            </pre>
-          </details>
+          <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+            Use "Connect my bank account" to get started
+          </p>
         </div>
       ) : (
         <div className="institutions-list">
-          {institutions.map((institution) => (
-            <div key={institution.itemId} className="institution-card">
-              <div className="institution-header">
-                <div className="institution-name">
-                  {institution.institutionName}
-                  <span className="env-badge">{institution.env}</span>
+          {institutions.map((institution, instIndex) => (
+            <div key={institution.itemId}>
+              {instIndex > 0 && <div style={{ height: '1px', background: '#e0e0e0', margin: '0.75rem 0' }} />}
+
+              <div className="institution-section">
+                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{institution.institutionName}</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>{institution.env}</span>
                 </div>
+
                 {institution.error ? (
-                  <div className="error-badge">⚠️ Error</div>
+                  <div style={{ color: '#d32f2f', fontSize: '0.85rem', padding: '0.5rem 0' }}>
+                    ⚠️ {institution.error}
+                  </div>
                 ) : (
-                  <div className="account-count">{institution.accounts.length} accounts</div>
+                  <table style={{ width: '100%', fontSize: '0.9rem', borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {institution.accounts.map((account, index) => (
+                        <tr key={index} style={{ borderBottom: index < institution.accounts.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                          <td style={{ padding: '0.4rem 0', textAlign: 'left' }}>
+                            {account.name}
+                          </td>
+                          <td style={{ padding: '0.4rem 0', textAlign: 'right', fontWeight: '500' }}>
+                            ${account.balances.current?.toFixed(2) || "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 )}
-              </div>
-
-              {institution.error ? (
-                <div className="institution-error">
-                  <p>{institution.error}</p>
-                </div>
-              ) : (
-                <div className="accounts-list">
-                  {institution.accounts.map((account, index) => (
-                    <div key={index} className="account-row">
-                      <div className="account-info">
-                        <div className="account-name">{account.name}</div>
-                        <div className="account-type">{account.subtype || account.type}</div>
-                      </div>
-                      <div className="account-balance">
-                        ${account.balances.current?.toFixed(2) || "N/A"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="institution-footer">
-                <div className="connected-date">
-                  Connected: {new Date(institution.connectedAt).toLocaleDateString()}
-                </div>
               </div>
             </div>
           ))}
