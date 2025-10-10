@@ -139,82 +139,295 @@ To modify sandbox data:
 
 ### Project Structure
 
-Widgets are organized as a separate workspace from the server code:
+Widgets are built separately and served as static HTTP resources:
 
 ```
 personal-finance-mcp/
 ├── widgets/                      # Widget workspace
 │   ├── package.json             # Widget dependencies and build scripts
 │   ├── tsconfig.json            # TypeScript config for widgets
-│   ├── src/                     # Widget source code
-│   │   ├── connected-institutions.tsx
-│   │   └── connected-institutions.css
-│   └── dist/                    # Build output (gitignored)
+│   └── src/                     # Widget source code (React + TypeScript)
+│       ├── connected-institutions.tsx
+│       └── connected-institutions.css
+├── public/                      # Static files served via Express
+│   └── widgets/                 # Widget build output (committed to git)
 │       ├── connected-institutions.js
 │       └── connected-institutions.css
 ├── src/                         # Server source code
-│   ├── create-server.ts         # Loads widgets from widgets/dist/
+│   ├── create-server.ts         # Widget metadata and resource handlers
 │   └── tools/
+│       └── plaid-connection.ts  # Tool that returns widget data
 └── build/                       # Server build output (gitignored)
 ```
 
-### Development Workflow
+**Key Concepts:**
+- Widgets build to `public/widgets/` and are served as static HTTP files
+- ChatGPT's iframe fetches widget JS/CSS via `<script src="https://...">` tags
+- Server provides widget HTML template via MCP `resources/read` handler
+- Tool responses include `structuredContent` which becomes `window.openai.toolOutput`
 
-**1. Create a new widget:**
-```bash
-cd widgets/src
-# Create your-widget.tsx and your-widget.css
+### Step-by-Step: Adding a New Widget
+
+#### 1. Create Widget Component
+
+Create `widgets/src/your-widget.tsx`:
+
+```typescript
+import React, { useSyncExternalStore } from "react";
+import { createRoot } from "react-dom/client";
+
+// Define your data types
+interface YourWidgetOutput {
+  data: string[];
+  count: number;
+}
+
+// Hook to subscribe to window.openai.toolOutput changes
+function useToolOutput(): YourWidgetOutput | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === "undefined") {
+        return () => {};
+      }
+
+      // ChatGPT fires "openai:set_globals" when toolOutput changes
+      const handleSetGlobals = (event: CustomEvent) => {
+        if (event.detail?.globals?.toolOutput !== undefined) {
+          onChange();
+        }
+      };
+
+      window.addEventListener("openai:set_globals", handleSetGlobals as EventListener);
+      return () => {
+        window.removeEventListener("openai:set_globals", handleSetGlobals as EventListener);
+      };
+    },
+    () => (window as any).openai?.toolOutput ?? null,
+    () => null // Server-side rendering fallback
+  );
+}
+
+function YourWidget() {
+  const toolOutput = useToolOutput();
+
+  // Show loading state while waiting for data
+  if (toolOutput === null) {
+    return <div>Loading...</div>;
+  }
+
+  // Render your widget with the data
+  return (
+    <div>
+      <h3>Your Widget</h3>
+      <p>Count: {toolOutput.count}</p>
+      <ul>
+        {toolOutput.data.map((item, i) => (
+          <li key={i}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Mount component
+const root = document.getElementById("your-widget-root");
+if (root) {
+  createRoot(root).render(<YourWidget />);
+}
 ```
 
-**2. Update widget package.json:**
+#### 2. Update Widget Build Scripts
+
+Edit `widgets/package.json`:
+
 ```json
 {
   "scripts": {
-    "build:your-widget": "esbuild src/your-widget.tsx --bundle --format=esm --outfile=dist/your-widget.js",
+    "build": "esbuild src/connected-institutions.tsx --bundle --format=esm --outfile=../public/widgets/connected-institutions.js",
+    "build:your-widget": "esbuild src/your-widget.tsx --bundle --format=esm --outfile=../public/widgets/your-widget.js",
     "build:all": "npm run build && npm run build:your-widget"
   }
 }
 ```
 
-**3. Register widget in server** (src/create-server.ts):
-```typescript
-// Load widget assets
-const YOUR_WIDGET_JS = readFileSync("widgets/dist/your-widget.js", "utf8");
+#### 3. Register Widget Resource Handler
 
-// Register resource handler
-server.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  if (request.params.uri === "ui://widget/your-widget.html") {
+In `src/create-server.ts`, add widget metadata and resource handler:
+
+```typescript
+// Widget resource definition
+const yourWidgetUri = "ui://widget/your-widget.html";
+const yourWidgetMeta = {
+  "openai/widgetDescription": "Description of what your widget does",
+  "openai/widgetPrefersBorder": true,
+  "openai/widgetCSP": {
+    connect_domains: [],
+    resource_domains: ["https://personal-finance-mcp.vercel.app"]
+  }
+};
+
+// Function to generate widget HTML with external script references
+function getYourWidgetHTML(): string {
+  const baseUrl = getBaseUrl();
+  return `
+<div id="your-widget-root"></div>
+<link rel="stylesheet" href="${baseUrl}/widgets/your-widget.css">
+<script type="module" src="${baseUrl}/widgets/your-widget.js"></script>
+  `.trim();
+}
+
+// Register resource handler (add to existing setRequestHandler)
+server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
+  if (request.params.uri === yourWidgetUri) {
     return {
       contents: [{
-        uri: "ui://widget/your-widget.html",
+        uri: yourWidgetUri,
         mimeType: "text/html+skybridge",
-        text: `<div id="root"></div><script type="module">${YOUR_WIDGET_JS}</script>`
+        text: getYourWidgetHTML(),
+        _meta: yourWidgetMeta
       }]
     };
   }
+
+  // ... other widget handlers
 });
 ```
 
-**4. Build and test:**
-```bash
-npm run build          # Builds widgets and server
-npm start              # Start server
-# Test in ChatGPT
+#### 4. Create Tool That Returns Widget Data
+
+In `src/tools/your-tool.ts`:
+
+```typescript
+export async function yourToolHandler(userId: string) {
+  // Fetch your data
+  const data = ["item1", "item2", "item3"];
+
+  // Return tool response matching OpenAI pattern
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: "Here is your data visualization",
+      },
+    ],
+    structuredContent: {
+      data: data,
+      count: data.length,
+    },
+    _meta: {
+      "openai/outputTemplate": "ui://widget/your-widget.html",
+      "openai/widgetAccessible": true,
+      "openai/resultCanProduceWidget": true
+    }
+  };
+}
 ```
 
-### Widget Best Practices
+**Important:** The `structuredContent` object becomes `window.openai.toolOutput` in your widget.
 
-- **Read data from** `window.openai.toolOutput` (injected by ChatGPT)
-- **Persist state via** `window.openai.setWidgetState()` for user preferences
-- **Trigger actions via** `window.openai.callTool()` for server calls
-- **Support themes** by listening to `window.openai.theme`
-- **Handle layouts** with `window.openai.displayMode` (inline/fullscreen)
+#### 5. Register the Tool
 
-### Build Output
+In `src/create-server.ts`:
 
-- Widget builds go to `widgets/dist/` (gitignored)
-- Server reads from `widgets/dist/` at runtime
-- No file copying needed - single source of truth
+```typescript
+server.tool(
+  "your-tool-name",
+  "Description of what the tool does",
+  {
+    // Zod schema for arguments (can be empty {})
+  },
+  async (_args, { authInfo }) => {
+    const userId = authInfo?.extra?.userId as string;
+    return yourToolHandler(userId);
+  }
+);
+```
+
+#### 6. Build and Deploy
+
+```bash
+npm run build          # Builds widgets to public/widgets/ and server
+git add .
+git commit -m "Add your widget"
+git push               # Vercel auto-deploys
+```
+
+### Widget Data Flow
+
+1. **User calls tool** in ChatGPT: `"Show my data"`
+2. **Tool handler executes**, returns:
+   - `content`: Text response
+   - `structuredContent`: Data object
+   - `_meta`: Widget URI reference
+3. **ChatGPT fetches widget HTML** via `resources/read` request to `ui://widget/your-widget.html`
+4. **Server returns HTML** with `<script src="https://your-server.com/widgets/your-widget.js">`
+5. **ChatGPT renders iframe**, browser fetches JS/CSS via HTTP
+6. **ChatGPT injects data**: Sets `window.openai.toolOutput = structuredContent`
+7. **ChatGPT fires event**: Dispatches `openai:set_globals` event
+8. **Widget re-renders**: `useToolOutput()` hook detects change and updates UI
+
+### Important Settings
+
+**Content Security Policy (CSP):**
+- Must whitelist your domain in `resource_domains` array
+- Use full HTTPS URL: `["https://personal-finance-mcp.vercel.app"]`
+- This allows ChatGPT's iframe to fetch your JS/CSS files
+
+**Tool Invocation Messages:**
+```typescript
+_meta: {
+  "openai/toolInvocation/invoking": "Loading your data...",  // Shown while tool runs
+  "openai/toolInvocation/invoked": "Data loaded",            // Shown when complete
+}
+```
+
+**Widget Loading States:**
+```typescript
+if (toolOutput === null) {
+  return <div>Loading...</div>;  // While waiting for tool response
+}
+
+if (toolOutput.data.length === 0) {
+  return <div>No data available</div>;  // When data is empty
+}
+
+// Render normal UI
+```
+
+### Common Patterns
+
+**Reading tool output:**
+```typescript
+const toolOutput = useToolOutput();  // Reactive hook
+const data = toolOutput?.yourField || defaultValue;
+```
+
+**Handling loading:**
+```typescript
+if (toolOutput === null) return <Loading />;  // ChatGPT shows loading message
+```
+
+**Styling:**
+- Use inline styles or CSS files
+- Keep it simple - ChatGPT provides the container
+- Support light/dark themes if needed (via `window.openai.theme`)
+
+### Troubleshooting
+
+**Widget shows "No data":**
+- Check browser console for `window.openai.toolOutput`
+- Verify `structuredContent` matches your TypeScript interface
+- Ensure event listener is using `openai:set_globals` (not `openai:tool_response`)
+
+**CSS/JS fails to load:**
+- Check CSP `resource_domains` includes your full HTTPS URL
+- Verify files exist at `public/widgets/your-widget.js`
+- Check Express is serving `public/` as static files
+
+**Widget doesn't update:**
+- Ensure using `useSyncExternalStore` hook
+- Check event listener is attached correctly
+- Verify `onChange()` is called when event fires
 
 ## TODO
 

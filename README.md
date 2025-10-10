@@ -4,17 +4,17 @@ Model Context Protocol (MCP) server built with Express.js that provides personal
 
 ## ⚠️ Important Notes
 
-### ChatGPT Integration (Blocked - Known Bug)
+### ChatGPT Integration
 
-**Status:** ChatGPT has a known bug preventing custom MCP tools from appearing in chat.
+**Status:** ✅ Working with interactive widgets!
 
-- **Issue:** Tools are registered and returned correctly by the server, but ChatGPT doesn't display them
-- **Cause:** Known ChatGPT MCP implementation bug (not our server)
-- **Tracking:** https://community.openai.com/t/custom-mcp-connector-no-longer-showing-all-tools-as-enabled/1361121
-- **Workaround:** Server works perfectly with Claude Desktop and MCP Inspector
-- **Status:** Waiting for OpenAI fix (no timeline provided)
+This server now fully supports ChatGPT with:
+- All MCP tools accessible in chat
+- Interactive widget UI for visualizing data
+- OAuth authentication via Clerk
+- Live updates when tool data changes
 
-See [CLAUDE.md](CLAUDE.md) for detailed technical information and verification logs.
+See **ChatGPT Widgets** section below for details on the interactive UI components.
 
 ### Chase Bank Production Access
 If using Plaid production environment to access Chase bank accounts, note that **OAuth institution access can take up to 8 weeks** for approval. Check your application status at: http://dashboard.plaid.com/activity/status/oauth-institutions
@@ -81,6 +81,27 @@ This MCP server provides AI-powered personal finance tools with OAuth authentica
 - **track-subscriptions**: Analyze recurring charges and subscriptions
 
 **Pattern:** Tool → Signed Download URL → AI Analysis with executable scripts users can customize
+
+### 5. ChatGPT Widgets
+
+Interactive UI components that render inside ChatGPT when tools are called.
+
+**Current Widgets:**
+- **Connected Institutions Widget**: Shows connected bank accounts with balances in a compact table format
+
+**How it works:**
+1. User calls `check-connection-status` tool
+2. Server returns data via `structuredContent` field
+3. ChatGPT fetches widget HTML template from server
+4. ChatGPT renders interactive UI with live data
+5. Widget updates reactively when data changes
+
+**See [CLAUDE.md](CLAUDE.md#chatgpt-widget-development)** for complete widget development guide including:
+- Project structure and build process
+- Creating new widgets with React and TypeScript
+- Handling tool data with `window.openai.toolOutput`
+- CSP configuration and deployment
+- Complete working examples
 
 ## Testing
 
