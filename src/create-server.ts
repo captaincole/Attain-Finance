@@ -47,22 +47,6 @@ export const createServer = (plaidClient: PlaidApi) => {
   );
 
 
-  // Load built widget assets from widgets build directory
-  const CONNECTED_INSTITUTIONS_JS = readFileSync(
-    "widgets/dist/connected-institutions.js",
-    "utf8"
-  );
-  const CONNECTED_INSTITUTIONS_CSS = (() => {
-    try {
-      return readFileSync(
-        "widgets/dist/connected-institutions.css",
-        "utf8"
-      );
-    } catch {
-      return "";
-    }
-  })();
-
   // Widget resource definition
   const widgetUri = "ui://widget/connected-institutions.html";
   const widgetMeta = {
@@ -83,11 +67,30 @@ export const createServer = (plaidClient: PlaidApi) => {
     "openai/resultCanProduceWidget": true
   };
 
-  const widgetHTML = `
+  // Lazy-load widget assets (only when requested, not at module load time)
+  // This prevents errors during deployment when widgets/dist/ doesn't exist yet
+  function getWidgetHTML(): string {
+    const CONNECTED_INSTITUTIONS_JS = readFileSync(
+      "widgets/dist/connected-institutions.js",
+      "utf8"
+    );
+    const CONNECTED_INSTITUTIONS_CSS = (() => {
+      try {
+        return readFileSync(
+          "widgets/dist/connected-institutions.css",
+          "utf8"
+        );
+      } catch {
+        return "";
+      }
+    })();
+
+    return `
 <div id="connected-institutions-root"></div>
 ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : ""}
 <script type="module">${CONNECTED_INSTITUTIONS_JS}</script>
-  `.trim();
+    `.trim();
+  }
 
   // Register widget resource handlers (matching OpenAI Pizzaz pattern)
   server.server.setRequestHandler(ListResourcesRequestSchema, async (_request: ListResourcesRequest) => {
@@ -115,7 +118,7 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
         {
           uri: widgetUri,
           mimeType: "text/html+skybridge",
-          text: widgetHTML,
+          text: getWidgetHTML(),
           _meta: widgetMeta
         }
       ]
@@ -190,7 +193,7 @@ ${CONNECTED_INSTITUTIONS_CSS ? `<style>${CONNECTED_INSTITUTIONS_CSS}</style>` : 
       }
 
 
-      return checkConnectionStatusHandler(userId, plaidClient, widgetHTML, widgetUri);
+      return checkConnectionStatusHandler(userId, plaidClient, getWidgetHTML(), widgetUri);
     }
   );
 

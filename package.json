@@ -19,7 +19,8 @@
   "files": [
     "build",
     "public",
-    "src/prompts"
+    "src/prompts",
+    "widgets/dist"
   ],
   "keywords": [
     "mcp",
