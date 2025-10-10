@@ -53,7 +53,7 @@ export const createServer = (plaidClient: PlaidApi) => {
     "openai/widgetPrefersBorder": true,
     "openai/widgetCSP": {
       connect_domains: [],
-      resource_domains: []
+      resource_domains: ["personal-finance-mcp.vercel.app"]
     }
   };
 
