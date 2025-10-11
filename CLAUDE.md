@@ -586,48 +586,16 @@ Switch to the pattern used by OpenAI's Pizzaz example (see `openai-apps-sdk-exam
 - Loses some of the convenience of `server.tool()` abstraction
 - Need to maintain tools list separately from handlers
 
-### Database Migration (Priority)
+### Plaid Webhook Handler (TODO)
 
-**Current State:** All Plaid data stored in-memory Maps (lost on server restart)
-- `pendingConnections: Map<sessionId, PendingConnection>` - OAuth session tracking
-- `userPlaidTokens: Map<userId, PlaidConnection>` - Access tokens & account details
-- `userTransactionData: Map<userId, csvContent>` - Temporary transaction downloads
+**Current State:** No webhook endpoint implemented yet.
 
 **Required:**
-1. Replace in-memory storage with PostgreSQL/Supabase
-2. Encrypt `access_token` at rest (never store plaintext tokens)
-3. Add Row Level Security (RLS) filtering by `userId` from Clerk
-4. Implement token refresh logic for expired Plaid connections
-5. Add webhook endpoint for Plaid item updates (deactivation, errors)
-
-**Schema Outline:**
-```sql
-CREATE TABLE plaid_items (
-  user_id TEXT PRIMARY KEY,
-  access_token_encrypted TEXT NOT NULL,
-  item_id TEXT NOT NULL,
-  connected_at TIMESTAMP DEFAULT NOW(),
-  status TEXT DEFAULT 'active'
-);
-
-CREATE TABLE plaid_accounts (
-  id TEXT PRIMARY KEY,
-  user_id TEXT REFERENCES plaid_items(user_id),
-  account_id TEXT NOT NULL,
-  name TEXT,
-  type TEXT,
-  subtype TEXT,
-  mask TEXT
-);
-
-CREATE TABLE plaid_sessions (
-  session_id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  status TEXT DEFAULT 'pending',
-  created_at TIMESTAMP DEFAULT NOW(),
-  expires_at TIMESTAMP
-);
-```
+1. Implement webhook endpoint for Plaid item updates (deactivation, errors)
+2. Add token refresh logic for expired Plaid connections
+3. Handle item status changes (LOGIN_REQUIRED, PENDING_EXPIRATION, etc.)
+4. Verify webhook signatures for security
+5. Add retry logic for failed webhook processing
 
 ## MVP Features
 
@@ -1428,6 +1396,12 @@ The `userId` from Clerk can be used to:
 
 - `CLERK_PUBLISHABLE_KEY` - Clerk public key (from Clerk Dashboard)
 - `CLERK_SECRET_KEY` - Clerk secret key (from Clerk Dashboard)
+- `SUPABASE_URL` - Supabase project URL (from Supabase Dashboard)
+- `SUPABASE_ANON_KEY` - Supabase anonymous key (from Supabase Dashboard)
+- `ENCRYPTION_KEY` - AES-256 encryption key for Plaid tokens
+  - Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+  - Must be exactly 64-character hex string (32 bytes)
+  - Used to encrypt Plaid access tokens at rest
 - `JWT_SECRET` - Secret for signing download URLs
   - Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
   - Must be 64-character hex string for security
@@ -1556,36 +1530,39 @@ The Plaid integration uses an automated redirect-based flow to eliminate manual 
    - Generates signed download URL
    - Returns curl command to AI
 
-### Storage Architecture (MVP)
+### Storage Architecture
 
-**In-Memory Maps** (replaced by database in production):
+**Database: Supabase (PostgreSQL)** - All persistent data is stored securely in Supabase.
 
-```typescript
-// Temporary session tracking (30 min expiry)
-pendingConnections: Map<sessionId, {
-  userId: string,
-  status: 'pending' | 'completed' | 'failed',
-  createdAt: Date
-}>
+**Plaid Connections** (`plaid_connections` table):
+- `user_id` - Clerk user ID (primary key)
+- `access_token_encrypted` - AES-256-GCM encrypted Plaid access token
+- `item_id` - Plaid item identifier
+- `connected_at` - Timestamp of connection
+- `plaid_env` - Environment (sandbox/development/production)
 
-// Permanent Plaid connections (until server restart)
-userPlaidTokens: Map<userId, {
-  accessToken: string,  // Encrypted in production
-  itemId: string,
-  connectedAt: Date,
-  accounts: Array<{...}>
-}>
+**Plaid Sessions** (`plaid_sessions` table):
+- `session_id` - UUID for Link flow tracking
+- `user_id` - Associated Clerk user
+- `status` - pending/completed/failed
+- `expires_at` - 30-minute expiration
+- Cleaned up automatically after expiration
 
-// Temporary transaction data (deleted after download)
-userTransactionData: Map<userId, csvContent>
-```
+**Encryption**:
+- Access tokens encrypted at rest using AES-256-GCM
+- Encryption key stored in `ENCRYPTION_KEY` environment variable
+- Decryption only happens in-memory during API calls
 
-**Production Migration:**
-- Move to PostgreSQL/Supabase
-- Encrypt `access_token` at rest
-- Add Row Level Security (RLS) by `userId`
-- Implement token refresh logic
-- Add webhook handling for Plaid events
+**In-Memory Cache** (intentional, not persisted):
+- `userTransactionData: Map<userId, csvContent>` - Temporary transaction CSV cache
+- Created when user fetches transactions
+- Deleted immediately after download (privacy-first design)
+- Never persisted to database
+
+**User Isolation**:
+- All queries filtered by `userId` from Clerk OAuth
+- Row Level Security (RLS) policies enforce access control
+- No cross-user data leakage possible
 
 ### Plaid Endpoints
 
@@ -1604,21 +1581,23 @@ userTransactionData: Map<userId, csvContent>
 ### Security Considerations
 
 **Plaid Access Tokens:**
-- Stored in-memory (MVP) - **DO NOT use in production**
-- Must be encrypted at rest in database
-- Should implement token rotation
-- Add item webhook to handle token revocation
+- ✅ Encrypted at rest in Supabase using AES-256-GCM
+- ✅ Never stored in plaintext
+- ✅ Decryption only happens in-memory during API calls
+- TODO: Implement token rotation
+- TODO: Add item webhook to handle token revocation
 
 **Session Management:**
-- Session IDs are UUIDs (cryptographically random)
-- Expire after 30 minutes
-- Single-use (marked as completed after exchange)
-- Automatically cleaned up by interval timer
+- ✅ Session IDs are UUIDs (cryptographically random)
+- ✅ Stored in Supabase with 30-minute expiration
+- ✅ Single-use (marked as completed after exchange)
+- ✅ Automatically cleaned up via database queries
 
 **Data Privacy:**
-- Transaction data temporarily stored for download
-- Deleted immediately after user downloads CSV
-- User isolation enforced via `userId` from Clerk OAuth
+- ✅ Transaction data temporarily cached in-memory only
+- ✅ Deleted immediately after user downloads CSV
+- ✅ User isolation enforced via `userId` from Clerk OAuth
+- ✅ Row Level Security (RLS) policies on all tables
 
 ### Testing Plaid Integration
 

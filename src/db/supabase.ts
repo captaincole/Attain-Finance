@@ -4,6 +4,21 @@ import { Database } from "./database.types.js";
 let supabaseInstance: SupabaseClient<Database> | null = null;
 
 /**
+ * Set a mock Supabase instance for testing
+ * @param mockInstance - Mock Supabase client
+ */
+export function setSupabaseMock(mockInstance: any) {
+  supabaseInstance = mockInstance;
+}
+
+/**
+ * Reset Supabase instance (useful for test cleanup)
+ */
+export function resetSupabase() {
+  supabaseInstance = null;
+}
+
+/**
  * Get or create Supabase client instance (lazy initialization)
  * This ensures environment variables are loaded before client creation
  */
