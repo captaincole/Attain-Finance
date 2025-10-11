@@ -420,19 +420,24 @@ app.get("/api/visualization/:userId", async (req: Request, res: Response) => {
   }
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`MCP Server with Clerk Auth listening on port ${PORT}`);
-});
+// Export app for testing
+export { app };
 
-// Handle server shutdown
-process.on("SIGINT", async () => {
-  console.log("Shutting down server...");
-  try {
-    await server.close();
-    console.log("Server shutdown complete");
-  } catch (error) {
-    console.error("Error closing server:", error);
-  }
-  process.exit(0);
-});
+// Start server (skip in test mode)
+if (process.env.NODE_ENV !== "test") {
+  app.listen(PORT, () => {
+    console.log(`MCP Server with Clerk Auth listening on port ${PORT}`);
+  });
+
+  // Handle server shutdown
+  process.on("SIGINT", async () => {
+    console.log("Shutting down server...");
+    try {
+      await server.close();
+      console.log("Server shutdown complete");
+    } catch (error) {
+      console.error("Error closing server:", error);
+    }
+    process.exit(0);
+  });
+}
