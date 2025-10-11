@@ -1,75 +1,64 @@
 # Test Suite
 
-Automated tests for the Personal Finance MCP Server's analysis tools.
+Integration tests for the Personal Finance MCP Server.
 
 ## Running Tests
 
 ```bash
-# Run all tests
+# Run all integration tests
 npm test
 
-# Run only analysis tests
-npm run test:analysis
+# Run specific test suite
+npm run test:integration
+
+# Run specific test file
+npx tsx --test test/integration/oauth-discovery.test.ts
+npx tsx --test test/integration/plaid-tools.test.ts
 ```
 
 ## Test Files
 
-### Analysis Tests
+### Integration Tests
 
-- **[run-analysis-tests.js](run-analysis-tests.js)** - Test runner for subscription detection
-- **[sample_chase.csv](sample_chase.csv)** - Sample transaction data with known recurring subscriptions
+- **[oauth-discovery.test.ts](integration/oauth-discovery.test.ts)** - OAuth discovery protocol endpoints
+- **[plaid-tools.test.ts](integration/plaid-tools.test.ts)** - Plaid tool handlers with mocked dependencies
 
-### Expected Results
+### Mock Services
 
-The sample Chase CSV contains **10 recurring subscriptions**:
+- **[plaid-mock.ts](mocks/plaid-mock.ts)** - Mock Plaid API client
+- **[supabase-mock.ts](mocks/supabase-mock.ts)** - Mock Supabase database client
 
-| Subscription | Monthly Cost | Occurrences |
-|--------------|-------------|-------------|
-| AUTOMATIC PAYMENT - THANK | $2,078.50 | 3 |
-| Tectra Inc | $500.00 | 3 |
-| KFC | $500.00 | 3 |
-| Madison Bicycle Shop | $500.00 | 3 |
-| SparkFun | $89.40 | 3 |
-| Touchstone Climbing | $78.50 | 3 |
-| McDonald's | $12.00 | 3 |
-| Uber 072515 SF**POOL** | $6.33 | 3 |
-| Uber 063015 SF**POOL** | $5.40 | 3 |
-| Starbucks | $4.33 | 3 |
+## Test Coverage
 
-**Total Monthly**: $3,774.46
-**Annual Projection**: $45,293.52
+### OAuth Discovery Protocol
+- OAuth protected resource metadata endpoints
+- OpenID Connect configuration
+- Unauthenticated request handling (401 responses)
+- CORS preflight requests
 
-## Adding New Tests
+### Plaid Tools
+- Financial institution connection flow
+- Connection status checking
+- Tool handlers work correctly with mocked dependencies
 
-To add a new test case:
+## Adding New Integration Tests
 
-1. Add a new CSV file to the `test/` directory
-2. Add a test case to the `tests` array in [run-analysis-tests.js](run-analysis-tests.js):
+1. Create a new test file in `test/integration/`:
+   ```typescript
+   import { describe, it, before, after } from "node:test";
+   import assert from "node:assert";
 
-```javascript
-{
-  name: 'Test Case Name',
-  file: 'your-test-file.csv',
-  description: 'What this test validates'
-}
-```
+   describe("Your Test Suite", () => {
+     it("should test something", async () => {
+       // Your test code
+       assert(true);
+     });
+   });
+   ```
 
-3. Run `npm test` to verify
+2. Run the test:
+   ```bash
+   npx tsx --test test/integration/your-test.test.ts
+   ```
 
-## CSV Format
-
-Test CSV files must follow this format:
-
-```csv
-date,description,amount,category,account_name,pending
-2025-01-15,"Netflix",15.99,"Entertainment","",false
-2025-02-15,"Netflix",15.99,"Entertainment","",false
-```
-
-Required columns:
-- `date` - Transaction date (YYYY-MM-DD)
-- `description` - Merchant/description
-- `amount` - Transaction amount (positive number)
-- `category` - Category (can be empty)
-- `account_name` - Account identifier (can be empty)
-- `pending` - Boolean flag (true/false)
+3. Add mocks as needed in `test/mocks/`

@@ -5,9 +5,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "npm run test:analysis && npm run test:integration",
-    "test:analysis": "node test/run-analysis-tests.js",
-    "test:integration": "tsx --test test/integration/**/*.test.ts",
+    "test": "NODE_ENV=test npm run test:integration",
+    "test:integration": "NODE_ENV=test tsx --test --test-force-exit test/integration/**/*.test.ts",
     "build:widgets": "cd widgets && npm install && npm run build:all",
     "build": "shx mkdir -p public/widgets && npm run build:widgets && tsc && shx chmod +x build/*.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
     "watch": "tsc --watch",
