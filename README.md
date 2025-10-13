@@ -2,24 +2,11 @@
 
 Model Context Protocol (MCP) server built with Express.js that provides personal finance tools and data.
 
-## ⚠️ Important Notes
-
-### ChatGPT Integration
-
-**Status:** ✅ Working with interactive widgets!
-
-This server now fully supports ChatGPT with:
-- All MCP tools accessible in chat
-- Interactive widget UI for visualizing data
-- OAuth authentication via Clerk
-- Live updates when tool data changes
-
-See **ChatGPT Widgets** section below for details on the interactive UI components.
-
-### Chase Bank Production Access
-If using Plaid production environment to access Chase bank accounts, note that **OAuth institution access can take up to 8 weeks** for approval. Check your application status at: http://dashboard.plaid.com/activity/status/oauth-institutions
-
 ## Getting Started
+
+This readme is written by humans only, and is ment for human consumption. If you want to add documentation for the AI, please use the claude.md or agents.md files that exist.
+
+Welcome to the project :) 
 
 ### Clone and run locally
 
@@ -29,95 +16,61 @@ npm install
 npm run dev
 ```
 
-## Features
+You will also need to create a .env file and get credentials in order to run this application.
 
-This MCP server provides AI-powered personal finance tools with OAuth authentication:
+### Connect to an AI Client
 
-### 1. Plaid Bank Connection
-- **connect-financial-institution**: Initiate secure bank connection via Plaid Link
-- **check-connection-status**: View connected accounts and balances
-- **disconnect-financial-institution**: Remove bank connection
+To connect to a client like claude code, you can add this config to your .mcp.json file in a folder.
 
-### 2. AI-Powered Transaction Categorization
+```json
+  "mcpServers": {
+    "pfinance": {
+       "type":"http",
+       "url": "http://localhost:3000/mcp"
+    }
+  }
+```
 
-**User Experience:**
-1. User requests spending data → System fetches from Plaid and categorizes via Claude API
-2. User receives CSV with custom categories
-3. User customizes: "Put Amazon Prime in Business category"
-4. System updates categorization rules and auto-recategorizes
-5. User gets updated data instantly
+To connect via ChatGPT, you need to expose your dev server using ngrok, or you can use the vercel live url: https://personal-finance-mcp.vercel.app
 
-**Tools:**
-- **get-transactions**: Fetch and categorize transactions (CSV download)
-- **update-categorization-rules**: Customize category assignments with natural language
+The steps are:
 
-**Features:**
-- Parallel batch processing for speed (50 transactions/batch)
-- User-specific rules stored in database
-- 12 default categories: Housing, Transportation, Food & Dining, Shopping, Entertainment, Healthcare, Personal Care, Travel, Business, Income, Transfer, Other
-- No transaction data caching (privacy-first)
+1) Turn on developer mode
+2) Add a new connector, using the url https://personal-finance-mcp.vercel.app
+3) Select Oauth for authentication
 
-### 3. Customizable Data Visualizations
+Then ChatGPT should do the rest.
 
-**User Experience:**
-1. User requests customization: "Show top 15 categories" or "Change bar color to blue"
-2. System uses Claude API to modify bash script
-3. User gets personalized visualization
-4. User can reset to default anytime
+### Testing
 
-**Tools:**
-- **update-visualization**: Customize script with natural language
-- **reset-visualization**: Return to default
+To run the automated tests, simply run
 
-**Features:**
-- Per-user script storage
-- Natural language customization
-- Terminal bar charts with configurable colors, TOP_N, filtering
-- Excludes Income/Transfer/Payment by default
+```bash
+npm test
+```
 
-### 4. Expert Opinions
+We have integration tests that mock the external services of plaid, clerk, and supabase so that we can run against our authenticated endpoints. 
 
-**Tools:**
-- **get-opinion**: Retrieve expert opinion prompts to apply to financial analysis
+## Architecture 
 
-**Features:**
-- Shareable analysis methodologies
-- Expert financial frameworks
-- Applied to existing tool outputs
+The MCP server is what serves the entire application. The entrypoint for this server is src/index.ts which is an express.js server that serves most of our mcp endpoints at /mcp 
 
-### 5. ChatGPT Widgets
+The important routes are threefold, the authentication routes, the tool routes, and the resource routes.
 
-Interactive UI components that render inside ChatGPT when tools are called.
+## Services
 
-**Current Widgets:**
-- **Connected Institutions Widget**: Shows connected bank accounts with balances in a compact table format
+We use three third party services
 
-**How it works:**
-1. User calls `check-connection-status` tool
-2. Server returns data via `structuredContent` field
-3. ChatGPT fetches widget HTML template from server
-4. ChatGPT renders interactive UI with live data
-5. Widget updates reactively when data changes
+1) Plaid - This is our connection to financial data. We have a sandbox user and account that you can connect to as well that is easier to run tests with. 
+2) Clerk - This is used to authenticate our users, and we went with this service specifically because it supports Oauth 2.1 Dynmaic Client Registration which is needed for a simple auth flow
+3) Supabase - We store relatively little user data here but its necessary to manage connection status and simple account information of our users.
 
-**See [CLAUDE.md](CLAUDE.md#chatgpt-widget-development)** for complete widget development guide including:
-- Project structure and build process
-- Creating new widgets with React and TypeScript
-- Handling tool data with `window.openai.toolOutput`
-- CSP configuration and deployment
-- Complete working examples
+## Widgets
 
-## Testing
+OpenAI now supports display widgets for mcp servers, and we have taken advantage of this. After some research the pattern is as follows
 
-You can connect to the server using [MCP Inspector](https://modelcontextprotocol.io/docs/tools/inspector) or any other MCP client.
-Be sure to include the `/mcp` path in the connection URL (e.g., `http://localhost:3000/mcp`).
+1) When you register your server, OpenAI makes a `tools/list` POST to our endpoint
+2) OpenAI expects _meta tags to return a list of widget files as "resources" 
+3) OpenAI then requests those resources so it can cache them on their end
+4) When the user makes a tool call, the tool also returns a _meta object that tells chat which resources to show in collaboration to the response of the tool call.
 
-## API Endpoints
-
-- `POST /mcp`: Handles incoming messages for the MCP protocol
-
-## Development
-
-- `npm run dev` - Start development server with hot reload
-- `npm run build` - Build TypeScript to JavaScript
-- `npm start` - Start production server
-- `npm test` - Run test suite for analysis tools

@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with the Personal Finance MCP Server.
+This file provides guidance to Claude Code when working with the Personal Finance MCP Server. 
+
+Note, the REAMDE.md file should only be edited by a human, and is ment to be read as well by humans. You can suggest edits or improvements, but you should never edit this file.
 
 ## Git Commit Guidelines
 
@@ -9,7 +11,7 @@ This file provides guidance to Claude Code when working with the Personal Financ
 - First line: short summary (50-72 characters)
 - Blank line
 - Body: 3-5 lines maximum explaining what/why
-- Always include Claude Code attribution footer
+- Never include Claude Code attribution footer
 
 **Example:**
 ```
