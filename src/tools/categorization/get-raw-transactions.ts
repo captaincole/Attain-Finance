@@ -153,7 +153,10 @@ Please connect your account first by saying:
   // Convert to CSV format with account names (NO AI categorization)
   const csvContent = convertRawTransactionsToCSV(allTransactions, accountMap);
 
-  // Generate signed download URL for transactions
+  // Store CSV for both download endpoint AND MCP resource
+  userRawTransactionData.set(userId, csvContent);
+
+  // Generate signed download URL as fallback
   const transactionsUrl = generateSignedUrl(
     baseUrl,
     userId,
@@ -161,8 +164,8 @@ Please connect your account first by saying:
     600 // 10 minute expiry
   );
 
-  // Store CSV for download endpoint
-  userRawTransactionData.set(userId, csvContent);
+  // Create a unique CSV resource URI for this user's transaction data
+  const csvResourceUri = `csv://${userId}/raw-transactions.csv`;
 
   let responseText = `📊 **Raw Transaction Data Retrieved**\n\nFound ${allTransactions.length} transactions from ${connections.length} institution(s)\n\n`;
   responseText += `**Date Range:**\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}\n\n`;
@@ -172,7 +175,10 @@ Please connect your account first by saying:
   }
 
   responseText += `**CSV Format:**\n- date, description, amount, plaid_category, account_name, pending, transaction_id\n\n`;
-  responseText += `**Download Instructions:**\n\n\`\`\`bash\ncurl "${transactionsUrl}" -o raw-transactions.csv\n\`\`\`\n\n`;
+
+  // Provide clickable download link (better UX than curl command)
+  responseText += `**Download CSV:**\n[Download raw-transactions.csv](${transactionsUrl})\n\n`;
+
   responseText += `**Note:** Download link expires in 10 minutes.\n\n`;
   responseText += `**Next Steps:**\n- For categorized analysis, use: "Show me my spending breakdown by category"\n- For visualization, use: "Visualize my spending"`;
 
@@ -183,6 +189,10 @@ Please connect your account first by saying:
         text: responseText.trim(),
       },
     ],
+    // Try to reference the CSV as an MCP resource (experimental)
+    _meta: {
+      "mcp/csvResource": csvResourceUri
+    }
   };
 }
 

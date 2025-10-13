@@ -15,6 +15,8 @@ import {
 import { PlaidApi } from "plaid";
 import { registerAllTools } from "./tools/index.js";
 import { CONFIG, getBaseUrl } from "./utils/config.js";
+import { userRawTransactionData } from "./tools/categorization/get-raw-transactions.js";
+import { userTransactionData } from "./tools/categorization/get-transactions.js";
 
 export const createServer = (plaidClient: PlaidApi) => {
   // Create server instance with explicit capabilities
@@ -65,36 +67,95 @@ function registerWidgetResources(server: McpServer) {
   }
 
   // List all available resources
-  server.server.setRequestHandler(ListResourcesRequestSchema, async (_request: ListResourcesRequest) => {
-    return {
-      resources: [
-        {
-          uri: widgetUri,
-          name: CONFIG.widgets.connectedInstitutions.name,
-          description: CONFIG.widgets.connectedInstitutions.description,
-          mimeType: "text/html+skybridge",
-          _meta: widgetMeta
-        }
-      ]
-    };
+  server.server.setRequestHandler(ListResourcesRequestSchema, async (request: ListResourcesRequest) => {
+    const resources: any[] = [
+      {
+        uri: widgetUri,
+        name: CONFIG.widgets.connectedInstitutions.name,
+        description: CONFIG.widgets.connectedInstitutions.description,
+        mimeType: "text/html+skybridge",
+        _meta: widgetMeta
+      }
+    ];
+
+    // Add dynamic CSV resources for users who have transaction data
+    // Try to extract userId from request metadata (if available)
+    const userId = (request.params as any)?._meta?.userId;
+
+    if (userId) {
+      // Check if this user has raw transaction data
+      if (userRawTransactionData.has(userId)) {
+        resources.push({
+          uri: `csv://${userId}/raw-transactions.csv`,
+          name: "Raw Transactions CSV",
+          description: "Your transaction data in CSV format",
+          mimeType: "text/csv"
+        });
+      }
+
+      // Check if this user has categorized transaction data
+      if (userTransactionData.has(userId)) {
+        resources.push({
+          uri: `csv://${userId}/transactions.csv`,
+          name: "Categorized Transactions CSV",
+          description: "Your transaction data with AI categories in CSV format",
+          mimeType: "text/csv"
+        });
+      }
+    }
+
+    return { resources };
   });
 
   // Read a specific resource
   server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
-    if (request.params.uri !== widgetUri) {
-      throw new Error(`Unknown resource: ${request.params.uri}`);
+    const uri = request.params.uri;
+
+    // Handle widget resource
+    if (uri === widgetUri) {
+      return {
+        contents: [
+          {
+            uri: widgetUri,
+            mimeType: "text/html+skybridge",
+            text: getWidgetHTML(),
+            _meta: widgetMeta
+          }
+        ]
+      };
     }
 
-    return {
-      contents: [
-        {
-          uri: widgetUri,
-          mimeType: "text/html+skybridge",
-          text: getWidgetHTML(),
-          _meta: widgetMeta
-        }
-      ]
-    };
+    // Handle dynamic CSV resources
+    if (uri.startsWith("csv://")) {
+      // Extract userId from URI: csv://{userId}/{filename}
+      const uriParts = uri.replace("csv://", "").split("/");
+      const userId = uriParts[0];
+      const filename = uriParts[1];
+
+      let csvData: string | undefined;
+
+      if (filename === "raw-transactions.csv") {
+        csvData = userRawTransactionData.get(userId);
+      } else if (filename === "transactions.csv") {
+        csvData = userTransactionData.get(userId);
+      }
+
+      if (!csvData) {
+        throw new Error(`CSV data not found for resource: ${uri}`);
+      }
+
+      return {
+        contents: [
+          {
+            uri: uri,
+            mimeType: "text/csv",
+            text: csvData
+          }
+        ]
+      };
+    }
+
+    throw new Error(`Unknown resource: ${uri}`);
   });
 
   // List resource templates
