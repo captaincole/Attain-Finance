@@ -153,19 +153,16 @@ Please connect your account first by saying:
   // Convert to CSV format with account names (NO AI categorization)
   const csvContent = convertRawTransactionsToCSV(allTransactions, accountMap);
 
-  // Store CSV for both download endpoint AND MCP resource
+  // Store CSV for download endpoint
   userRawTransactionData.set(userId, csvContent);
 
-  // Generate signed download URL as fallback
+  // Generate signed download URL
   const transactionsUrl = generateSignedUrl(
     baseUrl,
     userId,
     "raw-transactions",
     600 // 10 minute expiry
   );
-
-  // Create a unique CSV resource URI for this user's transaction data
-  const csvResourceUri = `csv://${userId}/raw-transactions.csv`;
 
   let responseText = `📊 **Raw Transaction Data Retrieved**\n\nFound ${allTransactions.length} transactions from ${connections.length} institution(s)\n\n`;
   responseText += `**Date Range:**\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}\n\n`;
@@ -176,7 +173,7 @@ Please connect your account first by saying:
 
   responseText += `**CSV Format:**\n- date, description, amount, plaid_category, account_name, pending, transaction_id\n\n`;
 
-  // Provide clickable download link (better UX than curl command)
+  // Provide clickable download link
   responseText += `**Download CSV:**\n[Download raw-transactions.csv](${transactionsUrl})\n\n`;
 
   responseText += `**Note:** Download link expires in 10 minutes.\n\n`;
@@ -189,10 +186,6 @@ Please connect your account first by saying:
         text: responseText.trim(),
       },
     ],
-    // Try to reference the CSV as an MCP resource (experimental)
-    _meta: {
-      "mcp/csvResource": csvResourceUri
-    }
   };
 }
 
