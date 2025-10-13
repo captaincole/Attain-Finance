@@ -1,7 +1,7 @@
 import { PlaidApi, Products, CountryCode } from "plaid";
 import crypto from "crypto";
-import { getConnections, deleteConnectionByItemId } from "../db/plaid-storage.js";
-import { createSession } from "../db/plaid-sessions.js";
+import { getConnections, deleteConnectionByItemId } from "../../storage/plaid/connections.js";
+import { createSession } from "../../storage/plaid/sessions.js";
 
 /**
  * Connect Financial Institution Tool

@@ -30,6 +30,22 @@ This is a Model Context Protocol (MCP) server built with Express.js and TypeScri
 
 **Authentication**: All MCP endpoints require OAuth authentication via Clerk. Unauthenticated requests return `401 Unauthorized`.
 
+## MCP Protocol Reference
+
+This server implements the [Model Context Protocol specification (2025-06-18)](https://spec.modelcontextprotocol.io/specification/2025-06-18/). For detailed protocol documentation, see:
+
+- **[MCP_PROTOCOL_TRANSPORTS.md](docs/MCP_PROTOCOL_TRANSPORTS.md)** - Streamable HTTP transport specification (how clients connect)
+- **[MCP_PROTOCOL_LIFECYCLE.md](docs/MCP_PROTOCOL_LIFECYCLE.md)** - Connection lifecycle and initialization sequence
+- **[MCP_PROTOCOL_AUTH.md](docs/MCP_PROTOCOL_AUTH.md)** - OAuth 2.0 authentication flow with Clerk
+- **[MCP_PROTOCOL_TOOLS.md](docs/MCP_PROTOCOL_TOOLS.md)** - Tools protocol (`tools/list`, `tools/call`, widget metadata)
+- **[MCP_PROTOCL_RESOURCES.md](docs/MCP_PROTOCL_RESOURCES.md)** - Resources protocol (`resources/list`, `resources/read`)
+
+**Key Protocol Details:**
+- **Transport**: Streamable HTTP with optional SSE streaming (not pure SSE like HTTP+SSE transport)
+- **Message Format**: JSON-RPC 2.0 over HTTP POST
+- **Response Format**: Either `application/json` (single response) or `text/event-stream` (SSE stream)
+- **Widget Support**: OpenAI extensions via `_meta` fields in tool definitions
+
 ## Monitoring Vercel Deployments
 
 Use the Vercel MCP server to check deployment status without leaving Claude Code:
@@ -1162,23 +1178,27 @@ node analyze-subscriptions.js transactions.csv
 
 ### Automated Tests
 
-The project includes automated tests for analysis tools:
+The project includes integration tests for MCP protocol and OAuth flows:
 
 ```bash
-# Run all tests
+# Run all integration tests
 npm test
 
-# Run analysis tests specifically
-npm run test:analysis
+# Run specific test suite
+npm run test:integration
 ```
 
-**Test Coverage:**
-- Subscription detection algorithm
-- CSV parsing and validation
-- Monthly recurring pattern identification
-- Cost calculations and projections
+**Current Test Coverage:**
+- OAuth discovery protocol endpoints
+- Plaid tool handlers with mocked dependencies
+- Authenticated and unauthenticated request handling
 
-See [test/README.md](test/README.md) for details on test data and adding new test cases.
+**Protocol Testing Reference:**
+- See [docs/MCP_PROTOCOL_TOOLS.md](docs/MCP_PROTOCOL_TOOLS.md) for `tools/list` and `tools/call` message formats
+- See [docs/MCP_PROTOCOL_TRANSPORTS.md](docs/MCP_PROTOCOL_TRANSPORTS.md) for Streamable HTTP transport details
+- Response format can be either `application/json` (single message) or `text/event-stream` (SSE stream)
+
+See [test/README.md](test/README.md) for details on test structure and adding new test cases.
 
 ### Testing Production
 

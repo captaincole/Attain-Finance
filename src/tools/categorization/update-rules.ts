@@ -1,5 +1,5 @@
-import { saveCustomRules, getCustomRules } from "../db/categorization-storage.js";
-import { getPlaidTransactionsHandler } from "./plaid-transactions.js";
+import { saveCustomRules, getCustomRules } from "../../storage/categorization/rules.js";
+import { getPlaidTransactionsHandler } from "./get-transactions.js";
 import { PlaidApi } from "plaid";
 
 export interface UpdateCategorizationArgs {

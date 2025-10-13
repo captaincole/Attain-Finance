@@ -1,8 +1,8 @@
 import { PlaidApi } from "plaid";
-import { generateSignedUrl } from "../utils/signed-urls.js";
-import { getConnections } from "../db/plaid-storage.js";
-import { categorizeTransactions, TransactionForCategorization } from "../utils/claude-client.js";
-import { getCustomRules } from "../db/categorization-storage.js";
+import { generateSignedUrl } from "../../utils/signed-urls.js";
+import { getConnections } from "../../storage/plaid/connections.js";
+import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
+import { getCustomRules } from "../../storage/categorization/rules.js";
 
 interface GetTransactionsArgs {
   start_date?: string;

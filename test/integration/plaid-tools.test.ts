@@ -7,11 +7,11 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import { MockSupabaseClient } from "../mocks/supabase-mock.js";
-import { setSupabaseMock, resetSupabase } from "../../src/db/supabase.js";
+import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import {
   connectFinancialInstitutionHandler,
   checkConnectionStatusHandler,
-} from "../../src/tools/plaid-connection.js";
+} from "../../src/tools/plaid/connection.js";
 
 describe("Plaid Tool Integration Tests", () => {
   let mockPlaidClient: any;

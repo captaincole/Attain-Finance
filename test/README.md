@@ -22,11 +22,14 @@ npx tsx --test test/integration/plaid-tools.test.ts
 
 - **[oauth-discovery.test.ts](integration/oauth-discovery.test.ts)** - OAuth discovery protocol endpoints
 - **[plaid-tools.test.ts](integration/plaid-tools.test.ts)** - Plaid tool handlers with mocked dependencies
+- **[mcp-widget-metadata.test.ts](integration/mcp-widget-metadata.test.ts)** - MCP widget protocol (OpenAI extensions)
+- **[mcp-widget-protocol.test.ts](integration/mcp-widget-protocol.test.ts)** - HTTP-based widget tests (skipped, require auth)
 
 ### Mock Services
 
 - **[plaid-mock.ts](mocks/plaid-mock.ts)** - Mock Plaid API client
 - **[supabase-mock.ts](mocks/supabase-mock.ts)** - Mock Supabase database client
+- **[clerk-mock.ts](mocks/clerk-mock.ts)** - Mock Clerk authentication (for future use)
 
 ## Test Coverage
 
@@ -40,6 +43,18 @@ npx tsx --test test/integration/plaid-tools.test.ts
 - Financial institution connection flow
 - Connection status checking
 - Tool handlers work correctly with mocked dependencies
+
+### MCP Widget Protocol (OpenAI Extensions)
+- **tools/list** response includes correct `_meta` fields for widget-enabled tools
+- **resources/list** includes widget resource definition
+- **resources/read** returns widget HTML with external script references
+- Widget metadata includes:
+  - `openai/outputTemplate` - URI pointing to widget resource
+  - `openai/widgetAccessible` - Widget accessibility flag
+  - `openai/resultCanProduceWidget` - Tool capability flag
+  - `openai/toolInvocation/invoking` and `invoked` - Loading state messages
+  - `openai/widgetDescription` - Human-readable widget description
+  - `openai/widgetCSP` - Content Security Policy settings
 
 ## Adding New Integration Tests
 

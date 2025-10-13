@@ -1,6 +1,6 @@
 import crypto from "crypto";
-import { getSupabase } from "./supabase.js";
-import { Tables } from "./database.types.js";
+import { getSupabase } from "../supabase.js";
+import { Tables } from "../database.types.js";
 
 // Encryption configuration
 const ALGORITHM = "aes-256-gcm";

@@ -5,7 +5,7 @@
  * Opinions are text prompts that guide AI analysis using specific methodologies.
  */
 
-import { getSupabase } from "./supabase.js";
+import { getSupabase } from "../supabase.js";
 
 export interface Opinion {
   id: string;

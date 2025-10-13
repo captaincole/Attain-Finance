@@ -1,5 +1,5 @@
-import { getSupabase } from "./supabase.js";
-import { Tables } from "./database.types.js";
+import { getSupabase } from "../supabase.js";
+import { Tables } from "../database.types.js";
 
 /**
  * Database type for plaid_sessions table
