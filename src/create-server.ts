@@ -68,6 +68,8 @@ function registerWidgetResources(server: McpServer) {
 
   // List all available resources
   server.server.setRequestHandler(ListResourcesRequestSchema, async (request: ListResourcesRequest) => {
+    console.log("[RESOURCES/LIST] Request:", JSON.stringify(request.params, null, 2));
+
     const resources: any[] = [
       {
         uri: widgetUri,
@@ -104,16 +106,20 @@ function registerWidgetResources(server: McpServer) {
       }
     }
 
-    return { resources };
+    const result = { resources };
+    console.log("[RESOURCES/LIST] Response:", JSON.stringify({ resourceCount: resources.length, uris: resources.map(r => r.uri) }, null, 2));
+
+    return result;
   });
 
   // Read a specific resource
   server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
     const uri = request.params.uri;
+    console.log("[RESOURCES/READ] Request:", JSON.stringify(request.params, null, 2));
 
     // Handle widget resource
     if (uri === widgetUri) {
-      return {
+      const result = {
         contents: [
           {
             uri: widgetUri,
@@ -123,6 +129,8 @@ function registerWidgetResources(server: McpServer) {
           }
         ]
       };
+      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/html+skybridge", hasText: true, _meta: widgetMeta }, null, 2));
+      return result;
     }
 
     // Handle dynamic CSV resources
@@ -144,7 +152,7 @@ function registerWidgetResources(server: McpServer) {
         throw new Error(`CSV data not found for resource: ${uri}`);
       }
 
-      return {
+      const result = {
         contents: [
           {
             uri: uri,
@@ -153,21 +161,31 @@ function registerWidgetResources(server: McpServer) {
           }
         ]
       };
+      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/csv", textLength: csvData.length }, null, 2));
+      return result;
     }
 
     throw new Error(`Unknown resource: ${uri}`);
   });
 
   // List resource templates
-  server.server.setRequestHandler(ListResourceTemplatesRequestSchema, async (_request: ListResourceTemplatesRequest) => ({
-    resourceTemplates: [
-      {
-        uriTemplate: widgetUri,
-        name: CONFIG.widgets.connectedInstitutions.name,
-        description: CONFIG.widgets.connectedInstitutions.description,
-        mimeType: "text/html+skybridge",
-        _meta: widgetMeta
-      }
-    ]
-  }));
+  server.server.setRequestHandler(ListResourceTemplatesRequestSchema, async (request: ListResourceTemplatesRequest) => {
+    console.log("[RESOURCES/TEMPLATES] Request:", JSON.stringify(request.params, null, 2));
+
+    const result = {
+      resourceTemplates: [
+        {
+          uriTemplate: widgetUri,
+          name: CONFIG.widgets.connectedInstitutions.name,
+          description: CONFIG.widgets.connectedInstitutions.description,
+          mimeType: "text/html+skybridge",
+          _meta: widgetMeta
+        }
+      ]
+    };
+
+    console.log("[RESOURCES/TEMPLATES] Response:", JSON.stringify({ templateCount: result.resourceTemplates.length, uris: result.resourceTemplates.map(t => t.uriTemplate) }, null, 2));
+
+    return result;
+  });
 }

@@ -21,7 +21,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
     ...getOpinionTools(),
   ];
 
-  // Register each tool
+  // Register each tool with logging
   allTools.forEach(({ name, description, inputSchema, options, handler }) => {
     server.tool(
       name,
@@ -29,8 +29,21 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
       inputSchema,
       options,
       async (args: any, context: any) => {
+        console.log(`[TOOL/${name.toUpperCase()}] Called with args:`, JSON.stringify(args, null, 2));
+        console.log(`[TOOL/${name.toUpperCase()}] Context authInfo:`, context.authInfo ? "Present" : "Missing");
+
         // Pass plaidClient only to tools that need it
-        return handler(args, context, plaidClient);
+        const result = await handler(args, context, plaidClient);
+
+        // Log response metadata (but not full content to avoid spam)
+        if (result._meta) {
+          console.log(`[TOOL/${name.toUpperCase()}] Response _meta:`, JSON.stringify(result._meta, null, 2));
+        }
+        if (result.structuredContent) {
+          console.log(`[TOOL/${name.toUpperCase()}] Has structuredContent:`, Object.keys(result.structuredContent));
+        }
+
+        return result;
       }
     );
   });
@@ -52,6 +65,8 @@ function injectWidgetMetadata(server: McpServer) {
     const originalToolsHandler = serverInternal._requestHandlers.get("tools/list");
 
     serverInternal._requestHandlers.set("tools/list", async (request: any) => {
+      console.log("[TOOLS/LIST] Request:", JSON.stringify(request.params, null, 2));
+
       const result = await originalToolsHandler(request);
 
       // Add _meta to get-account-status tool
@@ -70,6 +85,18 @@ function injectWidgetMetadata(server: McpServer) {
         }
         return tool;
       });
+
+      // Log response with _meta details
+      const toolsWithMeta = result.tools.filter((t: any) => t._meta).map((t: any) => ({
+        name: t.name,
+        _meta: t._meta
+      }));
+
+      console.log("[TOOLS/LIST] Response:", JSON.stringify({
+        toolCount: result.tools.length,
+        toolNames: result.tools.map((t: any) => t.name),
+        toolsWithMeta: toolsWithMeta
+      }, null, 2));
 
       return result;
     });
