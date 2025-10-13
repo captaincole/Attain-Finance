@@ -6,9 +6,9 @@
 import { z } from "zod";
 import { PlaidApi } from "plaid";
 import {
-  connectFinancialInstitutionHandler,
-  checkConnectionStatusHandler,
-  disconnectFinancialInstitutionHandler,
+  connectAccountHandler,
+  getAccountStatusHandler,
+  disconnectAccountHandler,
 } from "./connection.js";
 import { getBaseUrl } from "../../utils/config.js";
 
@@ -23,8 +23,8 @@ export interface ToolDefinition {
 export function getPlaidTools(): ToolDefinition[] {
   return [
     {
-      name: "connect-financial-institution",
-      description: "Initiate connection to a financial institution via Plaid. This opens a secure browser flow where the user can authenticate with their bank. Supports sandbox testing with fake bank data.",
+      name: "connect-account",
+      description: "Connect a bank, credit card, or investment account to get started. Opens a secure browser window where the user can safely authenticate with their financial institution.",
       inputSchema: {},
       options: {
         securitySchemes: [{ type: "oauth2" }],
@@ -36,20 +36,20 @@ export function getPlaidTools(): ToolDefinition[] {
         }
 
         const baseUrl = getBaseUrl();
-        return connectFinancialInstitutionHandler(userId, baseUrl, plaidClient!);
+        return connectAccountHandler(userId, baseUrl, plaidClient!);
       },
     },
     {
-      name: "check-connection-status",
-      description: "Check if the user has connected a financial institution and view connected account details. Shows account balances and connection status.",
+      name: "get-account-status",
+      description: "View current account balances and see which accounts are connected. Use this to check balances across all your linked bank accounts, credit cards, and investments.",
       inputSchema: {},
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
         _meta: {
           "openai/outputTemplate": "ui://widget/connected-institutions.html",
-          "openai/toolInvocation/invoking": "Loading your connected institutions...",
-          "openai/toolInvocation/invoked": "Connected institutions loaded",
+          "openai/toolInvocation/invoking": "Loading your account balances...",
+          "openai/toolInvocation/invoked": "Account balances loaded",
           "openai/widgetAccessible": true,
           "openai/resultCanProduceWidget": true,
         },
@@ -60,16 +60,16 @@ export function getPlaidTools(): ToolDefinition[] {
           throw new Error("User authentication required");
         }
 
-        return checkConnectionStatusHandler(userId, plaidClient!);
+        return getAccountStatusHandler(userId, plaidClient!);
       },
     },
     {
-      name: "disconnect-financial-institution",
-      description: "Disconnect a financial institution and invalidate its access token. Requires the Plaid item_id which can be obtained from check-connection-status.",
+      name: "disconnect-account",
+      description: "Remove a connected account and revoke access. This will delete all stored connection data for the specified account.",
       inputSchema: {
         item_id: z
           .string()
-          .describe("The Plaid item_id to disconnect (get from check-connection-status)"),
+          .describe("The account's item_id to disconnect (get this from get-account-status)"),
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],
@@ -80,7 +80,7 @@ export function getPlaidTools(): ToolDefinition[] {
           throw new Error("User authentication required");
         }
 
-        return disconnectFinancialInstitutionHandler(userId, args.item_id, plaidClient!);
+        return disconnectAccountHandler(userId, args.item_id, plaidClient!);
       },
     },
   ];

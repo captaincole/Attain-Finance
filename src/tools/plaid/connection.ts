@@ -2,12 +2,13 @@ import { PlaidApi, Products, CountryCode } from "plaid";
 import crypto from "crypto";
 import { getConnections, deleteConnectionByItemId } from "../../storage/plaid/connections.js";
 import { createSession } from "../../storage/plaid/sessions.js";
+import { getAccountCapabilityHints, formatHintsForChatGPT } from "../../utils/capability-hints.js";
 
 /**
- * Connect Financial Institution Tool
- * Initiates Plaid Link flow for user to connect their bank account
+ * Connect Account Tool
+ * Initiates Plaid Link flow for user to connect their account
  */
-export async function connectFinancialInstitutionHandler(
+export async function connectAccountHandler(
   userId: string,
   baseUrl: string,
   plaidClient: PlaidApi
@@ -46,20 +47,20 @@ export async function connectFinancialInstitutionHandler(
         {
           type: "text" as const,
           text: `
-**Connect Your Bank Account**
+**Connect Your Account**
 
-Click this link to securely connect your bank:
+Click this link to securely connect your account:
 ${linkUrl}
 
-**For Sandbox Testing (Fake Bank Data):**
+**For Sandbox Testing (Demo Data):**
 - Username: \`user_good\`
 - Password: \`pass_good\`
 - 2FA Code (if prompted): \`1234\`
 
 **What happens next:**
-1. You'll see a secure Plaid interface to select your bank
+1. You'll see a secure Plaid interface to select your financial institution
 2. After connecting, the page will confirm success
-3. Return here and say: "Check my connection status"
+3. Return here and say: "Show me my account balances"
 
 **Note:** This link expires in 30 minutes.
           `.trim(),
@@ -79,7 +80,7 @@ ${linkUrl}
         {
           type: "text" as const,
           text: `
-❌ **Error Creating Bank Connection**
+❌ **Error Creating Account Connection**
 
 Failed to generate connection link.
 
@@ -105,10 +106,10 @@ ${errorDetails}
 }
 
 /**
- * Check Connection Status Tool
- * Verifies if user has connected bank accounts
+ * Get Account Status Tool
+ * Shows user's connected accounts and current balances
  */
-export async function checkConnectionStatusHandler(
+export async function getAccountStatusHandler(
   userId: string,
   plaidClient: PlaidApi
 ) {
@@ -121,11 +122,11 @@ export async function checkConnectionStatusHandler(
         {
           type: "text" as const,
           text: `
-❌ **No Banks Connected**
+❌ **No Accounts Connected**
 
-You haven't connected any bank accounts yet.
+You haven't connected any accounts yet.
 
-To connect, say: "Connect my bank account"
+To get started, say: "Connect my account"
           `.trim(),
         },
       ],
@@ -180,7 +181,7 @@ To connect, say: "Connect my bank account"
   // Build response
   const totalAccounts = institutionData.reduce((sum, inst) => sum + inst.accounts.length, 0);
 
-  let responseText = `✓ **Connected Institutions (${connections.length})**\n\n`;
+  let responseText = `✓ **Connected Accounts (${connections.length} institution${connections.length > 1 ? 's' : ''})**\n\n`;
 
   institutionData.forEach((inst, index) => {
     responseText += `**${inst.institutionName}** (${inst.env})\n`;
@@ -201,11 +202,14 @@ To connect, say: "Connect my bank account"
     }
   });
 
-  responseText += `**Total Accounts:** ${totalAccounts}\n\n`;
-  responseText += `**Available Commands:**\n`;
-  responseText += `- "Get my recent transactions"\n`;
-  responseText += `- "Track my subscriptions"\n`;
-  responseText += `- "Connect another bank"`;
+  responseText += `**Total Accounts:** ${totalAccounts}`;
+
+  // Generate context-aware capability hints based on account types
+  const allAccountTypes = institutionData.flatMap(inst =>
+    inst.accounts.map(acc => acc.type)
+  );
+  const capabilityHints = getAccountCapabilityHints(allAccountTypes);
+  responseText += formatHintsForChatGPT(capabilityHints);
 
   // Return tool response matching OpenAI Pizzaz pattern
   // Widget HTML is served separately via resources/read
@@ -229,10 +233,10 @@ To connect, say: "Connect my bank account"
 }
 
 /**
- * Disconnect Financial Institution Tool
+ * Disconnect Account Tool
  * Removes a Plaid connection and invalidates the access token
  */
-export async function disconnectFinancialInstitutionHandler(
+export async function disconnectAccountHandler(
   userId: string,
   itemId: string,
   plaidClient: PlaidApi
@@ -251,9 +255,9 @@ export async function disconnectFinancialInstitutionHandler(
           {
             type: "text" as const,
             text: `
-❌ **No Banks Connected**
+❌ **No Accounts Connected**
 
-You don't have any connected banks to disconnect.
+You don't have any connected accounts to disconnect.
             `.trim(),
           },
         ],
@@ -261,8 +265,8 @@ You don't have any connected banks to disconnect.
     }
 
     // User has connections but specified wrong item ID
-    let responseText = `❌ **Institution Not Found**\n\nItem ID "${itemId}" not found in your connections.\n\n`;
-    responseText += `**Your Connected Institutions:**\n`;
+    let responseText = `❌ **Account Not Found**\n\nItem ID "${itemId}" not found in your connections.\n\n`;
+    responseText += `**Your Connected Accounts:**\n`;
     connections.forEach((conn, index) => {
       responseText += `${index + 1}. ${conn.itemId} (connected ${conn.connectedAt.toLocaleDateString()})\n`;
     });
@@ -308,16 +312,16 @@ You don't have permission to disconnect this institution.
         {
           type: "text" as const,
           text: `
-✓ **Institution Disconnected**
+✓ **Account Disconnected**
 
 Successfully disconnected and invalidated access token for:
 **Item ID:** ${itemId}
 
-Your financial data from this institution has been removed.
+Your financial data from this account has been removed.
 
 **What's next:**
-- Check remaining connections: "Check connection status"
-- Connect another bank: "Connect my bank account"
+- Check remaining connections: "Show my account balances"
+- Connect another account: "Connect my account"
           `.trim(),
         },
       ],
@@ -339,7 +343,7 @@ Removed from our database, but Plaid returned an error:
 ${error.message}
 
 The connection has been removed from our system. If you're still seeing
-this institution in Plaid, you may need to revoke access through their dashboard.
+this account in Plaid, you may need to revoke access through their dashboard.
             `.trim(),
           },
         ],
@@ -352,7 +356,7 @@ this institution in Plaid, you may need to revoke access through their dashboard
             text: `
 ❌ **Disconnect Failed**
 
-Failed to disconnect institution:
+Failed to disconnect account:
 - Plaid error: ${error.message}
 - Database error: ${dbError.message}
 

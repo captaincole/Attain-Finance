@@ -3,6 +3,7 @@ import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { getConnections } from "../../storage/plaid/connections.js";
 import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
 import { getCustomRules } from "../../storage/categorization/rules.js";
+import { getTransactionAnalysisHints, formatHintsForChatGPT } from "../../utils/capability-hints.js";
 
 interface GetTransactionsArgs {
   start_date?: string;
@@ -69,12 +70,12 @@ export async function getPlaidTransactionsHandler(
         {
           type: "text" as const,
           text: `
-⚠️ **No Bank Accounts Connected**
+⚠️ **No Accounts Connected**
 
-Please connect your bank first by saying:
-"Connect my bank account"
+Please connect your account first by saying:
+"Connect my account"
 
-(For testing, this will use Plaid's sandbox with fake data)
+(For testing, this will use Plaid's sandbox with demo data)
           `.trim(),
         },
       ],
@@ -230,8 +231,11 @@ Please connect your bank first by saying:
   }
 
   responseText += `**Download Instructions:**\n\n\`\`\`bash\ncurl "${transactionsUrl}" -o transactions.csv\n\`\`\`\n\n`;
-  responseText += `**Note:** Download link expires in 10 minutes.\n\n`;
-  responseText += `**What you can do next:**\n- Visualize spending: Download and run \`./visualize-spending.sh transactions.csv\`\n- Track subscriptions: "Track my subscriptions"\n- Customize categories: "Put Amazon Prime in Business category"`;
+  responseText += `**Note:** Download link expires in 10 minutes.`;
+
+  // Add capability hints for next steps
+  const capabilityHints = getTransactionAnalysisHints();
+  responseText += formatHintsForChatGPT(capabilityHints);
 
   return {
     content: [

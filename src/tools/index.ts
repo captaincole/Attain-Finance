@@ -54,15 +54,15 @@ function injectWidgetMetadata(server: McpServer) {
     serverInternal._requestHandlers.set("tools/list", async (request: any) => {
       const result = await originalToolsHandler(request);
 
-      // Add _meta to check-connection-status tool
+      // Add _meta to get-account-status tool
       result.tools = result.tools.map((tool: any) => {
-        if (tool.name === "check-connection-status") {
+        if (tool.name === "get-account-status") {
           return {
             ...tool,
             _meta: {
               "openai/outputTemplate": "ui://widget/connected-institutions.html",
-              "openai/toolInvocation/invoking": "Loading your connected institutions...",
-              "openai/toolInvocation/invoked": "Connected institutions loaded",
+              "openai/toolInvocation/invoking": "Loading your account balances...",
+              "openai/toolInvocation/invoked": "Account balances loaded",
               "openai/widgetAccessible": true,
               "openai/resultCanProduceWidget": true
             }

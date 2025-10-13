@@ -59,11 +59,12 @@ The important routes are threefold, the authentication routes, the tool routes, 
 
 ## Services
 
-We use three third party services
+We use three four party services
 
 1) Plaid - This is our connection to financial data. We have a sandbox user and account that you can connect to as well that is easier to run tests with. 
 2) Clerk - This is used to authenticate our users, and we went with this service specifically because it supports Oauth 2.1 Dynmaic Client Registration which is needed for a simple auth flow
 3) Supabase - We store relatively little user data here but its necessary to manage connection status and simple account information of our users.
+4) Vercel - This is where our MCP server is hosted
 
 ## Widgets
 
