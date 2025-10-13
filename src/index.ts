@@ -16,6 +16,7 @@ import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 import { createServer } from "./create-server.js";
 import { verifySignedToken } from "./utils/signed-urls.js";
 import { userTransactionData } from "./tools/categorization/get-transactions.js";
+import { userRawTransactionData } from "./tools/categorization/get-raw-transactions.js";
 import { getVisualization } from "./storage/visualization/scripts.js";
 import { createPlaidRouter } from "./routes/plaid/index.js";
 
@@ -168,6 +169,45 @@ app.get("/api/data/transactions", (req: Request, res: Response) => {
       res.status(500).json({ error: "Error streaming file" });
     }
   });
+});
+
+// Signed URL download endpoint for raw transactions (no categorization)
+app.get("/api/data/raw-transactions", (req: Request, res: Response) => {
+  const token = req.query.token as string;
+
+  if (!token) {
+    return res.status(400).json({ error: "Missing token parameter" });
+  }
+
+  // Verify the signed token
+  const payload = verifySignedToken(token);
+
+  if (!payload) {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+
+  // Validate resource type
+  if (payload.resource !== "raw-transactions") {
+    return res.status(400).json({ error: "Invalid resource type" });
+  }
+
+  const userId = payload.userId;
+
+  // Check if user has raw transaction data
+  const csvData = userRawTransactionData.get(userId);
+  if (!csvData) {
+    return res.status(404).json({ error: "Raw transaction data not found. Please request transactions first." });
+  }
+
+  // Set appropriate headers for CSV download
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", "attachment; filename=raw-transactions.csv");
+
+  // Send CSV data
+  res.send(csvData);
+
+  // Clean up after download
+  userRawTransactionData.delete(userId);
 });
 
 // Download endpoint for user's visualization script
