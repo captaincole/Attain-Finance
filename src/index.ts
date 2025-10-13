@@ -194,8 +194,9 @@ app.get("/api/visualization/:userId", async (req: Request, res: Response) => {
   }
 });
 
-// Export app for testing
+// Export app for Vercel and testing
 export { app };
+export default app;
 
 // Start server (skip in test mode)
 if (process.env.NODE_ENV !== "test") {
