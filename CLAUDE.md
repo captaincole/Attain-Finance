@@ -685,7 +685,7 @@ Layer expert analysis methodologies on top of financial tools. Opinions are shar
 **Example Opinion:**
 ```
 Name: Exclude Large Expenses from Budget
-Tool: visualize-spending
+Tool: get-transactions
 Purpose: Separate recurring monthly spending from one-time large purchases
 
 The opinion teaches AI to:
@@ -724,16 +724,13 @@ Users can customize spending visualizations using natural language or direct scr
 
 **User Experience Flow:**
 
-1. **User visualizes data**: Downloads default visualization script and runs it
-2. **User requests customization**: "Show top 15 categories instead of 10" or "Change bar color to blue"
-3. **System updates script**:
+1. **User requests customization**: "Show top 15 categories instead of 10" or "Change bar color to blue"
+2. **System updates script**:
    - Loads user's current custom script (or default)
    - Calls Claude API to apply requested changes
    - Validates output is valid bash script
    - Saves customized script to user profile
-4. **User downloads updated script**: Gets personalized visualization
-5. **User runs updated visualization**: Sees customized output
-6. **User can reset anytime**: Returns to default visualization
+3. **User can reset anytime**: Returns to default visualization
 
 **Key Features:**
 - Per-user script storage in database
@@ -743,28 +740,8 @@ Users can customize spending visualizations using natural language or direct scr
 - Default excludes: Income, Transfer, Payment categories
 
 **Available Tools:**
-- `visualize-spending` - Download visualization script (default or custom)
 - `update-visualization` - Customize script with natural language
 - `reset-visualization` - Return to default script
-
-### 5. Subscription Tracking
-
-The original demo demonstrates the **Tool → Signed Download URL → AI Analysis** pattern for detecting recurring subscriptions in credit card transactions.
-
-**How It Works:**
-
-1. **User calls tool**: `track-subscriptions` (no arguments required)
-2. **Tool generates signed URLs**:
-   - Creates JWT-signed download URL for user's transaction data (expires in 10 minutes)
-   - Includes userId in JWT payload for user-specific data
-   - Returns curl download commands and analysis instructions
-3. **AI downloads files**:
-   - Downloads `transactions.csv` using signed URL (user-specific, expiring)
-   - Downloads `analyze-subscriptions.js` analysis script (static, public)
-4. **AI analyzes data**:
-   - Runs the JavaScript analysis script locally
-   - Script performs accurate mathematical analysis (no AI calculation errors)
-5. **AI presents results**: Human-readable subscription summary with costs and patterns
 
 ### Key Pattern: Tool + Signed URL Workflow
 
@@ -789,22 +766,50 @@ The original demo demonstrates the **Tool → Signed Download URL → AI Analysi
 
 1. **[src/index.ts](src/index.ts)** - Express server entry point
    - Sets up Express middleware (CORS, JSON parsing, static files)
-   - Configures StreamableHTTPServerTransport for MCP protocol
+   - Configures OAuth routes and Plaid routes
    - Handles `/mcp` POST endpoint for MCP requests
-   - Manages server lifecycle and graceful shutdown
+   - Manages download endpoints for transactions and visualizations
+   - Exports app as default export for Vercel
 
-2. **[src/create-server.ts](src/create-server.ts)** - MCP server and tool definitions
-   - Creates McpServer instance with name and version
-   - Registers MCP resources using `server.resource()` method
-   - Registers MCP tools using `server.tool()` method
-   - Contains tool implementations and business logic
+2. **[src/create-server.ts](src/create-server.ts)** - MCP server factory
+   - Creates McpServer instance with capabilities
+   - Calls tool registry to register all MCP tools
+   - Registers widget resources for ChatGPT integration
+   - Simplified to ~113 lines (was 495 lines before refactor)
 
-3. **[public/](public/)** - Static assets served by Express
-   - [transactions.csv](public/transactions.csv) - Fake credit card transaction dataset (100 rows, 3 months)
-   - [analyze-subscriptions.js](public/analyze-subscriptions.js) - ES module script for subscription detection
+3. **[src/tools/](src/tools/)** - MCP tool definitions (organized by feature)
+   - `index.ts` - Central tool registry with `registerAllTools()`
+   - `plaid/` - Plaid bank connection tools
+   - `categorization/` - AI-powered transaction categorization
+   - `visualization/` - Customizable spending visualizations
+   - `opinions/` - Expert financial analysis methodologies
 
-4. **[src/prompts/](src/prompts/)** - Prompt templates for AI instructions
-   - [analyze-subscriptions.txt](src/prompts/analyze-subscriptions.txt) - Detailed analysis instructions for subscription tracking
+4. **[src/routes/](src/routes/)** - Express route handlers
+   - `plaid/` - Plaid Link UI and callback handlers
+
+5. **[src/storage/](src/storage/)** - Database access layer
+   - `supabase.ts` - Supabase client configuration
+   - `plaid/` - Plaid connections and sessions storage
+   - `categorization/` - User categorization rules
+   - `visualization/` - Custom visualization scripts
+   - `opinions/` - Expert opinion prompts
+
+6. **[src/utils/](src/utils/)** - Shared utilities
+   - `config.ts` - Environment configuration
+   - `signed-urls.ts` - JWT signing/verification
+   - `responses.ts` - Standardized tool response helpers
+   - `errors.ts` - Error handling utilities
+   - `clients/` - External API clients (Claude, Plaid, Visualization)
+
+7. **[public/](public/)** - Static assets served by Express
+   - `analyze-subscriptions.js` - Analysis script
+   - `visualize-spending.sh` - Default visualization script
+   - `widgets/` - Built widget JavaScript and CSS
+
+8. **[src/prompts/](src/prompts/)** - Prompt templates for AI instructions
+   - `analyze-subscriptions.txt` - Subscription tracking analysis
+   - `categorize-transactions.txt` - Transaction categorization instructions
+   - `customize-visualization.txt` - Visualization customization instructions
 
 ### Technology Stack
 
@@ -874,30 +879,84 @@ npm run build            # Compile TS and make build/*.js executable
 npm start                # Run production server
 ```
 
-### Project Structure
+### Project Structure (MCP-First Organization)
 
 ```
 personal-finance-mcp/
 ├── src/
-│   ├── index.ts              # Express server + download endpoints
-│   ├── create-server.ts      # MCP tools and business logic
-│   ├── utils/
-│   │   └── signed-urls.ts    # JWT signing/verification
-│   ├── tools/
-│   │   ├── track-subscriptions.ts  # Subscription tracking tool
-│   │   └── weather.ts        # Weather tools (demo)
-│   ├── resources/
-│   │   └── finance-data.ts   # (Archived - MCP resources removed)
-│   └── prompts/
-│       └── analyze-subscriptions.txt  # AI analysis instructions
-├── public/
-│   ├── transactions.csv      # Sample transaction data
-│   └── analyze-subscriptions.js       # Analysis script (static)
-├── build/                    # Compiled JavaScript (gitignored)
+│   ├── index.ts                    # Express server entry point
+│   ├── create-server.ts            # MCP server factory (113 lines)
+│   │
+│   ├── tools/                      # MCP Tools (1st layer)
+│   │   ├── index.ts               # Tool registry
+│   │   ├── plaid/                 # Plaid feature tools (2nd layer)
+│   │   │   ├── index.ts           # Tool definitions
+│   │   │   └── connection.ts      # Tool handlers
+│   │   ├── categorization/        # Categorization tools
+│   │   │   ├── index.ts
+│   │   │   ├── get-transactions.ts
+│   │   │   └── update-rules.ts
+│   │   ├── visualization/         # Visualization tools
+│   │   │   ├── index.ts
+│   │   │   └── handlers.ts
+│   │   └── opinions/              # Opinion tools
+│   │       └── index.ts
+│   │
+│   ├── resources/                  # MCP Resources (1st layer)
+│   │   └── widgets/               # Widget resources (2nd layer)
+│   │       └── (widget metadata in create-server.ts)
+│   │
+│   ├── prompts/                    # MCP Prompts (1st layer)
+│   │   └── analyze-subscriptions.txt
+│   │
+│   ├── routes/                     # Express routes (separate from MCP)
+│   │   └── plaid/                 # Plaid HTTP routes
+│   │       ├── index.ts           # Router factory
+│   │       ├── link-ui.ts         # Plaid Link UI page
+│   │       └── callback.ts        # Token exchange
+│   │
+│   ├── storage/                    # Database layer (utilities)
+│   │   ├── supabase.ts
+│   │   ├── database.types.ts
+│   │   ├── plaid/                 # Plaid storage
+│   │   │   ├── connections.ts
+│   │   │   └── sessions.ts
+│   │   ├── categorization/
+│   │   │   └── rules.ts
+│   │   ├── visualization/
+│   │   │   └── scripts.ts
+│   │   └── opinions/
+│   │       └── opinions.ts
+│   │
+│   └── utils/                      # Shared utilities
+│       ├── config.ts              # Environment config
+│       ├── signed-urls.ts         # JWT signing
+│       ├── responses.ts           # Response helpers
+│       ├── errors.ts              # Error handling
+│       └── clients/               # External API clients
+│           ├── claude.ts
+│           └── visualization.ts
+│
+├── widgets/                        # Widget workspace (separate build)
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── src/
+│       └── connected-institutions.tsx
+│
+├── public/                         # Static files served by Express
+│   ├── analyze-subscriptions.js
+│   ├── visualize-spending.sh
+│   └── widgets/                   # Built widget files
+│       ├── connected-institutions.js
+│       └── connected-institutions.css
+│
+├── build/                          # Server build output (gitignored)
+├── migrations/                     # Database migrations
+├── test/                          # Integration tests
 ├── package.json
 ├── tsconfig.json
-├── vercel.json              # Vercel deployment config
-└── CLAUDE.md               # This file
+├── vercel.json                    # Vercel deployment config
+└── CLAUDE.md                      # This file
 ```
 
 ## Signed URL Pattern (Recommended)
@@ -942,39 +1001,42 @@ const downloadUrl = generateSignedUrl(
 app.get("/api/data/transactions", (req, res) => {
   const payload = verifySignedToken(req.query.token);
 
-  if (!payload) {
+  if (!payload || payload.resource !== "transactions") {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 
-  // Currently: serve static CSV
-  // Future: query database WHERE user_id = payload.userId
+  const userId = payload.userId;
+
+  // Fetch user-specific transaction data from in-memory cache
+  const csvContent = userTransactionData.get(userId);
+
+  if (!csvContent) {
+    return res.status(404).json({ error: "No transaction data available" });
+  }
 
   res.setHeader("Content-Type", "text/csv");
-  const fileStream = fs.createReadStream(csvPath);
-  fileStream.pipe(res);
+  res.setHeader("Content-Disposition", "attachment; filename=transactions.csv");
+  res.send(csvContent);
+
+  // Delete after download (privacy-first)
+  userTransactionData.delete(userId);
 });
 ```
 
-**3. Tool Response Format** ([src/tools/track-subscriptions.ts](src/tools/track-subscriptions.ts))
+**3. Tool Response Format**
+
+Tools can generate signed URLs for secure file downloads:
 
 ```typescript
-export async function trackSubscriptionsHandler(userId: string, baseUrl: string) {
-  const transactionsUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
-  const scriptUrl = `${baseUrl}/analyze-subscriptions.js`; // Static file
+import { generateSignedUrl } from "./utils/signed-urls.js";
+
+export async function yourToolHandler(userId: string, baseUrl: string) {
+  const downloadUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
 
   return {
     content: [{
       type: "text",
-      text: `
-STEP 1: Download your transaction data (expires in 10 minutes)
-curl "${transactionsUrl}" -o transactions.csv
-
-STEP 2: Download analysis script
-curl "${scriptUrl}" -o analyze-subscriptions.js
-
-STEP 3: Run analysis
-node analyze-subscriptions.js transactions.csv
-`
+      text: `Download your data (expires in 10 minutes):\ncurl "${downloadUrl}" -o data.csv`
     }]
   };
 }
@@ -1044,7 +1106,7 @@ Server: Returns Plaid Link URL
 User: Clicks URL, authenticates with bank, returns to Claude
 ```
 
-**Implementation**: See [src/tools/plaid-connection.ts](src/tools/plaid-connection.ts)
+**Implementation**: See [src/tools/plaid/connection.ts](src/tools/plaid/connection.ts)
 
 ### check-connection-status
 
@@ -1076,7 +1138,7 @@ Available Commands:
 - "Track my subscriptions"
 ```
 
-**Implementation**: See [src/tools/plaid-connection.ts](src/tools/plaid-connection.ts)
+**Implementation**: See [src/tools/plaid/connection.ts](src/tools/plaid/connection.ts)
 
 ### get-transactions
 
@@ -1110,7 +1172,7 @@ date,description,amount,category,account_name,pending,custom_category
 2024-12-14,"Whole Foods",45.23,"Food and Drink, Groceries","",false,"Food & Dining"
 ```
 
-**Implementation**: See [src/tools/plaid-transactions.ts](src/tools/plaid-transactions.ts)
+**Implementation**: See [src/tools/categorization/get-transactions.ts](src/tools/categorization/get-transactions.ts)
 
 ### get-opinion
 
@@ -1143,36 +1205,7 @@ Remove one-time large purchases to see your true recurring monthly budget
 [Full analysis methodology and instructions]
 ```
 
-**Implementation**: See [src/create-server.ts](src/create-server.ts) and [src/db/opinion-storage.ts](src/db/opinion-storage.ts)
-
-### track-subscriptions
-
-Initiates the subscription tracking workflow for the authenticated user.
-
-**Arguments**: None
-
-**Authentication**: Required (OAuth via Clerk)
-
-**Returns**:
-- Signed download URL for user's transaction data (10-minute expiry)
-- Static download URL for analysis script (no expiry)
-- curl commands for downloading files
-- Complete analysis prompt from [src/prompts/analyze-subscriptions.txt](src/prompts/analyze-subscriptions.txt)
-- Instructions for running analysis locally
-
-**Response Format**:
-```
-STEP 1: Download your transaction data (expires in 10 minutes)
-curl "https://personal-finance-mcp.vercel.app/api/data/transactions?token=<jwt>" -o transactions.csv
-
-STEP 2: Download analysis script
-curl "https://personal-finance-mcp.vercel.app/analyze-subscriptions.js" -o analyze-subscriptions.js
-
-STEP 3: Run analysis
-node analyze-subscriptions.js transactions.csv
-```
-
-**Implementation**: See [src/tools/track-subscriptions.ts](src/tools/track-subscriptions.ts)
+**Implementation**: See [src/tools/opinions/index.ts](src/tools/opinions/index.ts) and [src/storage/opinions/opinions.ts](src/storage/opinions/opinions.ts)
 
 ## Testing
 
@@ -1501,7 +1534,7 @@ The `vercel.json` file uses simple rewrites to route all traffic to the Express 
 ```
 
 This works because:
-- Express handles routing internally (`/mcp`, `/transactions.csv`, etc.)
+- Express handles routing internally (`/mcp`, `/api/data/*`, `/plaid/*`, etc.)
 - Stateless serverless function (no sessions)
 - Public files served via Express static middleware
 

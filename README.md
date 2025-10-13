@@ -36,7 +36,6 @@ This MCP server provides AI-powered personal finance tools with OAuth authentica
 ### 1. Plaid Bank Connection
 - **connect-financial-institution**: Initiate secure bank connection via Plaid Link
 - **check-connection-status**: View connected accounts and balances
-- **get-plaid-transactions**: Fetch real transaction data with AI categorization
 - **disconnect-financial-institution**: Remove bank connection
 
 ### 2. AI-Powered Transaction Categorization
@@ -49,6 +48,7 @@ This MCP server provides AI-powered personal finance tools with OAuth authentica
 5. User gets updated data instantly
 
 **Tools:**
+- **get-transactions**: Fetch and categorize transactions (CSV download)
 - **update-categorization-rules**: Customize category assignments with natural language
 
 **Features:**
@@ -60,14 +60,12 @@ This MCP server provides AI-powered personal finance tools with OAuth authentica
 ### 3. Customizable Data Visualizations
 
 **User Experience:**
-1. User downloads default visualization script
-2. User requests customization: "Show top 15 categories" or "Change bar color to blue"
-3. System uses Claude API to modify bash script
-4. User gets personalized visualization
-5. User can reset to default anytime
+1. User requests customization: "Show top 15 categories" or "Change bar color to blue"
+2. System uses Claude API to modify bash script
+3. User gets personalized visualization
+4. User can reset to default anytime
 
 **Tools:**
-- **visualize-spending**: Download visualization script (default or custom)
 - **update-visualization**: Customize script with natural language
 - **reset-visualization**: Return to default
 
@@ -77,10 +75,15 @@ This MCP server provides AI-powered personal finance tools with OAuth authentica
 - Terminal bar charts with configurable colors, TOP_N, filtering
 - Excludes Income/Transfer/Payment by default
 
-### 4. Subscription Tracking
-- **track-subscriptions**: Analyze recurring charges and subscriptions
+### 4. Expert Opinions
 
-**Pattern:** Tool → Signed Download URL → AI Analysis with executable scripts users can customize
+**Tools:**
+- **get-opinion**: Retrieve expert opinion prompts to apply to financial analysis
+
+**Features:**
+- Shareable analysis methodologies
+- Expert financial frameworks
+- Applied to existing tool outputs
 
 ### 5. ChatGPT Widgets
 
