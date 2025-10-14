@@ -222,26 +222,10 @@ Please connect your account first by saying:
     date: tx.date,
     description: tx.name,
     amount: tx.amount,
-    category: tx.category ? tx.category.join(", ") : "",
-    custom_category: categorizedMap?.get(tx.name) || "",
+    category: categorizedMap?.get(tx.name) || "Uncategorized",
     account_name: accountMap.get(tx.account_id) || tx.account_id,
     pending: tx.pending,
   }));
-
-  // Calculate summary statistics
-  const totalSpending = allTransactions
-    .filter((tx) => {
-      const cat = categorizedMap?.get(tx.name) || "";
-      return tx.amount > 0 && !["Income", "Transfer", "Payment"].includes(cat);
-    })
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  const totalIncome = allTransactions
-    .filter((tx) => {
-      const cat = categorizedMap?.get(tx.name) || "";
-      return cat === "Income";
-    })
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
 
   let responseText = `📊 **Transactions Retrieved & Categorized**\n\nFound ${allTransactions.length} transactions from ${connections.length} institution(s)\n\n`;
   responseText += `**Date Range:**\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}\n\n`;
@@ -271,10 +255,10 @@ TRANSACTION DATA ANALYSIS GUIDELINES:
    - Payment: Bill payments and transfers out
 
 2. SPENDING ANALYSIS:
-   - Use custom_category field for categorization
+   - Use category field for categorization (AI-assigned using user's custom rules)
    - Spending transactions typically have positive amounts
    - Income transactions are in the "Income" category
-   - Group by custom_category and sum amounts to get spending by category
+   - Group by category and sum amounts to get spending by category
 
 3. LARGE EXPENSES:
    - Transactions over $200 are typically "large expenses"
@@ -284,8 +268,7 @@ TRANSACTION DATA ANALYSIS GUIDELINES:
    - date: Transaction date (YYYY-MM-DD)
    - description: Merchant or transaction description
    - amount: Transaction amount (positive = spending, negative = income in some systems)
-   - category: Plaid's default category (may be multi-level)
-   - custom_category: AI-assigned category using user's rules
+   - category: AI-assigned category using user's custom categorization rules
    - account_name: Which account the transaction came from
    - pending: Whether transaction is still pending
   `.trim();
@@ -295,7 +278,7 @@ VISUALIZATION RECOMMENDATIONS:
 
 1. SPENDING BY CATEGORY (Bar Chart):
    - Filter out Income, Transfer, and Payment categories
-   - Group remaining transactions by custom_category
+   - Group remaining transactions by category
    - Sum the amounts for each category
    - Sort categories by total amount (highest first)
    - Display as horizontal bar chart with dollar amounts
@@ -326,8 +309,6 @@ VISUALIZATION RECOMMENDATIONS:
     structuredContent: {
       transactions: structuredTransactions,
       summary: {
-        totalSpending,
-        totalIncome,
         transactionCount: allTransactions.length,
         dateRange: {
           start: startDate.toISOString().split("T")[0],
