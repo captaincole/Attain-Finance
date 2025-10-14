@@ -41,37 +41,37 @@ export type Database = {
     Tables: {
       budgets: {
         Row: {
-          id: string
-          user_id: string
-          title: string
-          filter_prompt: string
           budget_amount: number
-          time_period: string
-          custom_period_days: number | null
           created_at: string | null
+          custom_period_days: number | null
+          filter_prompt: string
+          id: string
+          time_period: string
+          title: string
           updated_at: string | null
+          user_id: string
         }
         Insert: {
-          id: string
-          user_id: string
-          title: string
-          filter_prompt: string
           budget_amount: number
-          time_period: string
-          custom_period_days?: number | null
           created_at?: string | null
+          custom_period_days?: number | null
+          filter_prompt: string
+          id: string
+          time_period: string
+          title: string
           updated_at?: string | null
+          user_id: string
         }
         Update: {
-          id?: string
-          user_id?: string
-          title?: string
-          filter_prompt?: string
           budget_amount?: number
-          time_period?: string
-          custom_period_days?: number | null
           created_at?: string | null
+          custom_period_days?: number | null
+          filter_prompt?: string
+          id?: string
+          time_period?: string
+          title?: string
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -90,6 +90,39 @@ export type Database = {
           custom_rules?: string | null
           updated_at?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      opinions: {
+        Row: {
+          author: string
+          author_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          prompt: string
+          tool_name: string
+        }
+        Insert: {
+          author: string
+          author_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id: string
+          name: string
+          prompt: string
+          tool_name: string
+        }
+        Update: {
+          author?: string
+          author_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          prompt?: string
+          tool_name?: string
         }
         Relationships: []
       }
