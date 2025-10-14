@@ -1,10 +1,3 @@
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 /**
  * Transaction data for categorization
  */
@@ -28,11 +21,73 @@ export interface CategorizedTransaction {
 }
 
 /**
- * Load the default categorization prompt template
+ * Default categorization prompt template
  */
-function loadPromptTemplate(): string {
-  const promptPath = path.join(__dirname, "../prompts/categorize-transactions.txt");
-  return fs.readFileSync(promptPath, "utf-8");
+const CATEGORIZATION_PROMPT = `You are analyzing bank transaction data to categorize spending into meaningful categories.
+
+# Task
+Categorize each transaction into ONE of the following categories:
+
+**Core Categories:**
+- Housing (rent, mortgage, utilities, internet, phone)
+- Transportation (gas, uber, public transit, car payments, parking)
+- Food & Dining (groceries, restaurants, coffee, delivery)
+- Shopping (retail, clothing, online purchases, general merchandise)
+- Entertainment (movies, streaming services, games, hobbies)
+- Healthcare (medical, pharmacy, insurance premiums)
+- Personal Care (gym, haircuts, beauty, wellness)
+- Travel (flights, hotels, vacation expenses)
+- Business (office supplies, professional services, business meals)
+- Income (salary/payroll, reimbursements, refunds, money received from others)
+- Transfer (moving money between accounts, credit card payments, Zelle/Venmo transfers between own accounts)
+- Other (anything that doesn't fit above)
+
+# Input Format
+You will receive transaction data as CSV with columns:
+- date: Transaction date (YYYY-MM-DD)
+- description: Merchant or payee name
+- amount: Transaction amount (positive = expense)
+- category: Plaid's auto-generated category (may be inaccurate, use as a hint only)
+- account_name: Bank account name
+- pending: Whether transaction is still pending
+
+# Output Format
+Return ONLY a valid JSON array with one object per transaction:
+
+\`\`\`json
+[
+  {
+    "date": "2024-12-01",
+    "description": "Netflix",
+    "amount": "15.99",
+    "custom_category": "Entertainment"
+  }
+]
+\`\`\`
+
+# Rules
+1. Use the description field as the PRIMARY signal for categorization
+2. Consider transaction amounts (e.g., large amounts might be rent/mortgage)
+3. Look for keywords to identify Income (PAYROLL, SALARY, DES:, reimbursement, refund) and Transfer (DES:EPAY, Transfer, Zelle payment to yourself)
+4. Credit card payments (e.g., "CHASE CREDIT CRD DES:EPAY") should be "Transfer"
+5. Money received from others (Venmo, Zelle, PayPal) should be "Income" if it's actual income, or "Transfer" if moving your own money
+6. Ignore Plaid's category if it seems wrong based on merchant name
+7. Be consistent: same merchant → same category
+8. Return ONLY valid JSON, no explanations or additional text
+9. Preserve original date, description, and amount exactly as provided
+
+# Custom User Rules
+{CUSTOM_RULES}
+
+If custom rules conflict with core categories, ALWAYS prioritize custom rules.
+`;
+
+/**
+ * Get the categorization prompt with custom rules injected
+ */
+function getPromptTemplate(customRules?: string): string {
+  const rulesText = customRules || "No custom rules defined.";
+  return CATEGORIZATION_PROMPT.replace("{CUSTOM_RULES}", rulesText);
 }
 
 /**
@@ -53,10 +108,8 @@ async function categorizeBatch(
     );
   }
 
-  // Load prompt template and inject custom rules
-  const promptTemplate = loadPromptTemplate();
-  const rulesText = customRules || "No custom rules defined.";
-  const systemPrompt = promptTemplate.replace("{CUSTOM_RULES}", rulesText);
+  // Get prompt template with custom rules injected
+  const systemPrompt = getPromptTemplate(customRules);
 
   // Convert transactions to CSV format for Claude
   const csvLines = [
