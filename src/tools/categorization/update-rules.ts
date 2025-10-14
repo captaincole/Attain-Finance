@@ -1,5 +1,6 @@
 import { saveCustomRules, getCustomRules } from "../../storage/categorization/rules.js";
-import { getPlaidTransactionsHandler } from "./get-transactions.js";
+import { findTransactionsByUserId, updateTransactionCategories } from "../../storage/repositories/transactions.js";
+import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
 import { PlaidApi } from "plaid";
 
 export interface UpdateCategorizationArgs {
@@ -9,7 +10,7 @@ export interface UpdateCategorizationArgs {
 /**
  * Update Categorization Rules Tool
  * Allows users to customize how transactions are categorized, then automatically
- * re-fetches and re-categorizes their transaction data with the new rules.
+ * re-categorizes ALL stored transaction data with the new rules.
  */
 export async function updateCategorizationRulesHandler(
   userId: string,
@@ -44,31 +45,68 @@ ${(await getCustomRules(userId)) || "No custom rules set (using defaults)"}
   try {
     // Save the new rules
     await saveCustomRules(userId, rules.trim());
+    console.log(`[UPDATE-RULES] Saved new rules for user ${userId}`);
 
-    // Automatically re-fetch and re-categorize transactions with new rules
-    console.log(`Re-categorizing transactions for user ${userId} with new rules`);
+    // Re-categorize ALL user transactions in database
+    const allTransactions = await findTransactionsByUserId(userId);
 
-    const transactionResult = await getPlaidTransactionsHandler(
-      userId,
-      baseUrl,
-      {}, // Use default date range (last 90 days)
-      plaidClient
+    if (allTransactions.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `
+✅ **Categorization Rules Updated**
+
+**Your New Rules:**
+${rules.trim()}
+
+**No Transactions to Recategorize**
+
+You don't have any transactions yet. Run "Refresh transactions" to sync data from your bank.
+            `.trim(),
+          },
+        ],
+      };
+    }
+
+    console.log(`[UPDATE-RULES] Re-categorizing ${allTransactions.length} transactions`);
+
+    // Prepare for categorization
+    const txsForCategorization: TransactionForCategorization[] =
+      allTransactions.map((tx) => ({
+        date: tx.date,
+        description: tx.name,
+        amount: tx.amount.toString(),
+        category: tx.plaidCategory?.join(", "),
+        account_name: tx.accountName || undefined,
+        pending: tx.pending ? "true" : "false",
+      }));
+
+    // Call Claude API with NEW rules
+    const categorized = await categorizeTransactions(
+      txsForCategorization,
+      rules.trim()
     );
 
-    // Build success message
+    // Update all transactions in database
+    const updates = categorized.map((tx, index) => ({
+      transactionId: allTransactions[index].transactionId,
+      customCategory: tx.custom_category,
+    }));
+
+    await updateTransactionCategories(updates);
+
+    console.log(`[UPDATE-RULES] Re-categorized ${updates.length} transactions`);
+
     let responseText = `✅ **Categorization Rules Updated**\n\n`;
     responseText += `**Your New Rules:**\n${rules.trim()}\n\n`;
-    responseText += `**Auto-Recategorization Complete**\n\n`;
-    responseText += `Your transaction data has been automatically re-categorized with the new rules.\n\n`;
-
-    // Include the transaction download info from the result
-    const txText = transactionResult.content[0]?.text || "";
-    if (txText.includes("Download Instructions")) {
-      const downloadSection = txText.substring(txText.indexOf("**Download Instructions**"));
-      responseText += downloadSection;
-    } else {
-      responseText += txText;
-    }
+    responseText += `**Auto-Recategorization Complete**\n`;
+    responseText += `Re-categorized ${updates.length} transactions with new rules.\n\n`;
+    responseText += `**Next Steps:**\n`;
+    responseText += `- "Get my transactions" - View updated categories\n`;
+    responseText += `- "Check my budgets" - See if budget spending changed\n`;
+    responseText += `- "Refresh transactions" - Get latest data from bank\n`;
 
     return {
       content: [
@@ -79,7 +117,7 @@ ${(await getCustomRules(userId)) || "No custom rules set (using defaults)"}
       ],
     };
   } catch (error: any) {
-    console.error("Error updating categorization rules:", error);
+    console.error("[UPDATE-RULES] Error:", error);
     return {
       content: [
         {

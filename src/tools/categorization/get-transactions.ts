@@ -1,8 +1,7 @@
 import { PlaidApi } from "plaid";
 import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
-import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
-import { getCustomRules } from "../../storage/categorization/rules.js";
+import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
 
 interface GetTransactionsArgs {
   start_date?: string;
@@ -15,36 +14,25 @@ interface GetTransactionsArgs {
 const userTransactionData = new Map<string, string>();
 
 /**
- * Convert Plaid transactions to CSV format (with custom categories)
- * accountMap: Map<account_id, human_readable_name>
- * categorizedTxs: Map<description, custom_category> from Claude API
+ * Convert transactions to CSV format
  */
-function convertTransactionsToCSV(
-  transactions: any[],
-  accountMap: Map<string, string>,
-  categorizedTxs?: Map<string, string>
-): string {
+function convertTransactionsToCSV(transactions: any[]): string {
   const headers = [
     "date",
     "description",
     "amount",
     "category",
-    "custom_category",
     "account_name",
     "pending",
   ];
 
   const rows = transactions.map((tx) => {
-    const accountName = accountMap.get(tx.account_id) || tx.account_id;
-    const customCategory = categorizedTxs?.get(tx.name) || "";
-
     return [
       tx.date,
-      `"${tx.name.replace(/"/g, '""')}"`, // Escape quotes in description
+      `"${tx.description.replace(/"/g, '""')}"`, // Escape quotes in description
       tx.amount,
-      tx.category ? `"${tx.category.join(", ")}"` : '""',
-      `"${customCategory}"`,
-      `"${accountName}"`,
+      `"${tx.category}"`,
+      `"${tx.account_name}"`,
       tx.pending ? "true" : "false",
     ].join(",");
   });
@@ -53,8 +41,8 @@ function convertTransactionsToCSV(
 }
 
 /**
- * Get Plaid Transactions Tool
- * Fetches real transaction data from all connected Plaid accounts
+ * Get Transactions Tool
+ * Fetches transaction data from the database (must call refresh-transactions first)
  */
 export async function getPlaidTransactionsHandler(
   userId: string,
@@ -62,7 +50,7 @@ export async function getPlaidTransactionsHandler(
   args: GetTransactionsArgs,
   plaidClient: PlaidApi
 ) {
-  // Load all connections from database
+  // Check if user has connections
   const connections = await findAccountConnectionsByUserId(userId);
 
   if (connections.length === 0) {
@@ -84,166 +72,63 @@ Please connect your account first by saying:
   }
 
   // Parse dates or use defaults (all transactions: 2 years back)
-  // Note: Plaid typically supports up to 2 years of transaction history
-  const endDate = args.end_date
-    ? new Date(args.end_date)
-    : new Date();
-  const startDate = args.start_date
-    ? new Date(args.start_date)
-    : (() => {
-        const date = new Date();
-        date.setFullYear(date.getFullYear() - 2);
-        return date;
-      })();
+  const endDate = args.end_date || new Date().toISOString().split("T")[0];
+  const startDate = args.start_date || (() => {
+    const date = new Date();
+    date.setFullYear(date.getFullYear() - 2);
+    return date.toISOString().split("T")[0];
+  })();
 
-  // Fetch transactions from all connections and build account name map
-  const allTransactions: any[] = [];
-  const errors: string[] = [];
-  const accountMap = new Map<string, string>(); // account_id -> readable name
+  // Fetch transactions from DATABASE (not Plaid)
+  const transactions = await findTransactionsByUserId(userId, startDate, endDate);
 
-  for (const connection of connections) {
-    try {
-      // Get account details for this connection
-      const accountsResponse = await plaidClient.accountsGet({
-        access_token: connection.accessToken,
-      });
+  console.log(`[GET-TRANSACTIONS] Retrieved ${transactions.length} transactions from database`);
 
-      const institutionName = accountsResponse.data.item.institution_name || "Unknown";
-
-      // Build account name map: "Institution - Account Type (****1234)"
-      for (const account of accountsResponse.data.accounts) {
-        const accountType = account.subtype || account.type || "Account";
-        const mask = account.mask ? `****${account.mask}` : "";
-        const accountLabel = mask
-          ? `${institutionName} - ${accountType} (${mask})`
-          : `${institutionName} - ${accountType}`;
-
-        accountMap.set(account.account_id, accountLabel);
-      }
-
-      // Get transactions
-      const response = await plaidClient.transactionsGet({
-        access_token: connection.accessToken,
-        start_date: startDate.toISOString().split("T")[0],
-        end_date: endDate.toISOString().split("T")[0],
-        options: {
-          count: 500,
-          offset: 0,
-        },
-      });
-
-      allTransactions.push(...response.data.transactions);
-    } catch (error: any) {
-      errors.push(`${connection.itemId}: ${error.message}`);
-    }
-  }
-
-  if (allTransactions.length === 0) {
-    let errorMsg = `📊 **No Transactions Found**\n\nNo transactions found for the period:\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}`;
-
-    if (errors.length > 0) {
-      errorMsg += `\n\n**Errors:**\n${errors.map(e => `- ${e}`).join('\n')}`;
-    }
+  if (transactions.length === 0) {
+    let responseText = `📊 **No Transactions Found**\n\n`;
+    responseText += `No transactions found in database for the period:\n`;
+    responseText += `- Start: ${startDate}\n`;
+    responseText += `- End: ${endDate}\n\n`;
+    responseText += `💡 **Tip:** Run "Refresh transactions" to sync latest data from your bank.`;
 
     return {
       content: [
         {
           type: "text" as const,
-          text: errorMsg.trim(),
+          text: responseText.trim(),
         },
       ],
     };
   }
 
-  // Sort transactions by date (newest first)
-  allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-  // Categorize transactions using Claude API
-  let categorizedMap: Map<string, string> | undefined;
-  let categorizationError: string | null = null;
-
-  try {
-    console.log(`[CATEGORIZATION] Starting categorization for user ${userId}`);
-
-    // Get user's custom categorization rules
-    const customRules = await getCustomRules(userId);
-    console.log(`[CATEGORIZATION] Custom rules: ${customRules ? 'Found' : 'None (using defaults)'}`);
-
-    // Prepare transactions for categorization
-    const txsForCategorization: TransactionForCategorization[] = allTransactions.map((tx) => ({
-      date: tx.date,
-      description: tx.name,
-      amount: tx.amount.toString(),
-      category: tx.category ? tx.category.join(", ") : undefined,
-      account_name: accountMap.get(tx.account_id),
-      pending: tx.pending ? "true" : "false",
-    }));
-
-    console.log(`[CATEGORIZATION] Prepared ${txsForCategorization.length} transactions`);
-    console.log(`[CATEGORIZATION] Sample transaction:`, JSON.stringify(txsForCategorization[0], null, 2));
-
-    // Call Claude API
-    console.log(`[CATEGORIZATION] Calling Claude API...`);
-    const categorized = await categorizeTransactions(txsForCategorization, customRules || undefined);
-    console.log(`[CATEGORIZATION] Received ${categorized.length} categorized transactions`);
-    console.log(`[CATEGORIZATION] Sample categorized:`, JSON.stringify(categorized[0], null, 2));
-
-    // Build map: description -> custom_category
-    categorizedMap = new Map();
-    for (const tx of categorized) {
-      categorizedMap.set(tx.description, tx.custom_category);
-    }
-
-    console.log(`[CATEGORIZATION] ✓ Successfully categorized ${categorized.length} transactions`);
-    console.log(`[CATEGORIZATION] Map size: ${categorizedMap.size} entries`);
-  } catch (error: any) {
-    console.error("[CATEGORIZATION] ERROR:", error);
-    console.error("[CATEGORIZATION] Error stack:", error.stack);
-    categorizationError = error.message;
-    // Continue without categorization
-  }
-
-  // Convert to CSV format with account names and custom categories
-  const csvContent = convertTransactionsToCSV(allTransactions, accountMap, categorizedMap);
-
-  // Generate signed download URL for transactions
-  const transactionsUrl = generateSignedUrl(
-    baseUrl,
-    userId,
-    "transactions",
-    600 // 10 minute expiry
-  );
-
-  // Store CSV for download endpoint
-  userTransactionData.set(userId, csvContent);
-
-  // Build structured transaction data for ChatGPT
-  const structuredTransactions = allTransactions.map((tx) => ({
+  // Convert to structured format
+  const structuredTransactions = transactions.map((tx) => ({
     date: tx.date,
     description: tx.name,
     amount: tx.amount,
-    category: categorizedMap?.get(tx.name) || "Uncategorized",
-    account_name: accountMap.get(tx.account_id) || tx.account_id,
+    category: tx.customCategory || "Uncategorized",
+    account_name: tx.accountName || "",
     pending: tx.pending,
   }));
 
-  let responseText = `📊 **Transactions Retrieved & Categorized**\n\nFound ${allTransactions.length} transactions from ${connections.length} institution(s)\n\n`;
-  responseText += `**Date Range:**\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}\n\n`;
+  // Generate CSV for download
+  const csvContent = convertTransactionsToCSV(structuredTransactions);
+  const downloadUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
+  userTransactionData.set(userId, csvContent);
 
-  // Show categorization status
-  const customRules = await getCustomRules(userId);
-  if (categorizedMap) {
-    responseText += `✅ **AI Categorization:** Successfully categorized using ${customRules ? 'custom' : 'default'} rules\n\n`;
-  } else if (categorizationError) {
-    responseText += `⚠️ **Categorization Warning:** ${categorizationError}\nTransactions returned without custom categories.\n\n`;
-  }
+  // Check if data might be stale
+  const hasUncategorized = transactions.some((tx) => !tx.customCategory);
+  const stalenessWarning = hasUncategorized
+    ? `\n\n⚠️ **Note:** Some transactions are uncategorized. Run "Refresh transactions" to categorize them.`
+    : "";
 
-  if (errors.length > 0) {
-    responseText += `**Warnings:**\n${errors.map(e => `- ${e}`).join('\n')}\n\n`;
-  }
-
-  responseText += `**Raw Data Download:**\n\n\`\`\`bash\ncurl "${transactionsUrl}" -o transactions.csv\n\`\`\`\n\n`;
+  let responseText = `📊 **Transactions Retrieved**\n\n`;
+  responseText += `Found ${transactions.length} transactions from database\n\n`;
+  responseText += `**Date Range:**\n- Start: ${startDate}\n- End: ${endDate}\n\n`;
+  responseText += `**Raw Data Download:**\n\`\`\`bash\ncurl "${downloadUrl}" -o transactions.csv\n\`\`\`\n\n`;
   responseText += `**Note:** Download link expires in 10 minutes.`;
+  responseText += stalenessWarning;
+  responseText += `\n\n💡 **Tip:** Run "Refresh transactions" to get the latest data from your bank.`;
 
   // Data instructions for AI analysis
   const dataInstructions = `
@@ -309,10 +194,10 @@ VISUALIZATION RECOMMENDATIONS:
     structuredContent: {
       transactions: structuredTransactions,
       summary: {
-        transactionCount: allTransactions.length,
+        transactionCount: transactions.length,
         dateRange: {
-          start: startDate.toISOString().split("T")[0],
-          end: endDate.toISOString().split("T")[0],
+          start: startDate,
+          end: endDate,
         },
       },
       dataInstructions,

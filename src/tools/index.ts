@@ -10,6 +10,7 @@ import { getCategorizationTools } from "./categorization/index.js";
 import { getVisualizationTools } from "./visualization/index.js";
 import { getOpinionTools } from "./opinions/index.js";
 import { getBudgetTools } from "./budgets/index.js";
+import { getTransactionTools } from "./transactions/index.js";
 
 /**
  * Register all MCP tools with the server
@@ -21,6 +22,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
     ...getVisualizationTools(),
     ...getOpinionTools(),
     ...getBudgetTools(),
+    ...getTransactionTools(),
   ];
 
   // Register each tool with logging and error handling

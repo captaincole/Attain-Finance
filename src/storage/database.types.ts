@@ -180,6 +180,74 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          transaction_id: string
+          account_id: string
+          item_id: string
+          user_id: string
+          date: string
+          name: string
+          amount: number
+          plaid_category: Json | null
+          pending: boolean
+          custom_category: string | null
+          categorized_at: string | null
+          budget_ids: string[] | null
+          budgets_updated_at: string | null
+          account_name: string | null
+          institution_name: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          transaction_id: string
+          account_id: string
+          item_id: string
+          user_id: string
+          date: string
+          name: string
+          amount: number
+          plaid_category?: Json | null
+          pending?: boolean
+          custom_category?: string | null
+          categorized_at?: string | null
+          budget_ids?: string[] | null
+          budgets_updated_at?: string | null
+          account_name?: string | null
+          institution_name?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          transaction_id?: string
+          account_id?: string
+          item_id?: string
+          user_id?: string
+          date?: string
+          name?: string
+          amount?: number
+          plaid_category?: Json | null
+          pending?: boolean
+          custom_category?: string | null
+          categorized_at?: string | null
+          budget_ids?: string[] | null
+          budgets_updated_at?: string | null
+          account_name?: string | null
+          institution_name?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "plaid_connections"
+            referencedColumns: ["item_id"]
+          }
+        ]
+      }
       user_visualizations: {
         Row: {
           script_content: string

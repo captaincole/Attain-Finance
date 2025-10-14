@@ -5,6 +5,7 @@ import {
   createBudget,
   updateBudget,
 } from "../../storage/budgets/budgets.js";
+import { labelTransactionsForSingleBudget } from "../../utils/budget-labeling.js";
 
 // Input schema for upsert-budget tool
 export const UpsertBudgetArgsSchema = z.object({
@@ -20,7 +21,7 @@ export type UpsertBudgetArgs = z.infer<typeof UpsertBudgetArgsSchema>;
 
 /**
  * Upsert Budget Tool Handler
- * Creates a new budget or updates an existing one
+ * Creates a new budget or updates an existing one, then triggers transaction labeling
  */
 export async function upsertBudgetHandler(
   userId: string,
@@ -52,13 +53,24 @@ export async function upsertBudgetHandler(
         custom_period_days: args.custom_period_days || null,
       });
 
+      console.log(`[UPSERT-BUDGET] Updated budget ${updated.id}, triggering transaction labeling`);
+
+      // Trigger budget labeling for this budget
+      let matchingCount = 0;
+      try {
+        matchingCount = await labelTransactionsForSingleBudget(userId, updated);
+        console.log(`[UPSERT-BUDGET] Labeled ${matchingCount} transactions for updated budget`);
+      } catch (error: any) {
+        console.error(`[UPSERT-BUDGET] Error labeling transactions:`, error.message);
+      }
+
       const now = new Date();
 
       return {
         content: [
           {
             type: "text" as const,
-            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n\nYour budget has been updated!`,
+            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n- Matching Transactions: ${matchingCount}\n\nYour budget has been updated and transactions have been labeled!`,
           },
         ],
         structuredContent: {
@@ -69,7 +81,7 @@ export async function upsertBudgetHandler(
               amount: updated.budget_amount,
               period: updated.time_period,
               customPeriodDays: updated.custom_period_days,
-              spent: 0, // Reset to 0, will be calculated on next get-budgets call
+              spent: 0, // Will be calculated on next get-budgets call
               remaining: updated.budget_amount,
               percentage: 0,
               status: "under" as const,
@@ -77,7 +89,7 @@ export async function upsertBudgetHandler(
                 start: now.toISOString().split("T")[0],
                 end: now.toISOString().split("T")[0],
               },
-              transactionCount: 0,
+              transactionCount: matchingCount,
             },
           ],
         },
@@ -103,17 +115,24 @@ export async function upsertBudgetHandler(
     custom_period_days: args.custom_period_days || null,
   });
 
-  // Calculate date range for the budget period (for display)
+  console.log(`[UPSERT-BUDGET] Created budget ${created.id}, triggering transaction labeling`);
+
+  // Trigger budget labeling for this new budget
+  let matchingCount = 0;
+  try {
+    matchingCount = await labelTransactionsForSingleBudget(userId, created);
+    console.log(`[UPSERT-BUDGET] Labeled ${matchingCount} transactions for new budget`);
+  } catch (error: any) {
+    console.error(`[UPSERT-BUDGET] Error labeling transactions:`, error.message);
+  }
+
   const now = new Date();
-  const periodDisplay = args.custom_period_days
-    ? `${args.custom_period_days} days`
-    : args.time_period;
 
   return {
     content: [
       {
         type: "text" as const,
-        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n\nYour new budget is ready to track spending!`,
+        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n- Matching Transactions: ${matchingCount}\n\nYour new budget is ready to track spending!`,
       },
     ],
     structuredContent: {
@@ -124,7 +143,7 @@ export async function upsertBudgetHandler(
           amount: created.budget_amount,
           period: created.time_period,
           customPeriodDays: created.custom_period_days,
-          spent: 0, // New budget, no spending yet
+          spent: 0, // Will be calculated on next get-budgets call
           remaining: created.budget_amount,
           percentage: 0,
           status: "under" as const,
@@ -132,7 +151,7 @@ export async function upsertBudgetHandler(
             start: now.toISOString().split("T")[0],
             end: now.toISOString().split("T")[0],
           },
-          transactionCount: 0,
+          transactionCount: matchingCount,
         },
       ],
     },
