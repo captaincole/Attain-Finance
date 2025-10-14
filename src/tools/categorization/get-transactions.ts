@@ -261,7 +261,7 @@ TRANSACTION DATA ANALYSIS GUIDELINES:
    - Group by category and sum amounts to get spending by category
 
 3. LARGE EXPENSES:
-   - Transactions over $200 are typically "large expenses"
+   - To find what a large expense is, look at the top 5 purchase in a given month and assume that if their is a price drop off, the purchases larger than that are considered large expenses.
    - Consider separating recurring vs. one-time expenses
 
 4. DATA STRUCTURE:

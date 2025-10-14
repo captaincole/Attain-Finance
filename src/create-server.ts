@@ -44,8 +44,9 @@ export const createServer = (plaidClient: PlaidApi) => {
  * Register widget resources for ChatGPT integration
  */
 function registerWidgetResources(server: McpServer) {
-  const widgetUri = CONFIG.widgets.connectedInstitutions.uri;
-  const widgetMeta = {
+  // Connected Institutions Widget Config
+  const connectedInstitutionsUri = CONFIG.widgets.connectedInstitutions.uri;
+  const connectedInstitutionsMeta = {
     "openai/widgetDescription": CONFIG.widgets.connectedInstitutions.description,
     "openai/widgetPrefersBorder": true,
     "openai/widgetCSP": {
@@ -54,13 +55,33 @@ function registerWidgetResources(server: McpServer) {
     }
   };
 
-  // Generate widget HTML with external script references
-  function getWidgetHTML(): string {
+  // Budget List Widget Config
+  const budgetListUri = CONFIG.widgets.budgetList.uri;
+  const budgetListMeta = {
+    "openai/widgetDescription": CONFIG.widgets.budgetList.description,
+    "openai/widgetPrefersBorder": true,
+    "openai/widgetCSP": {
+      connect_domains: [],
+      resource_domains: [CONFIG.baseUrl]
+    }
+  };
+
+  // Generate Connected Institutions widget HTML
+  function getConnectedInstitutionsHTML(): string {
     const baseUrl = getBaseUrl();
     return `
 <div id="connected-institutions-root"></div>
 <link rel="stylesheet" href="${baseUrl}/widgets/connected-institutions.css">
 <script type="module" src="${baseUrl}/widgets/connected-institutions.js"></script>
+    `.trim();
+  }
+
+  // Generate Budget List widget HTML
+  function getBudgetListHTML(): string {
+    const baseUrl = getBaseUrl();
+    return `
+<div id="budget-list-root"></div>
+<script type="module" src="${baseUrl}/widgets/budget-list.js"></script>
     `.trim();
   }
 
@@ -70,11 +91,18 @@ function registerWidgetResources(server: McpServer) {
 
     const resources: any[] = [
       {
-        uri: widgetUri,
+        uri: connectedInstitutionsUri,
         name: CONFIG.widgets.connectedInstitutions.name,
         description: CONFIG.widgets.connectedInstitutions.description,
         mimeType: "text/html+skybridge",
-        _meta: widgetMeta
+        _meta: connectedInstitutionsMeta
+      },
+      {
+        uri: budgetListUri,
+        name: CONFIG.widgets.budgetList.name,
+        description: CONFIG.widgets.budgetList.description,
+        mimeType: "text/html+skybridge",
+        _meta: budgetListMeta
       }
     ];
 
@@ -89,19 +117,35 @@ function registerWidgetResources(server: McpServer) {
     const uri = request.params.uri;
     console.log("[RESOURCES/READ] Request:", JSON.stringify(request.params, null, 2));
 
-    // Handle widget resource
-    if (uri === widgetUri) {
+    // Handle Connected Institutions widget
+    if (uri === connectedInstitutionsUri) {
       const result = {
         contents: [
           {
-            uri: widgetUri,
+            uri: connectedInstitutionsUri,
             mimeType: "text/html+skybridge",
-            text: getWidgetHTML(),
-            _meta: widgetMeta
+            text: getConnectedInstitutionsHTML(),
+            _meta: connectedInstitutionsMeta
           }
         ]
       };
-      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/html+skybridge", hasText: true, _meta: widgetMeta }, null, 2));
+      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/html+skybridge", hasText: true, _meta: connectedInstitutionsMeta }, null, 2));
+      return result;
+    }
+
+    // Handle Budget List widget
+    if (uri === budgetListUri) {
+      const result = {
+        contents: [
+          {
+            uri: budgetListUri,
+            mimeType: "text/html+skybridge",
+            text: getBudgetListHTML(),
+            _meta: budgetListMeta
+          }
+        ]
+      };
+      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/html+skybridge", hasText: true, _meta: budgetListMeta }, null, 2));
       return result;
     }
 
@@ -115,11 +159,18 @@ function registerWidgetResources(server: McpServer) {
     const result = {
       resourceTemplates: [
         {
-          uriTemplate: widgetUri,
+          uriTemplate: connectedInstitutionsUri,
           name: CONFIG.widgets.connectedInstitutions.name,
           description: CONFIG.widgets.connectedInstitutions.description,
           mimeType: "text/html+skybridge",
-          _meta: widgetMeta
+          _meta: connectedInstitutionsMeta
+        },
+        {
+          uriTemplate: budgetListUri,
+          name: CONFIG.widgets.budgetList.name,
+          description: CONFIG.widgets.budgetList.description,
+          mimeType: "text/html+skybridge",
+          _meta: budgetListMeta
         }
       ]
     };

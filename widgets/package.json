@@ -6,7 +6,8 @@
   "scripts": {
     "build": "esbuild src/connected-institutions.tsx --bundle --format=esm --outfile=../public/widgets/connected-institutions.js",
     "build:css": "esbuild src/connected-institutions.css --bundle --outfile=../public/widgets/connected-institutions.css",
-    "build:all": "npm run build && npm run build:css",
+    "build:budget-list": "esbuild src/budget-list.tsx --bundle --format=esm --outfile=../public/widgets/budget-list.js",
+    "build:all": "npm run build && npm run build:css && npm run build:budget-list",
     "watch": "npm run build -- --watch"
   },
   "devDependencies": {

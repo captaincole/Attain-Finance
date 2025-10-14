@@ -1,4 +1,9 @@
 /**
+ * Claude API model to use for all requests
+ */
+const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+
+/**
  * Transaction data for categorization
  */
 export interface TransactionForCategorization {
@@ -8,6 +13,28 @@ export interface TransactionForCategorization {
   category?: string;
   account_name?: string;
   pending?: string;
+}
+
+/**
+ * Transaction data for budget filtering
+ */
+export interface TransactionForBudgetFilter {
+  id: string; // Unique identifier for the transaction
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  account_name: string;
+  pending: boolean;
+}
+
+/**
+ * Budget filter result from Claude
+ */
+export interface BudgetFilterResult {
+  transaction_id: string;
+  matches: boolean;
+  reason: string;
 }
 
 /**
@@ -137,7 +164,7 @@ async function categorizeBatch(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
+      model: CLAUDE_MODEL,
       max_tokens: 8192, // Increased to handle larger responses
       system: systemPrompt,
       messages: [
@@ -254,4 +281,149 @@ export async function categorizeTransactions(
 
   console.log(`[CATEGORIZATION] ✓ All batches complete: ${allCategorized.length} total categorized`);
   return allCategorized;
+}
+
+/**
+ * Budget filter prompt template
+ */
+const BUDGET_FILTER_PROMPT = `You are analyzing bank transactions to determine which ones match a specific budget filter.
+
+# Task
+For each transaction, determine if it matches the budget filter criteria and provide a brief reason.
+
+# Filter Criteria
+{FILTER_PROMPT}
+
+# Input Format
+You will receive transaction data as JSON with fields:
+- id: Unique transaction identifier
+- date: Transaction date (YYYY-MM-DD)
+- description: Merchant or payee name
+- amount: Transaction amount (number, positive = expense)
+- category: AI-assigned spending category
+- account_name: Bank account name
+- pending: Whether transaction is pending (boolean)
+
+# Output Format
+Return ONLY a valid JSON array with one object per transaction:
+
+\`\`\`json
+[
+  {
+    "transaction_id": "tx-123",
+    "matches": true,
+    "reason": "Coffee shop purchase at Starbucks"
+  },
+  {
+    "transaction_id": "tx-124",
+    "matches": false,
+    "reason": "Grocery store, not a coffee shop"
+  }
+]
+\`\`\`
+
+# Rules
+1. Be specific with your reasons (mention merchant names, amounts, categories)
+2. Use keyword matching on description field as primary signal
+3. Consider category field as secondary signal
+4. Look for patterns in merchant names (e.g., "Starbucks", "Dunkin", "Coffee" for coffee shops)
+5. Return ONLY valid JSON, no explanations or additional text
+6. Include ALL transactions in your response, marking each as matches=true or matches=false
+7. Preserve the transaction_id exactly as provided
+`;
+
+/**
+ * Filter transactions using Claude API based on budget filter prompt
+ * @param transactions - Array of transactions to filter
+ * @param filterPrompt - Natural language filter criteria from budget
+ * @returns Array of filter results indicating which transactions match
+ */
+export async function filterTransactionsForBudget(
+  transactions: TransactionForBudgetFilter[],
+  filterPrompt: string
+): Promise<BudgetFilterResult[]> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      "ANTHROPIC_API_KEY not configured. Add it to your .env file."
+    );
+  }
+
+  // Get system prompt with filter criteria injected
+  const systemPrompt = BUDGET_FILTER_PROMPT.replace(
+    "{FILTER_PROMPT}",
+    filterPrompt
+  );
+
+  // Convert transactions to JSON for Claude
+  const transactionsJSON = JSON.stringify(transactions, null, 2);
+
+  console.log(`[BUDGET_FILTER] Filtering ${transactions.length} transactions`);
+  console.log(`[BUDGET_FILTER] Filter prompt: ${filterPrompt.substring(0, 100)}...`);
+
+  // Call Claude API
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 8192,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: `Filter these transactions:\n\n${transactionsJSON}`,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Claude API error: ${response.status} ${errorText}`);
+  }
+
+  const result = await response.json();
+
+  // Extract JSON from Claude's response
+  const messageContent = result.content?.[0]?.text;
+  if (!messageContent) {
+    throw new Error("No response from Claude API");
+  }
+
+  console.log(`[BUDGET_FILTER] Claude API stop_reason: ${result.stop_reason}`);
+
+  // Parse JSON response
+  let jsonText = messageContent.trim();
+
+  // Remove markdown code blocks if present
+  if (jsonText.startsWith("```json")) {
+    jsonText = jsonText.replace(/^```json\s*\n/, "").replace(/\n```\s*$/, "");
+  } else if (jsonText.startsWith("```")) {
+    jsonText = jsonText.replace(/^```\s*\n/, "").replace(/\n```\s*$/, "");
+  }
+
+  try {
+    const filterResults: BudgetFilterResult[] = JSON.parse(jsonText);
+
+    // Validate structure
+    if (!Array.isArray(filterResults)) {
+      throw new Error("Response is not an array");
+    }
+
+    const matchCount = filterResults.filter((r) => r.matches).length;
+    console.log(
+      `[BUDGET_FILTER] ✓ Filtered ${transactions.length} transactions: ${matchCount} matches, ${transactions.length - matchCount} non-matches`
+    );
+
+    return filterResults;
+  } catch (error) {
+    console.error("Failed to parse Claude filter response:", messageContent);
+    throw new Error(`Failed to parse filter response: ${error}`);
+  }
 }

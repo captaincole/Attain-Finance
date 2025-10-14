@@ -35,6 +35,11 @@ export const CONFIG = {
       uri: "ui://widget/connected-institutions.html",
       name: "Connected Institutions Widget",
       description: "Interactive cards showing connected financial institutions with account balances",
+    },
+    budgetList: {
+      uri: "ui://widget/budget-list.html",
+      name: "Budget List Widget",
+      description: "Interactive budget cards showing spending progress with color-coded status bars",
     }
   }
 };

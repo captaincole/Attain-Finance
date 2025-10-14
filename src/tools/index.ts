@@ -9,6 +9,7 @@ import { getPlaidTools } from "./plaid/index.js";
 import { getCategorizationTools } from "./categorization/index.js";
 import { getVisualizationTools } from "./visualization/index.js";
 import { getOpinionTools } from "./opinions/index.js";
+import { getBudgetTools } from "./budgets/index.js";
 
 /**
  * Register all MCP tools with the server
@@ -19,6 +20,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
     ...getCategorizationTools(),
     ...getVisualizationTools(),
     ...getOpinionTools(),
+    ...getBudgetTools(),
   ];
 
   // Register each tool with logging
@@ -69,7 +71,7 @@ function injectWidgetMetadata(server: McpServer) {
 
       const result = await originalToolsHandler(request);
 
-      // Add _meta to get-account-status tool
+      // Add _meta to widget-enabled tools
       result.tools = result.tools.map((tool: any) => {
         if (tool.name === "get-account-status") {
           return {
@@ -78,6 +80,18 @@ function injectWidgetMetadata(server: McpServer) {
               "openai/outputTemplate": "ui://widget/connected-institutions.html",
               "openai/toolInvocation/invoking": "Loading your account balances...",
               "openai/toolInvocation/invoked": "Account balances loaded",
+              "openai/widgetAccessible": true,
+              "openai/resultCanProduceWidget": true
+            }
+          };
+        }
+        if (tool.name === "get-budgets") {
+          return {
+            ...tool,
+            _meta: {
+              "openai/outputTemplate": "ui://widget/budget-list.html",
+              "openai/toolInvocation/invoking": "Calculating budget status...",
+              "openai/toolInvocation/invoked": "Budget status loaded",
               "openai/widgetAccessible": true,
               "openai/resultCanProduceWidget": true
             }

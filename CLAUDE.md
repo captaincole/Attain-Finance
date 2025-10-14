@@ -1085,6 +1085,87 @@ For non-sensitive files (analysis scripts, templates), serve from `public/` dire
 - No expiration
 - Use for: Analysis scripts, documentation, public templates
 
+## Tool Design Pattern: Structured Data + AI Instructions
+
+Our tools follow a specific pattern designed to maximize flexibility while maintaining AI-powered intelligence:
+
+### Core Philosophy
+
+**Data Retrieval ≠ Data Analysis**
+
+We separate data fetching from visualization/analysis. Tools return raw structured data along with instructions for how to work with it, rather than pre-computed insights.
+
+### Pattern: get-transactions
+
+This is our foundational tool that demonstrates the pattern:
+
+**What it does:**
+1. Fetches raw transaction data from Plaid
+2. Runs AI-powered categorization using Claude API (every time, no caching)
+3. Returns structured JSON with transactions + text instructions
+
+**Response Structure:**
+```typescript
+{
+  content: [{ type: "text", text: "Found X transactions..." }],
+  structuredContent: {
+    transactions: [
+      {
+        date: "2024-12-15",
+        description: "Whole Foods",
+        amount: -45.23,
+        category: "Food & Dining",  // AI-categorized
+        account_name: "Chase Checking",
+        pending: false
+      },
+      // ... all transactions
+    ],
+    summary: {
+      transactionCount: 156,
+      dateRange: { start: "2022-12-15", end: "2024-12-15" }
+    },
+    dataInstructions: "TRANSACTION DATA ANALYSIS GUIDELINES: ...",
+    visualizationInstructions: "VISUALIZATION RECOMMENDATIONS: ..."
+  }
+}
+```
+
+**Key Design Decisions:**
+
+1. **AI Categorization on Every Call**
+   - Runs Claude API categorization every time (no caching)
+   - Uses user's custom categorization rules from database
+   - Ensures categories are always up-to-date with latest rules
+
+2. **Structured Data Over Downloads**
+   - Returns full transaction array in `structuredContent` (supports ~3,000-4,000 transactions in 1MB limit)
+   - CSV download still available via signed URL for backup
+   - ChatGPT can work with data directly without curl commands
+
+3. **Text Instructions as Prompts**
+   - `dataInstructions`: Explains data structure and how to analyze it
+   - `visualizationInstructions`: Suggests visualization approaches
+   - ChatGPT uses these to guide its analysis and rendering
+
+4. **Filter Parameters (Placeholders)**
+   - `start_date`, `end_date`: Currently ignored (returns last 2 years)
+   - `account_filter`, `category_filter`: Accepted but not implemented yet
+   - Allows ChatGPT to express intent even if not yet supported
+
+**Why This Pattern?**
+
+- **Flexibility**: ChatGPT can perform any analysis on raw data
+- **Customization**: User can ask for any view ("remove large expenses", "show top 10 categories")
+- **No Pre-computation**: We don't guess what the user wants to see
+- **AI-Powered**: Categorization intelligence on our backend, analysis intelligence on ChatGPT's side
+- **Scalable**: Works with any transaction volume (up to ~4,000 transactions)
+
+**Future Extensions:**
+
+This pattern allows us to test ChatGPT's native rendering capabilities before deciding if we need specialized visualization tools (e.g., `render-chart`).
+
+---
+
 ## MCP Tools
 
 ### connect-financial-institution
