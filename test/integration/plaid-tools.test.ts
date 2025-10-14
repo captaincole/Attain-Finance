@@ -3,14 +3,14 @@
  * Tests tool handlers directly without full MCP protocol overhead
  */
 
-import { describe, it, before, after } from "node:test";
+import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import { MockSupabaseClient } from "../mocks/supabase-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import {
-  connectFinancialInstitutionHandler,
-  checkConnectionStatusHandler,
+  connectAccountHandler,
+  getAccountStatusHandler,
 } from "../../src/tools/plaid/connection.js";
 
 describe("Plaid Tool Integration Tests", () => {
@@ -28,13 +28,18 @@ describe("Plaid Tool Integration Tests", () => {
     setSupabaseMock(mockSupabase);
   });
 
+  beforeEach(() => {
+    // Clear mock data between tests to prevent state leakage
+    mockSupabase.clear();
+  });
+
   after(() => {
     // Cleanup: reset Supabase
     resetSupabase();
   });
 
-  it("should generate Plaid Link URL for connect-financial-institution", async () => {
-    const result = await connectFinancialInstitutionHandler(
+  it("should generate Plaid Link URL for connect-account", async () => {
+    const result = await connectAccountHandler(
       testUserId,
       testBaseUrl,
       mockPlaidClient
@@ -54,14 +59,14 @@ describe("Plaid Tool Integration Tests", () => {
 
   it("should check connection status after connection", async () => {
     // First, simulate a connection by calling connect
-    await connectFinancialInstitutionHandler(
+    await connectAccountHandler(
       testUserId,
       testBaseUrl,
       mockPlaidClient
     );
 
     // Then check the status
-    const result = await checkConnectionStatusHandler(testUserId, mockPlaidClient);
+    const result = await getAccountStatusHandler(testUserId, mockPlaidClient);
 
     // Verify response structure
     assert(result.content, "Response should have content");

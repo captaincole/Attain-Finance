@@ -5,7 +5,7 @@
  * Tests that tools/call returns structuredContent for widgets
  */
 
-import { describe, it, before, after } from "node:test";
+import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert";
 import request from "supertest";
 
@@ -33,6 +33,11 @@ describe("MCP Widget Protocol (OpenAI Extensions)", () => {
     // Set up Supabase mock
     mockSupabase = new MockSupabaseClient();
     setSupabaseMock(mockSupabase);
+  });
+
+  beforeEach(() => {
+    // Clear mock data between tests to prevent state leakage
+    mockSupabase.clear();
   });
 
   after(() => {

@@ -113,6 +113,10 @@ export async function getBudgetsHandler(
           "Custom coffee budget for next 7 days $100",
         ],
       },
+      _meta: {
+        "openai/outputTemplate": "ui://widget/budget-list.html",
+        "openai/widgetAccessible": true,
+      },
     };
   }
 
