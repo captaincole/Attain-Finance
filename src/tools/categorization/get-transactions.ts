@@ -1,6 +1,6 @@
 import { PlaidApi } from "plaid";
 import { generateSignedUrl } from "../../utils/signed-urls.js";
-import { getConnections } from "../../storage/plaid/connections.js";
+import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
 import { getCustomRules } from "../../storage/categorization/rules.js";
 
@@ -63,7 +63,7 @@ export async function getPlaidTransactionsHandler(
   plaidClient: PlaidApi
 ) {
   // Load all connections from database
-  const connections = await getConnections(userId);
+  const connections = await findAccountConnectionsByUserId(userId);
 
   if (connections.length === 0) {
     return {

@@ -63,10 +63,9 @@ describe("Budget Tool Integration Tests", () => {
   });
 
   it("should return empty budgets list with creation guidance when no budgets exist", async () => {
-    // First, mock a Plaid connection using saveConnection helper
-    // This ensures proper encryption is handled
-    const { saveConnection } = await import("../../src/storage/plaid/connections.js");
-    await saveConnection(testUserId, "access-sandbox-test-token", "test-item-123");
+    // First, mock a Plaid connection
+    const { upsertAccountConnection } = await import("../../src/storage/repositories/account-connections.js");
+    await upsertAccountConnection(testUserId, "access-sandbox-test-token", "test-item-123", "sandbox");
 
     const result = await getBudgetsHandler(
       testUserId,
@@ -140,8 +139,8 @@ describe("Budget Tool Integration Tests", () => {
 
   it("should show budget with spending status when budget exists", async () => {
     // First, set up a Plaid connection
-    const { saveConnection } = await import("../../src/storage/plaid/connections.js");
-    await saveConnection(testUserId, "access-sandbox-test-token", "test-item-123");
+    const { upsertAccountConnection } = await import("../../src/storage/repositories/account-connections.js");
+    await upsertAccountConnection(testUserId, "access-sandbox-test-token", "test-item-123", "sandbox");
 
     // Create a budget
     const budgetArgs = {

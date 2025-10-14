@@ -3,7 +3,7 @@
  * Tools for customizing spending visualizations
  */
 
-import type { ToolDefinition } from "../plaid/index.js";
+import type { ToolDefinition } from "../accounts/index.js";
 
 export function getVisualizationTools(): ToolDefinition[] {
   return [];

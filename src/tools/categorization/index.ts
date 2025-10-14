@@ -9,7 +9,7 @@ import { getPlaidTransactionsHandler } from "./get-transactions.js";
 import { getRawTransactionsHandler } from "./get-raw-transactions.js";
 import { updateCategorizationRulesHandler } from "./update-rules.js";
 import { getBaseUrl } from "../../utils/config.js";
-import type { ToolDefinition } from "../plaid/index.js";
+import type { ToolDefinition } from "../accounts/index.js";
 
 export function getCategorizationTools(): ToolDefinition[] {
   return [

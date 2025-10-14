@@ -1,6 +1,6 @@
 /**
- * Plaid Tools Registry
- * All Plaid-related MCP tools
+ * Account Tools Registry
+ * All account connection management MCP tools
  */
 
 import { z } from "zod";
@@ -9,7 +9,7 @@ import {
   connectAccountHandler,
   getAccountStatusHandler,
   disconnectAccountHandler,
-} from "./connection.js";
+} from "./handlers.js";
 import { getBaseUrl } from "../../utils/config.js";
 
 export interface ToolDefinition {
@@ -20,11 +20,12 @@ export interface ToolDefinition {
   handler: (args: any, context: any, plaidClient?: PlaidApi) => Promise<any>;
 }
 
-export function getPlaidTools(): ToolDefinition[] {
+export function getAccountTools(): ToolDefinition[] {
   return [
     {
       name: "connect-account",
-      description: "Connect a bank, credit card, or investment account to get started. Opens a secure browser window where the user can safely authenticate with their financial institution.",
+      description:
+        "Connect a bank, credit card, or investment account to get started. Opens a secure browser window where the user can safely authenticate with their financial institution.",
       inputSchema: {},
       options: {
         securitySchemes: [{ type: "oauth2" }],
@@ -41,7 +42,8 @@ export function getPlaidTools(): ToolDefinition[] {
     },
     {
       name: "get-account-status",
-      description: "View current account balances and see which accounts are connected. Use this to check balances across all your linked bank accounts, credit cards, and investments.",
+      description:
+        "View current account balances and see which accounts are connected. Use this to check balances across all your linked bank accounts, credit cards, and investments.",
       inputSchema: {},
       options: {
         readOnlyHint: true,
@@ -65,11 +67,14 @@ export function getPlaidTools(): ToolDefinition[] {
     },
     {
       name: "disconnect-account",
-      description: "Remove a connected account and revoke access. This will delete all stored connection data for the specified account.",
+      description:
+        "Remove a connected account and revoke access. This will delete all stored connection data for the specified account.",
       inputSchema: {
         item_id: z
           .string()
-          .describe("The account's item_id to disconnect (get this from get-account-status)"),
+          .describe(
+            "The account's item_id to disconnect (get this from get-account-status)"
+          ),
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],

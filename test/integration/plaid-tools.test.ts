@@ -11,7 +11,7 @@ import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import {
   connectAccountHandler,
   getAccountStatusHandler,
-} from "../../src/tools/plaid/connection.js";
+} from "../../src/tools/accounts/handlers.js";
 
 describe("Plaid Tool Integration Tests", () => {
   let mockPlaidClient: any;

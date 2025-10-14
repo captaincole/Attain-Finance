@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { getOpinionById } from "../../storage/opinions/opinions.js";
-import type { ToolDefinition } from "../plaid/index.js";
+import type { ToolDefinition } from "../accounts/index.js";
 
 export function getOpinionTools(): ToolDefinition[] {
   return [

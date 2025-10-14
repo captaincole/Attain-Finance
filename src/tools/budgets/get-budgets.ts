@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { PlaidApi } from "plaid";
 import { getBudgets, getBudgetById, Budget } from "../../storage/budgets/budgets.js";
-import { getConnections } from "../../storage/plaid/connections.js";
+import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import {
   filterTransactionsForBudget,
   TransactionForBudgetFilter,
@@ -80,7 +80,7 @@ export async function getBudgetsHandler(
     console.log("[GET-BUDGETS-HANDLER] Starting, userId:", userId, "args:", args);
 
     // Check if user has connected accounts
-    const connections = await getConnections(userId);
+    const connections = await findAccountConnectionsByUserId(userId);
     console.log("[GET-BUDGETS-HANDLER] Found", connections.length, "connections");
 
   if (connections.length === 0) {
