@@ -4,11 +4,8 @@
  */
 
 import { PlaidApi } from "plaid";
-import {
-  UpsertBudgetArgsSchema,
-  upsertBudgetHandler,
-} from "./upsert-budget.js";
-import { GetBudgetsArgsSchema, getBudgetsHandler } from "./get-budgets.js";
+import { upsertBudgetHandler } from "./upsert-budget.js";
+import { getBudgetsHandler } from "./get-budgets.js";
 
 export interface ToolDefinition {
   name: string;
@@ -24,7 +21,17 @@ export function getBudgetTools(): ToolDefinition[] {
       name: "get-budgets",
       description:
         "CALL THIS FIRST when user asks about budgets, wants to create a budget, or view budget status. Shows existing budgets with spending progress or provides creation guidance if no budgets exist. Use showTransactions=true to include matching transactions, or false (default) to get just spending totals. Optionally filter by budget_id to get a specific budget. Returns widget visualization showing budget progress bars.",
-      inputSchema: GetBudgetsArgsSchema,
+      inputSchema: {
+        budget_id: {
+          type: "string",
+          description: "Optional: Get specific budget by ID. If omitted, returns all budgets.",
+        },
+        showTransactions: {
+          type: "boolean",
+          description: "Include matching transactions in the response (default: false)",
+          default: false,
+        },
+      },
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
@@ -55,7 +62,33 @@ export function getBudgetTools(): ToolDefinition[] {
       name: "upsert-budget",
       description:
         "Create a new budget or update an existing one after calling get-budgets first. Requires ALL fields: title (display name), filter_prompt (natural language describing which transactions to include, e.g., 'Include coffee shops like Starbucks, Dunkin, and any merchant with coffee in the name'), budget_amount (dollar limit), and time_period (daily/weekly/monthly/custom). If 'id' is provided, updates existing budget; otherwise creates new one.",
-      inputSchema: UpsertBudgetArgsSchema,
+      inputSchema: {
+        id: {
+          type: "string",
+          description: "Optional: Budget ID to update. If omitted or doesn't exist, creates new budget.",
+        },
+        title: {
+          type: "string",
+          description: "Display name for the budget (e.g., 'Coffee Shop Budget')",
+        },
+        filter_prompt: {
+          type: "string",
+          description: "Natural language filter criteria describing which transactions to include",
+        },
+        budget_amount: {
+          type: "number",
+          description: "Dollar amount limit for the budget",
+        },
+        time_period: {
+          type: "string",
+          enum: ["daily", "weekly", "monthly", "custom"],
+          description: "Time period for budget tracking",
+        },
+        custom_period_days: {
+          type: "number",
+          description: "Number of days for custom period (required if time_period is 'custom')",
+        },
+      },
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
