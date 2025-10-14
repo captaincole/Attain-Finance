@@ -37,11 +37,17 @@ export function getBudgetTools(): ToolDefinition[] {
         },
       },
       handler: async (args, { authInfo }, plaidClient) => {
+        console.log("[GET-BUDGETS] Handler called with args:", args);
+        console.log("[GET-BUDGETS] authInfo present:", !!authInfo);
+        console.log("[GET-BUDGETS] plaidClient present:", !!plaidClient);
+
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
+          console.error("[GET-BUDGETS] No userId found in authInfo");
           throw new Error("User authentication required");
         }
 
+        console.log("[GET-BUDGETS] Calling getBudgetsHandler for user:", userId);
         return getBudgetsHandler(userId, args, plaidClient!);
       },
     },
