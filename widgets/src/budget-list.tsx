@@ -61,7 +61,7 @@ function BudgetListWidget() {
   // While waiting for data, show loading state
   if (toolOutput === null) {
     return (
-      <div className="budget-list-widget">
+      <div className="budget-list-widget" style={{ padding: "1rem" }}>
         <div
           className="loading-state"
           style={{ padding: "2rem", textAlign: "center", color: "#666" }}
@@ -75,7 +75,7 @@ function BudgetListWidget() {
   const budgets = toolOutput.budgets || [];
 
   return (
-    <div className="budget-list-widget">
+    <div className="budget-list-widget" style={{ padding: "1rem" }}>
       {budgets.length === 0 ? (
         <div className="empty-state">
           <p style={{ color: "#666", textAlign: "center", padding: "1rem" }}>
