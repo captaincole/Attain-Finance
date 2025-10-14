@@ -76,8 +76,12 @@ export async function getBudgetsHandler(
   args: GetBudgetsArgs,
   plaidClient: PlaidApi
 ) {
-  // Check if user has connected accounts
-  const connections = await getConnections(userId);
+  try {
+    console.log("[GET-BUDGETS-HANDLER] Starting, userId:", userId, "args:", args);
+
+    // Check if user has connected accounts
+    const connections = await getConnections(userId);
+    console.log("[GET-BUDGETS-HANDLER] Found", connections.length, "connections");
 
   if (connections.length === 0) {
     return {
@@ -303,6 +307,20 @@ export async function getBudgetsHandler(
       "openai/resultCanProduceWidget": true,
     },
   };
+  } catch (error: any) {
+    console.error("[GET-BUDGETS-HANDLER] Caught error:", error);
+    console.error("[GET-BUDGETS-HANDLER] Error stack:", error.stack);
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `❌ **Error**\n\n${error.message}\n\n\`\`\`\n${error.stack}\n\`\`\``,
+        },
+      ],
+      isError: true,
+    };
+  }
 }
 
 /**
