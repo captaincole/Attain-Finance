@@ -21,26 +21,9 @@ export interface ToolDefinition {
 export function getBudgetTools(): ToolDefinition[] {
   return [
     {
-      name: "upsert-budget",
-      description:
-        "Create a new budget or update an existing one. If 'id' is provided and exists, the budget will be updated. If 'id' is omitted or doesn't exist, a new budget is created. Use natural language for filter_prompt to describe which transactions to include (e.g., 'Include coffee shops like Starbucks, Dunkin, and any merchant with coffee in the name').",
-      inputSchema: UpsertBudgetArgsSchema,
-      options: {
-        securitySchemes: [{ type: "oauth2" }],
-      },
-      handler: async (args, { authInfo }) => {
-        const userId = authInfo?.extra?.userId as string | undefined;
-        if (!userId) {
-          throw new Error("User authentication required");
-        }
-
-        return upsertBudgetHandler(userId, args);
-      },
-    },
-    {
       name: "get-budgets",
       description:
-        "Get user's budgets with current spending status. Use showTransactions=true to include matching transactions, or false (default) to get just spending totals. Optionally filter by budget_id to get a specific budget. Returns widget visualization showing budget progress bars.",
+        "CALL THIS FIRST when user asks about budgets, wants to create a budget, or view budget status. Shows existing budgets with spending progress or provides creation guidance if no budgets exist. Use showTransactions=true to include matching transactions, or false (default) to get just spending totals. Optionally filter by budget_id to get a specific budget. Returns widget visualization showing budget progress bars.",
       inputSchema: GetBudgetsArgsSchema,
       options: {
         readOnlyHint: true,
@@ -60,6 +43,23 @@ export function getBudgetTools(): ToolDefinition[] {
         }
 
         return getBudgetsHandler(userId, args, plaidClient!);
+      },
+    },
+    {
+      name: "upsert-budget",
+      description:
+        "Create a new budget or update an existing one after calling get-budgets first. Requires ALL fields: title (display name), filter_prompt (natural language describing which transactions to include, e.g., 'Include coffee shops like Starbucks, Dunkin, and any merchant with coffee in the name'), budget_amount (dollar limit), and time_period (daily/weekly/monthly/custom). If 'id' is provided, updates existing budget; otherwise creates new one.",
+      inputSchema: UpsertBudgetArgsSchema,
+      options: {
+        securitySchemes: [{ type: "oauth2" }],
+      },
+      handler: async (args, { authInfo }) => {
+        const userId = authInfo?.extra?.userId as string | undefined;
+        if (!userId) {
+          throw new Error("User authentication required");
+        }
+
+        return upsertBudgetHandler(userId, args);
       },
     },
   ];

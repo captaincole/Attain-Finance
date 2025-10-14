@@ -23,7 +23,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
     ...getBudgetTools(),
   ];
 
-  // Register each tool with logging
+  // Register each tool with logging and error handling
   allTools.forEach(({ name, description, inputSchema, options, handler }) => {
     server.tool(
       name,
@@ -34,18 +34,32 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
         console.log(`[TOOL/${name.toUpperCase()}] Called with args:`, JSON.stringify(args, null, 2));
         console.log(`[TOOL/${name.toUpperCase()}] Context authInfo:`, context.authInfo ? "Present" : "Missing");
 
-        // Pass plaidClient only to tools that need it
-        const result = await handler(args, context, plaidClient);
+        try {
+          // Pass plaidClient only to tools that need it
+          const result = await handler(args, context, plaidClient);
 
-        // Log response metadata (but not full content to avoid spam)
-        if (result._meta) {
-          console.log(`[TOOL/${name.toUpperCase()}] Response _meta:`, JSON.stringify(result._meta, null, 2));
-        }
-        if (result.structuredContent) {
-          console.log(`[TOOL/${name.toUpperCase()}] Has structuredContent:`, Object.keys(result.structuredContent));
-        }
+          // Log response metadata (but not full content to avoid spam)
+          if (result._meta) {
+            console.log(`[TOOL/${name.toUpperCase()}] Response _meta:`, JSON.stringify(result._meta, null, 2));
+          }
+          if (result.structuredContent) {
+            console.log(`[TOOL/${name.toUpperCase()}] Has structuredContent:`, Object.keys(result.structuredContent));
+          }
 
-        return result;
+          return result;
+        } catch (error: any) {
+          // Handle validation errors gracefully
+          console.error(`[TOOL/${name.toUpperCase()}] Error:`, error.message);
+
+          // Return user-friendly error message
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ **Error calling ${name}**\n\n${error.message}\n\nPlease check the required parameters and try again.`
+            }],
+            isError: true
+          };
+        }
       }
     );
   });
