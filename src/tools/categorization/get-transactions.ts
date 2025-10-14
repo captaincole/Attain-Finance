@@ -3,11 +3,12 @@ import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { getConnections } from "../../storage/plaid/connections.js";
 import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
 import { getCustomRules } from "../../storage/categorization/rules.js";
-import { getTransactionAnalysisHints, formatHintsForChatGPT } from "../../utils/capability-hints.js";
 
 interface GetTransactionsArgs {
   start_date?: string;
   end_date?: string;
+  account_filter?: string;
+  category_filter?: string;
 }
 
 // Storage for temporary transaction data (in-memory for MVP)
@@ -82,7 +83,8 @@ Please connect your account first by saying:
     };
   }
 
-  // Parse dates or use defaults (last 90 days)
+  // Parse dates or use defaults (all transactions: 2 years back)
+  // Note: Plaid typically supports up to 2 years of transaction history
   const endDate = args.end_date
     ? new Date(args.end_date)
     : new Date();
@@ -90,7 +92,7 @@ Please connect your account first by saying:
     ? new Date(args.start_date)
     : (() => {
         const date = new Date();
-        date.setDate(date.getDate() - 90);
+        date.setFullYear(date.getFullYear() - 2);
         return date;
       })();
 
@@ -215,6 +217,32 @@ Please connect your account first by saying:
   // Store CSV for download endpoint
   userTransactionData.set(userId, csvContent);
 
+  // Build structured transaction data for ChatGPT
+  const structuredTransactions = allTransactions.map((tx) => ({
+    date: tx.date,
+    description: tx.name,
+    amount: tx.amount,
+    category: tx.category ? tx.category.join(", ") : "",
+    custom_category: categorizedMap?.get(tx.name) || "",
+    account_name: accountMap.get(tx.account_id) || tx.account_id,
+    pending: tx.pending,
+  }));
+
+  // Calculate summary statistics
+  const totalSpending = allTransactions
+    .filter((tx) => {
+      const cat = categorizedMap?.get(tx.name) || "";
+      return tx.amount > 0 && !["Income", "Transfer", "Payment"].includes(cat);
+    })
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const totalIncome = allTransactions
+    .filter((tx) => {
+      const cat = categorizedMap?.get(tx.name) || "";
+      return cat === "Income";
+    })
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+
   let responseText = `📊 **Transactions Retrieved & Categorized**\n\nFound ${allTransactions.length} transactions from ${connections.length} institution(s)\n\n`;
   responseText += `**Date Range:**\n- Start: ${startDate.toISOString().split("T")[0]}\n- End: ${endDate.toISOString().split("T")[0]}\n\n`;
 
@@ -230,12 +258,63 @@ Please connect your account first by saying:
     responseText += `**Warnings:**\n${errors.map(e => `- ${e}`).join('\n')}\n\n`;
   }
 
-  responseText += `**Download Instructions:**\n\n\`\`\`bash\ncurl "${transactionsUrl}" -o transactions.csv\n\`\`\`\n\n`;
+  responseText += `**Raw Data Download:**\n\n\`\`\`bash\ncurl "${transactionsUrl}" -o transactions.csv\n\`\`\`\n\n`;
   responseText += `**Note:** Download link expires in 10 minutes.`;
 
-  // Add capability hints for next steps
-  const capabilityHints = getTransactionAnalysisHints();
-  responseText += formatHintsForChatGPT(capabilityHints);
+  // Data instructions for AI analysis
+  const dataInstructions = `
+TRANSACTION DATA ANALYSIS GUIDELINES:
+
+1. SPENDING CATEGORIES (exclude these when analyzing spending):
+   - Income: Money received (salary, refunds, etc.)
+   - Transfer: Money moved between accounts
+   - Payment: Bill payments and transfers out
+
+2. SPENDING ANALYSIS:
+   - Use custom_category field for categorization
+   - Spending transactions typically have positive amounts
+   - Income transactions are in the "Income" category
+   - Group by custom_category and sum amounts to get spending by category
+
+3. LARGE EXPENSES:
+   - Transactions over $200 are typically "large expenses"
+   - Consider separating recurring vs. one-time expenses
+
+4. DATA STRUCTURE:
+   - date: Transaction date (YYYY-MM-DD)
+   - description: Merchant or transaction description
+   - amount: Transaction amount (positive = spending, negative = income in some systems)
+   - category: Plaid's default category (may be multi-level)
+   - custom_category: AI-assigned category using user's rules
+   - account_name: Which account the transaction came from
+   - pending: Whether transaction is still pending
+  `.trim();
+
+  const visualizationInstructions = `
+VISUALIZATION RECOMMENDATIONS:
+
+1. SPENDING BY CATEGORY (Bar Chart):
+   - Filter out Income, Transfer, and Payment categories
+   - Group remaining transactions by custom_category
+   - Sum the amounts for each category
+   - Sort categories by total amount (highest first)
+   - Display as horizontal bar chart with dollar amounts
+
+2. SPENDING OVER TIME (Line Chart):
+   - Group transactions by date
+   - Calculate daily/weekly/monthly spending totals
+   - Exclude Income/Transfer/Payment categories
+   - Show trend line
+
+3. TOP MERCHANTS:
+   - Group by description field
+   - Sum amounts per merchant
+   - Show top 10 merchants by spending
+
+4. ACCOUNT BREAKDOWN:
+   - Group by account_name
+   - Show spending distribution across accounts
+  `.trim();
 
   return {
     content: [
@@ -244,6 +323,20 @@ Please connect your account first by saying:
         text: responseText.trim(),
       },
     ],
+    structuredContent: {
+      transactions: structuredTransactions,
+      summary: {
+        totalSpending,
+        totalIncome,
+        transactionCount: allTransactions.length,
+        dateRange: {
+          start: startDate.toISOString().split("T")[0],
+          end: endDate.toISOString().split("T")[0],
+        },
+      },
+      dataInstructions,
+      visualizationInstructions,
+    },
   };
 }
 

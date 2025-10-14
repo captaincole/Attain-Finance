@@ -42,16 +42,24 @@ export function getCategorizationTools(): ToolDefinition[] {
     },
     {
       name: "get-transactions",
-      description: "Retrieve real transaction data from the user's connected financial institution. Returns a downloadable CSV file of transactions for the specified date range.",
+      description: "Retrieve categorized transaction data from the user's connected financial institution. Returns structured transaction data with AI-powered categorization, along with analysis and visualization guidance.",
       inputSchema: {
         start_date: z
           .string()
           .optional()
-          .describe("Start date in YYYY-MM-DD format (default: 90 days ago)"),
+          .describe("Start date in YYYY-MM-DD format (default: all available data)"),
         end_date: z
           .string()
           .optional()
           .describe("End date in YYYY-MM-DD format (default: today)"),
+        account_filter: z
+          .string()
+          .optional()
+          .describe("Filter transactions by account name (placeholder - not yet implemented)"),
+        category_filter: z
+          .string()
+          .optional()
+          .describe("Filter transactions by category (placeholder - not yet implemented)"),
       },
       options: {
         readOnlyHint: true,
