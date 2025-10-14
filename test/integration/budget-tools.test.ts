@@ -121,6 +121,24 @@ describe("Budget Tool Integration Tests", () => {
     // Verify budget ID is returned
     assert(result.budgetId, "Should return budget ID");
     assert(typeof result.budgetId === "string", "Budget ID should be a string");
+
+    // Verify widget data is returned
+    assert(result.structuredContent, "Should have structured content for widget");
+    assert(Array.isArray(result.structuredContent.budgets), "Should have budgets array");
+    assert.equal(result.structuredContent.budgets.length, 1, "Should have exactly one budget");
+
+    const budgetWidget = result.structuredContent.budgets[0];
+    assert.equal(budgetWidget.title, "Coffee Shop Budget", "Widget should show budget title");
+    assert.equal(budgetWidget.amount, 100, "Widget should show budget amount");
+    assert.equal(budgetWidget.spent, 0, "New budget should have $0 spent");
+    assert.equal(budgetWidget.remaining, 100, "New budget should have full amount remaining");
+    assert.equal(budgetWidget.percentage, 0, "New budget should be at 0%");
+    assert.equal(budgetWidget.status, "under", "New budget should be under budget");
+
+    // Verify widget metadata
+    assert(result._meta, "Should have widget metadata");
+    assert.equal(result._meta["openai/outputTemplate"], "ui://widget/budget-list.html");
+    assert.equal(result._meta["openai/widgetAccessible"], true);
   });
 
   it("should return error when upsert-budget is called without required fields", async () => {

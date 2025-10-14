@@ -111,6 +111,18 @@ function injectWidgetMetadata(server: McpServer) {
             }
           };
         }
+        if (tool.name === "upsert-budget") {
+          return {
+            ...tool,
+            _meta: {
+              "openai/outputTemplate": "ui://widget/budget-list.html",
+              "openai/toolInvocation/invoking": "Creating budget...",
+              "openai/toolInvocation/invoked": "Budget created",
+              "openai/widgetAccessible": true,
+              "openai/resultCanProduceWidget": true
+            }
+          };
+        }
         return tool;
       });
 

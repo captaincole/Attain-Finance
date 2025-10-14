@@ -89,6 +89,13 @@ export function getBudgetTools(): ToolDefinition[] {
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],
+        _meta: {
+          "openai/outputTemplate": "ui://widget/budget-list.html",
+          "openai/toolInvocation/invoking": "Creating budget...",
+          "openai/toolInvocation/invoked": "Budget created",
+          "openai/widgetAccessible": true,
+          "openai/resultCanProduceWidget": true,
+        },
       },
       handler: async (args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;

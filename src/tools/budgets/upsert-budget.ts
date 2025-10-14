@@ -52,13 +52,40 @@ export async function upsertBudgetHandler(
         custom_period_days: args.custom_period_days || null,
       });
 
+      const now = new Date();
+
       return {
         content: [
           {
             type: "text" as const,
-            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n\nUse \`get-budgets\` to see current spending status.`,
+            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n\nYour budget has been updated!`,
           },
         ],
+        structuredContent: {
+          budgets: [
+            {
+              id: updated.id,
+              title: updated.title,
+              amount: updated.budget_amount,
+              period: updated.time_period,
+              customPeriodDays: updated.custom_period_days,
+              spent: 0, // Reset to 0, will be calculated on next get-budgets call
+              remaining: updated.budget_amount,
+              percentage: 0,
+              status: "under" as const,
+              dateRange: {
+                start: now.toISOString().split("T")[0],
+                end: now.toISOString().split("T")[0],
+              },
+              transactionCount: 0,
+            },
+          ],
+        },
+        _meta: {
+          "openai/outputTemplate": "ui://widget/budget-list.html",
+          "openai/widgetAccessible": true,
+          "openai/resultCanProduceWidget": true,
+        },
         budgetId: updated.id,
       };
     }
@@ -76,13 +103,44 @@ export async function upsertBudgetHandler(
     custom_period_days: args.custom_period_days || null,
   });
 
+  // Calculate date range for the budget period (for display)
+  const now = new Date();
+  const periodDisplay = args.custom_period_days
+    ? `${args.custom_period_days} days`
+    : args.time_period;
+
   return {
     content: [
       {
         type: "text" as const,
-        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n\nUse \`get-budgets\` to see current spending status.`,
+        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n\nYour new budget is ready to track spending!`,
       },
     ],
+    structuredContent: {
+      budgets: [
+        {
+          id: created.id,
+          title: created.title,
+          amount: created.budget_amount,
+          period: created.time_period,
+          customPeriodDays: created.custom_period_days,
+          spent: 0, // New budget, no spending yet
+          remaining: created.budget_amount,
+          percentage: 0,
+          status: "under" as const,
+          dateRange: {
+            start: now.toISOString().split("T")[0],
+            end: now.toISOString().split("T")[0],
+          },
+          transactionCount: 0,
+        },
+      ],
+    },
+    _meta: {
+      "openai/outputTemplate": "ui://widget/budget-list.html",
+      "openai/widgetAccessible": true,
+      "openai/resultCanProduceWidget": true,
+    },
     budgetId: created.id,
   };
 }
