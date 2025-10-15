@@ -47,7 +47,7 @@ export function verifySignedToken(token: string): SignedUrlPayload | null {
 
 /**
  * Generate a complete signed download URL
- * @param baseUrl - The base URL of the server (e.g., https://personal-finance-mcp.vercel.app)
+ * @param baseUrl - The base URL of the server (e.g., https://personal-finance-mcp-d0eg.onrender.com)
  * @param userId - The authenticated user's ID
  * @param resource - The resource type
  * @param expiresInSeconds - Token expiration time in seconds

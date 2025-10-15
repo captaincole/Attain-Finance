@@ -55,7 +55,7 @@ docs/                     # Detailed documentation
 Fix Plaid callback error in serverless environment
 
 Migrate session storage from in-memory Map to Supabase.
-Fixes 400 errors caused by stateless Vercel instances.
+Fixes 400 errors caused by stateless instances.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 Co-Authored-By: Claude <noreply@anthropic.com>
@@ -160,7 +160,7 @@ serverInternal._requestHandlers.set("tools/list", async (request) => {
 
 **Optional:**
 - `PORT` - Server port (default: 3000)
-- `BASE_URL` - For download links (local: http://localhost:3000, prod: https://personal-finance-mcp.vercel.app)
+- `BASE_URL` - For download links (local: http://localhost:3000, prod: https://personal-finance-mcp-d0eg.onrender.com)
 
 ## Common Gotchas
 
@@ -174,27 +174,72 @@ serverInternal._requestHandlers.set("tools/list", async (request) => {
 ## MCP Integration
 
 ### Servers Available
-- **Vercel** - Deploy and monitor (requires `VERCEL_TOKEN` env var)
+- **Render** - Deploy and monitor (requires `RENDER_API_KEY` env var)
 - **Context7** - Code context and search
 
-Configured in `.mcp.json` (checked into git).
+Configured in `.mcp.json` (not checked into git).
 
 ### Production URL
-https://personal-finance-mcp.vercel.app/mcp
+https://personal-finance-mcp-d0eg.onrender.com/mcp
 
 **Auth:** All endpoints require Clerk OAuth. Unauthenticated requests return 401.
 
 ## Monitoring Deployments
 
+### Service Information
+- **Service ID:** `srv-d3o0f8ur433s73e5bl90`
+- **Dashboard:** https://dashboard.render.com/web/srv-d3o0f8ur433s73e5bl90
+- **Region:** Oregon
+- **Plan:** Starter
+
+### Get Service Status
 ```typescript
-// Check deployment status
-mcp__vercel__get_project({
-  projectId: "prj_n09eCw9WwelhsBJCik2TNHB3XteP",
-  teamId: "team_TCcYEvV7cx7Xit3TzghhciW7"
+// Get service details
+mcp__render__get_service({
+  serviceId: "srv-d3o0f8ur433s73e5bl90"
 })
 ```
 
-**CI/CD:** Every push to `main` automatically deploys to Vercel.
+### View Logs
+```typescript
+// List recent logs (last 50 entries, most recent first)
+mcp__render__list_logs({
+  resource: ["srv-d3o0f8ur433s73e5bl90"],
+  limit: 50,
+  direction: "backward"
+})
+
+// Filter logs by type (app, build, request)
+mcp__render__list_logs({
+  resource: ["srv-d3o0f8ur433s73e5bl90"],
+  type: ["app"],
+  limit: 50
+})
+
+// Filter logs by severity level
+mcp__render__list_logs({
+  resource: ["srv-d3o0f8ur433s73e5bl90"],
+  level: ["error"],
+  limit: 50
+})
+
+// Search logs for specific text
+mcp__render__list_logs({
+  resource: ["srv-d3o0f8ur433s73e5bl90"],
+  text: ["TOOL/GET-BUDGETS"],
+  limit: 50
+})
+
+// Get logs from specific time range (RFC3339 format)
+mcp__render__list_logs({
+  resource: ["srv-d3o0f8ur433s73e5bl90"],
+  startTime: "2025-10-15T20:00:00Z",
+  endTime: "2025-10-15T21:00:00Z",
+  limit: 100
+})
+```
+
+**CI/CD:** Every push to `main` automatically deploys to Render.
 
 ## Detailed Documentation
 
@@ -249,4 +294,4 @@ Available via `.claude/commands/`:
 1. Create `migrations/###_descriptive_name.sql` with next sequential number
 2. Include comments explaining what and why
 3. Test locally before deploying
-4. Commit and push (auto-deploys to Vercel, migrations run automatically)
+4. Commit and push (auto-deploys to Render, migrations run automatically)

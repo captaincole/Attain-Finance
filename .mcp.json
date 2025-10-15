@@ -1,15 +1,11 @@
 {
   "mcpServers": {
-    "vercel": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-vercel"],
-      "env": {
-        "VERCEL_TOKEN": "${VERCEL_TOKEN}"
+    "render": {
+      "type": "http",
+      "url": "https://mcp.render.com/mcp",
+      "headers": {
+        "Authorization": "Bearer rnd_Rn2vQepYKO4TrbjgEPIYHSjk0hjr"
       }
-    },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@context7/mcp-server"]
     }
   }
 }

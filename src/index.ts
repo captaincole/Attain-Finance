@@ -48,7 +48,7 @@ const plaidClient = new PlaidApi(plaidConfiguration);
 // Initialize Express app
 const app = express();
 
-// Trust proxy headers (required for Vercel/serverless environments)
+// Trust proxy headers (required for Render/serverless environments)
 app.set("trust proxy", true);
 
 // CORS must expose WWW-Authenticate header for OAuth
@@ -234,7 +234,7 @@ app.get("/api/visualization/:userId", async (req: Request, res: Response) => {
   }
 });
 
-// Export app for Vercel and testing
+// Export app for serverless and testing
 export { app };
 export default app;
 

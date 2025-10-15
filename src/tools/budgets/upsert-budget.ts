@@ -5,7 +5,7 @@ import {
   createBudget,
   updateBudget,
 } from "../../storage/budgets/budgets.js";
-import { labelTransactionsForSingleBudget } from "../../utils/budget-labeling.js";
+import { startBudgetProcessing } from "../../utils/budget-processing-worker.js";
 
 // Input schema for upsert-budget tool
 export const UpsertBudgetArgsSchema = z.object({
@@ -81,21 +81,19 @@ export async function upsertBudgetHandler(
         time_period: args.time_period,
         custom_period_days: args.custom_period_days || null,
         fixed_period_start_date: args.fixed_period_start_date || null,
+        processing_status: "processing",
       });
 
-      console.log(`[UPSERT-BUDGET] Updated budget ${updated.id}, labeling transactions (synchronous)`);
+      console.log(`[UPSERT-BUDGET] Updated budget ${updated.id}, starting async processing`);
 
-      // Label transactions SYNCHRONOUSLY (wait for completion before responding)
-      const matchingCount = await labelTransactionsForSingleBudget(userId, updated);
-      console.log(`[UPSERT-BUDGET] Labeling complete: ${matchingCount} transactions matched`);
-
-      const now = new Date();
+      // Start background processing (non-blocking)
+      startBudgetProcessing(userId, updated);
 
       return {
         content: [
           {
             type: "text" as const,
-            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n- Matching Transactions: ${matchingCount}\n\nYour budget has been updated and all transactions have been analyzed!`,
+            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n\n⏳ Your budget is being processed... Transaction matching is running in the background. Check back in a moment to see results!`,
           },
         ],
         structuredContent: {
@@ -106,15 +104,12 @@ export async function upsertBudgetHandler(
               amount: updated.budget_amount,
               period: updated.time_period,
               customPeriodDays: updated.custom_period_days,
-              spent: 0, // Will be calculated on next get-budgets call
+              spent: 0,
               remaining: updated.budget_amount,
               percentage: 0,
               status: "under" as const,
-              dateRange: {
-                start: now.toISOString().split("T")[0],
-                end: now.toISOString().split("T")[0],
-              },
-              transactionCount: matchingCount,
+              processingStatus: "processing",
+              transactionCount: 0,
             },
           ],
         },
@@ -139,21 +134,19 @@ export async function upsertBudgetHandler(
     time_period: args.time_period,
     custom_period_days: args.custom_period_days || null,
     fixed_period_start_date: args.fixed_period_start_date || null,
+    processing_status: "processing",
   });
 
-  console.log(`[UPSERT-BUDGET] Created budget ${created.id}, labeling transactions (synchronous)`);
+  console.log(`[UPSERT-BUDGET] Created budget ${created.id}, starting async processing`);
 
-  // Label transactions SYNCHRONOUSLY (wait for completion before responding)
-  const matchingCount = await labelTransactionsForSingleBudget(userId, created);
-  console.log(`[UPSERT-BUDGET] Labeling complete: ${matchingCount} transactions matched`);
-
-  const now = new Date();
+  // Start background processing (non-blocking)
+  startBudgetProcessing(userId, created);
 
   return {
     content: [
       {
         type: "text" as const,
-        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n- Matching Transactions: ${matchingCount}\n\nYour new budget is ready to track spending!`,
+        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n\n⏳ Your budget is being processed... Transaction matching is running in the background. Check back in a moment to see results!`,
       },
     ],
     structuredContent: {
@@ -164,15 +157,12 @@ export async function upsertBudgetHandler(
           amount: created.budget_amount,
           period: created.time_period,
           customPeriodDays: created.custom_period_days,
-          spent: 0, // Will be calculated on next get-budgets call
+          spent: 0,
           remaining: created.budget_amount,
           percentage: 0,
           status: "under" as const,
-          dateRange: {
-            start: now.toISOString().split("T")[0],
-            end: now.toISOString().split("T")[0],
-          },
-          transactionCount: matchingCount,
+          processingStatus: "processing",
+          transactionCount: 0,
         },
       ],
     },

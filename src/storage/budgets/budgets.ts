@@ -160,3 +160,76 @@ export async function deleteBudget(
 
   console.log(`[REPO/BUDGETS] Successfully deleted budget ${budgetId}`);
 }
+
+/**
+ * Update budget processing status to "processing"
+ */
+export async function markBudgetAsProcessing(
+  budgetId: string
+): Promise<void> {
+  const supabase = getSupabase();
+
+  const { error } = await supabase
+    .from("budgets")
+    .update({
+      processing_status: "processing",
+      processing_completed_at: null,
+      processing_error: null,
+    })
+    .eq("id", budgetId);
+
+  if (error) {
+    throw new Error(`Failed to mark budget as processing: ${error.message}`);
+  }
+
+  console.log(`[REPO/BUDGETS] Marked budget ${budgetId} as processing`);
+}
+
+/**
+ * Update budget processing status to "ready" (success)
+ */
+export async function markBudgetAsReady(
+  budgetId: string
+): Promise<void> {
+  const supabase = getSupabase();
+
+  const { error } = await supabase
+    .from("budgets")
+    .update({
+      processing_status: "ready",
+      processing_completed_at: new Date().toISOString(),
+      processing_error: null,
+    })
+    .eq("id", budgetId);
+
+  if (error) {
+    throw new Error(`Failed to mark budget as ready: ${error.message}`);
+  }
+
+  console.log(`[REPO/BUDGETS] Marked budget ${budgetId} as ready`);
+}
+
+/**
+ * Update budget processing status to "error"
+ */
+export async function markBudgetAsError(
+  budgetId: string,
+  errorMessage: string
+): Promise<void> {
+  const supabase = getSupabase();
+
+  const { error } = await supabase
+    .from("budgets")
+    .update({
+      processing_status: "error",
+      processing_completed_at: new Date().toISOString(),
+      processing_error: errorMessage,
+    })
+    .eq("id", budgetId);
+
+  if (error) {
+    throw new Error(`Failed to mark budget as error: ${error.message}`);
+  }
+
+  console.log(`[REPO/BUDGETS] Marked budget ${budgetId} as error: ${errorMessage}`);
+}

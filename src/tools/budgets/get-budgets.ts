@@ -180,6 +180,44 @@ export async function getBudgetsHandler(
 
     for (const budget of budgets) {
       try {
+        // Check if budget is still processing
+        if (budget.processing_status === "processing") {
+          budgetResults.push({
+            id: budget.id,
+            title: budget.title,
+            amount: budget.budget_amount,
+            period: budget.time_period,
+            customPeriodDays: budget.custom_period_days,
+            spent: 0,
+            remaining: budget.budget_amount,
+            percentage: 0,
+            status: "under" as const,
+            processingStatus: "processing",
+            transactionCount: 0,
+          });
+          continue;
+        }
+
+        // Check if budget processing errored
+        if (budget.processing_status === "error") {
+          budgetResults.push({
+            id: budget.id,
+            title: budget.title,
+            amount: budget.budget_amount,
+            period: budget.time_period,
+            customPeriodDays: budget.custom_period_days,
+            spent: 0,
+            remaining: budget.budget_amount,
+            percentage: 0,
+            status: "under" as const,
+            processingStatus: "error",
+            processingError: budget.processing_error || "Unknown error",
+            transactionCount: 0,
+          });
+          continue;
+        }
+
+        // Budget is ready - process normally
         // Get date range for budget period
         const { start, end } = getBudgetDateRange(
           budget.time_period,
@@ -221,6 +259,7 @@ export async function getBudgetsHandler(
           remaining,
           percentage: Math.round(percentage),
           status,
+          processingStatus: "ready",
           dateRange: {
             start: start.toISOString().split("T")[0],
             end: end.toISOString().split("T")[0],
@@ -258,13 +297,34 @@ export async function getBudgetsHandler(
         continue;
       }
 
+      // Check processing status
+      if ("processingStatus" in result && result.processingStatus === "processing") {
+        responseText += `⏳ **${result.title}**\n`;
+        responseText += `- Status: Processing transactions...\n`;
+        responseText += `- Amount: $${result.amount.toFixed(2)}\n`;
+        responseText += `- Period: ${result.period}${result.customPeriodDays ? ` (${result.customPeriodDays} days)` : ""}\n`;
+        responseText += `\nYour budget is being analyzed. Check back in a moment!\n\n`;
+        continue;
+      }
+
+      if ("processingStatus" in result && result.processingStatus === "error") {
+        responseText += `❌ **${result.title}**\n`;
+        responseText += `- Status: Processing failed\n`;
+        responseText += `- Error: ${result.processingError}\n`;
+        responseText += `- Amount: $${result.amount.toFixed(2)}\n\n`;
+        continue;
+      }
+
       const statusEmoji = result.status === "over" ? "🔴" : result.status === "near" ? "🟡" : "🟢";
       responseText += `${statusEmoji} **${result.title}**\n`;
       responseText += `- Spent: $${result.spent.toFixed(2)} / $${result.amount.toFixed(2)} (${result.percentage}%)\n`;
       responseText += `- Remaining: $${result.remaining.toFixed(2)}\n`;
       responseText += `- Period: ${result.period}${result.customPeriodDays ? ` (${result.customPeriodDays} days)` : ""}\n`;
       responseText += `- Transactions: ${result.transactionCount}\n`;
-      responseText += `- Date Range: ${result.dateRange.start} to ${result.dateRange.end}\n\n`;
+      if ("dateRange" in result) {
+        responseText += `- Date Range: ${result.dateRange.start} to ${result.dateRange.end}\n`;
+      }
+      responseText += `\n`;
     }
 
     responseText += `\n**Commands:**\n`;

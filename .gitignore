@@ -6,12 +6,12 @@ build/
 
 # Sandbox data (contains real transaction CSVs)
 sandbox/data/
-.vercel
 
 # OpenAI example repository (local reference copy)
 openai-apps-sdk-examples/
 
 # Claude Code local configuration
+.mcp.json
 .mcp.local.json
 CLAUDE.local.md
 CLAUDE.md.backup
