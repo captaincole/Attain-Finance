@@ -141,7 +141,6 @@ export async function updateBudget(
 
 /**
  * Delete a budget
- * Prevents deletion if budget is currently processing
  */
 export async function deleteBudget(
   userId: string,
@@ -149,18 +148,6 @@ export async function deleteBudget(
 ): Promise<void> {
   const supabase = getSupabase();
 
-  // First, check if budget exists and is not processing
-  const budget = await getBudgetById(userId, budgetId);
-
-  if (!budget) {
-    throw new Error(`Budget not found`);
-  }
-
-  if (budget.processing_status === "processing") {
-    throw new Error(`Cannot delete budget "${budget.title}" while it is still processing. Please wait for processing to complete or try again in a moment.`);
-  }
-
-  // Safe to delete
   const { error } = await supabase
     .from("budgets")
     .delete()

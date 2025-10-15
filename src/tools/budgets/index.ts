@@ -114,7 +114,7 @@ export function getBudgetTools(): ToolDefinition[] {
     {
       name: "delete-budget",
       description:
-        "Delete a budget by ID. Cannot delete budgets that are currently processing - they must finish processing first. Use get-budgets to find the budget ID.",
+        "Delete a budget by ID. Use get-budgets to find the budget ID.",
       inputSchema: {
         id: z.string().describe("Budget ID to delete"),
       },

@@ -10,7 +10,7 @@ export type DeleteBudgetArgs = z.infer<typeof DeleteBudgetArgsSchema>;
 
 /**
  * Delete Budget Tool Handler
- * Deletes a budget if it's not currently processing
+ * Deletes a budget
  */
 export async function deleteBudgetHandler(
   userId: string,
@@ -32,20 +32,6 @@ export async function deleteBudgetHandler(
   } catch (error: any) {
     console.error(`[DELETE-BUDGET] Error:`, error.message);
 
-    // Check if it's the "still processing" error
-    if (error.message.includes("still processing")) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `⏳ **Cannot Delete Budget**\n\n${error.message}\n\nPlease run "Get budgets" to check the processing status, then try deleting again once processing is complete.`,
-          },
-        ],
-        isError: true,
-      };
-    }
-
-    // Generic error
     return {
       content: [
         {
