@@ -333,12 +333,9 @@ Return ONLY a valid JSON array with one object per transaction:
 `;
 
 /**
- * Filter transactions using Claude API based on budget filter prompt
- * @param transactions - Array of transactions to filter
- * @param filterPrompt - Natural language filter criteria from budget
- * @returns Array of filter results indicating which transactions match
+ * Filter a single batch of transactions using Claude API
  */
-export async function filterTransactionsForBudget(
+async function filterBatch(
   transactions: TransactionForBudgetFilter[],
   filterPrompt: string
 ): Promise<BudgetFilterResult[]> {
@@ -359,8 +356,7 @@ export async function filterTransactionsForBudget(
   // Convert transactions to JSON for Claude
   const transactionsJSON = JSON.stringify(transactions, null, 2);
 
-  console.log(`[BUDGET_FILTER] Filtering ${transactions.length} transactions`);
-  console.log(`[BUDGET_FILTER] Filter prompt: ${filterPrompt.substring(0, 100)}...`);
+  console.log(`[BUDGET_FILTER] Filtering batch of ${transactions.length} transactions`);
 
   // Call Claude API
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -372,7 +368,7 @@ export async function filterTransactionsForBudget(
     },
     body: JSON.stringify({
       model: CLAUDE_MODEL,
-      max_tokens: 8192,
+      max_tokens: 16384, // Increased to handle larger transaction sets
       system: systemPrompt,
       messages: [
         {
@@ -398,6 +394,13 @@ export async function filterTransactionsForBudget(
 
   console.log(`[BUDGET_FILTER] Claude API stop_reason: ${result.stop_reason}`);
 
+  // Check if response was truncated due to token limit
+  if (result.stop_reason === "max_tokens") {
+    console.error(`[BUDGET_FILTER] ERROR: Response truncated at max_tokens limit`);
+    console.error(`[BUDGET_FILTER] Sent ${transactions.length} transactions, but response was cut off`);
+    throw new Error(`Response truncated: filtering ${transactions.length} transactions exceeded max_tokens (16384). This budget has too many transactions to filter at once. Try reducing the date range or contact support.`);
+  }
+
   // Parse JSON response
   let jsonText = messageContent.trim();
 
@@ -418,7 +421,7 @@ export async function filterTransactionsForBudget(
 
     const matchCount = filterResults.filter((r) => r.matches).length;
     console.log(
-      `[BUDGET_FILTER] ✓ Filtered ${transactions.length} transactions: ${matchCount} matches, ${transactions.length - matchCount} non-matches`
+      `[BUDGET_FILTER] ✓ Filtered batch: ${matchCount} matches, ${transactions.length - matchCount} non-matches`
     );
 
     return filterResults;
@@ -426,4 +429,65 @@ export async function filterTransactionsForBudget(
     console.error("Failed to parse Claude filter response:", messageContent);
     throw new Error(`Failed to parse filter response: ${error}`);
   }
+}
+
+/**
+ * Filter transactions using Claude API with automatic batching
+ * @param transactions - Array of transactions to filter (any size)
+ * @param filterPrompt - Natural language filter criteria from budget
+ * @returns Array of filter results indicating which transactions match
+ */
+export async function filterTransactionsForBudget(
+  transactions: TransactionForBudgetFilter[],
+  filterPrompt: string
+): Promise<BudgetFilterResult[]> {
+  const BATCH_SIZE = 100; // Conservative batch size to stay under token limits
+
+  // If small dataset, process in single batch
+  if (transactions.length <= BATCH_SIZE) {
+    console.log(`[BUDGET_FILTER] Processing ${transactions.length} transactions in single batch`);
+    return filterBatch(transactions, filterPrompt);
+  }
+
+  // For large datasets, process in batches (in parallel for speed)
+  const batchCount = Math.ceil(transactions.length / BATCH_SIZE);
+  console.log(`[BUDGET_FILTER] Processing ${transactions.length} transactions in ${batchCount} parallel batches of ${BATCH_SIZE}`);
+
+  // Create batch promises
+  const batchPromises: Promise<{ index: number; result: BudgetFilterResult[] }>[] = [];
+
+  for (let i = 0; i < batchCount; i++) {
+    const start = i * BATCH_SIZE;
+    const end = Math.min(start + BATCH_SIZE, transactions.length);
+    const batch = transactions.slice(start, end);
+
+    console.log(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: Queueing ${batch.length} transactions (${start + 1}-${end})`);
+
+    // Queue batch for parallel processing
+    batchPromises.push(
+      filterBatch(batch, filterPrompt)
+        .then((result) => {
+          console.log(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: ✓ Filtered ${result.length} transactions`);
+          return { index: i, result };
+        })
+        .catch((error) => {
+          console.error(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: Failed - ${error.message}`);
+          throw new Error(`Batch ${i + 1}/${batchCount} failed: ${error.message}`);
+        })
+    );
+  }
+
+  // Wait for all batches to complete in parallel
+  console.log(`[BUDGET_FILTER] Waiting for ${batchCount} batches to complete in parallel...`);
+  const batchResults = await Promise.all(batchPromises);
+
+  // Sort results by original batch order and flatten
+  const allFilterResults = batchResults
+    .sort((a, b) => a.index - b.index)
+    .flatMap((batch) => batch.result);
+
+  const matchCount = allFilterResults.filter((r) => r.matches).length;
+  console.log(`[BUDGET_FILTER] ✓ All batches complete: ${matchCount} matches out of ${allFilterResults.length} total transactions`);
+
+  return allFilterResults;
 }
