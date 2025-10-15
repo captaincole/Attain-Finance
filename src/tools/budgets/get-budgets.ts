@@ -330,27 +330,54 @@ BAD EXAMPLES (too vague):
 ❌ "Food spending"
 ❌ "Entertainment"
 
-TIME PERIODS:
-- daily: Budget resets each day (midnight to midnight)
-- weekly: Budget resets each Monday
-- monthly: Budget resets on 1st of each month
-- custom: Specify number of days (e.g., 7 days, 30 days)
+TIME PERIOD OPTIONS:
+
+ROLLING BUDGETS (continuously rolling window):
+- time_period: "rolling"
+- custom_period_days: N (e.g., 7 for last 7 days, 30 for last 30 days, 90 for last 3 months)
+- Example: "Budget for last 7 days" always shows spending from today minus 7 days
+
+FIXED BUDGETS (calendar-based with custom start date):
+- time_period: "weekly" - Resets every 7 days from anchor date
+  - fixed_period_start_date: Any date (e.g., "2025-10-14" for Monday, "2025-10-12" for Saturday)
+- time_period: "biweekly" - Resets every 14 days from anchor date
+  - fixed_period_start_date: Payday date (e.g., "2025-10-11" for every other Friday)
+- time_period: "monthly" - Resets every month on anchor day
+  - fixed_period_start_date: Start day (e.g., "2025-01-15" for 15th of each month, "2025-01-01" for 1st)
+- time_period: "quarterly" - Resets every 3 months from anchor date
+- time_period: "yearly" - Resets every year on anchor date
 
 LEADING QUESTIONS TO ASK USERS:
 1. "What type of spending would you like to budget?"
-2. "How much do you want to spend per [period]?"
-3. "Should I include specific merchants or categories?"
-4. "Would you like to set this as a daily, weekly, or monthly budget?"
+2. "How much do you want to spend?"
+3. "Should this be a rolling budget (last N days) or a fixed budget that resets on a schedule?"
+4. For rolling: "How many days should I track? (e.g., 7, 30, 90)"
+5. For fixed: "What period works best? (weekly/biweekly/monthly/quarterly/yearly)"
+6. For fixed: "What day should the budget start? (e.g., 1st of month, every Monday, payday)"
 
 EXAMPLE BUDGET FLOWS:
-User: "I want to budget for coffee"
-You: "I'll help you create a coffee budget. How much would you like to spend on coffee per week?"
-User: "$100 per week"
-You: [Call upsert-budget with filter_prompt: "Include coffee shops like Starbucks, Dunkin, Peet's Coffee, and any merchant with 'coffee', 'espresso', or 'cafe' in the name"]
 
-User: "Create a grocery budget"
-You: "How much would you like to spend on groceries per month?"
-User: "$400"
-You: [Call upsert-budget with filter_prompt: "Include grocery stores like Whole Foods, Safeway, Trader Joe's, Kroger, and any transaction categorized as 'Groceries' or 'Supermarkets'"]
+User: "I want to budget for coffee"
+You: "I'll help you create a coffee budget. How much would you like to spend, and should this track the last 7 days or reset weekly?"
+User: "Last 7 days, $100"
+You: [Call upsert-budget with:
+  time_period: "rolling",
+  custom_period_days: 7,
+  budget_amount: 100,
+  filter_prompt: "Include coffee shops like Starbucks, Dunkin, Peet's Coffee, and any merchant with 'coffee', 'espresso', or 'cafe' in the name"]
+
+User: "Create a grocery budget for $400 per month starting on the 15th"
+You: [Call upsert-budget with:
+  time_period: "monthly",
+  fixed_period_start_date: "2025-01-15",
+  budget_amount: 400,
+  filter_prompt: "Include grocery stores like Whole Foods, Safeway, Trader Joe's, Kroger, and any transaction categorized as 'Groceries' or 'Supermarkets'"]
+
+User: "Budget $1000 every two weeks starting this Friday"
+You: [Calculate next Friday's date, then call upsert-budget with:
+  time_period: "biweekly",
+  fixed_period_start_date: "2025-10-18",
+  budget_amount: 1000,
+  filter_prompt: (based on user's spending category)]
   `.trim();
 }
