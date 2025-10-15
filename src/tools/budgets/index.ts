@@ -7,6 +7,7 @@ import { z } from "zod";
 import { PlaidApi } from "plaid";
 import { upsertBudgetHandler } from "./upsert-budget.js";
 import { getBudgetsHandler } from "./get-budgets.js";
+import { deleteBudgetHandler } from "./delete-budget.js";
 
 export interface ToolDefinition {
   name: string;
@@ -108,6 +109,25 @@ export function getBudgetTools(): ToolDefinition[] {
         }
 
         return upsertBudgetHandler(userId, args);
+      },
+    },
+    {
+      name: "delete-budget",
+      description:
+        "Delete a budget by ID. Cannot delete budgets that are currently processing - they must finish processing first. Use get-budgets to find the budget ID.",
+      inputSchema: {
+        id: z.string().describe("Budget ID to delete"),
+      },
+      options: {
+        securitySchemes: [{ type: "oauth2" }],
+      },
+      handler: async (args, { authInfo }) => {
+        const userId = authInfo?.extra?.userId as string | undefined;
+        if (!userId) {
+          throw new Error("User authentication required");
+        }
+
+        return deleteBudgetHandler(userId, args);
       },
     },
   ];
