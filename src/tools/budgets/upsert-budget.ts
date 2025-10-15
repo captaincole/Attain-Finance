@@ -93,7 +93,7 @@ export async function upsertBudgetHandler(
         content: [
           {
             type: "text" as const,
-            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n\n⏳ Your budget is being processed... Transaction matching is running in the background. Check back in a moment to see results!`,
+            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n\n⏳ **Processing in Progress**\n\nYour budget is being analyzed in the background. This typically takes **3-5 minutes** to match all your transactions.\n\nCheck back in a few minutes by saying "Show my budgets" to see the results!`,
           },
         ],
         structuredContent: {
@@ -146,7 +146,7 @@ export async function upsertBudgetHandler(
     content: [
       {
         type: "text" as const,
-        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n\n⏳ Your budget is being processed... Transaction matching is running in the background. Check back in a moment to see results!`,
+        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n\n⏳ **Processing in Progress**\n\nYour budget is being analyzed in the background. This typically takes **3-5 minutes** to match all your transactions.\n\nCheck back in a few minutes by saying "Show my budgets" to see the results!`,
       },
     ],
     structuredContent: {
