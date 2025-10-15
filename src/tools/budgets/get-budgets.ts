@@ -36,7 +36,7 @@ function getBudgetDateRange(
     }
     const start = new Date(now);
     start.setDate(start.getDate() - customPeriodDays);
-    start.setHours(0, 0, 0, 0);
+    start.setUTCHours(0, 0, 0, 0); // Use UTC to avoid timezone shifts
     return { start, end };
   }
 
@@ -45,8 +45,9 @@ function getBudgetDateRange(
     throw new Error("fixed_period_start_date required for fixed budgets");
   }
 
-  const anchorDate = new Date(fixedPeriodStartDate);
-  anchorDate.setHours(0, 0, 0, 0);
+  // Parse anchor date in UTC to avoid timezone shifts
+  const [year, month, day] = fixedPeriodStartDate.split("-").map(Number);
+  const anchorDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
 
   switch (timePeriod) {
     case "weekly": {
@@ -54,8 +55,8 @@ function getBudgetDateRange(
       const start = new Date(anchorDate);
       const daysSinceAnchor = Math.floor((now.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24));
       const periodsPassed = Math.floor(daysSinceAnchor / 7);
-      start.setDate(start.getDate() + periodsPassed * 7);
-      start.setHours(0, 0, 0, 0);
+      start.setUTCDate(start.getUTCDate() + periodsPassed * 7);
+      start.setUTCHours(0, 0, 0, 0);
       return { start, end };
     }
 
@@ -64,51 +65,51 @@ function getBudgetDateRange(
       const start = new Date(anchorDate);
       const daysSinceAnchor = Math.floor((now.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24));
       const periodsPassed = Math.floor(daysSinceAnchor / 14);
-      start.setDate(start.getDate() + periodsPassed * 14);
-      start.setHours(0, 0, 0, 0);
+      start.setUTCDate(start.getUTCDate() + periodsPassed * 14);
+      start.setUTCHours(0, 0, 0, 0);
       return { start, end };
     }
 
     case "monthly": {
       // Find the most recent period start on the anchor day of the month
-      const anchorDay = anchorDate.getDate();
-      const start = new Date(now.getFullYear(), now.getMonth(), anchorDay);
+      const anchorDay = anchorDate.getUTCDate();
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), anchorDay, 0, 0, 0, 0));
 
       // If anchor day is in the future this month, go back one month
       if (start > now) {
-        start.setMonth(start.getMonth() - 1);
+        start.setUTCMonth(start.getUTCMonth() - 1);
       }
 
-      start.setHours(0, 0, 0, 0);
+      start.setUTCHours(0, 0, 0, 0);
       return { start, end };
     }
 
     case "quarterly": {
       // Find the most recent period start (anchor date or multiples of 3 months later)
       const start = new Date(anchorDate);
-      const monthsSinceAnchor = (now.getFullYear() - anchorDate.getFullYear()) * 12 + (now.getMonth() - anchorDate.getMonth());
+      const monthsSinceAnchor = (now.getUTCFullYear() - anchorDate.getUTCFullYear()) * 12 + (now.getUTCMonth() - anchorDate.getUTCMonth());
       const periodsPassed = Math.floor(monthsSinceAnchor / 3);
-      start.setMonth(start.getMonth() + periodsPassed * 3);
+      start.setUTCMonth(start.getUTCMonth() + periodsPassed * 3);
 
       // If we're past the start, we're in the right period
       if (start > now) {
-        start.setMonth(start.getMonth() - 3);
+        start.setUTCMonth(start.getUTCMonth() - 3);
       }
 
-      start.setHours(0, 0, 0, 0);
+      start.setUTCHours(0, 0, 0, 0);
       return { start, end };
     }
 
     case "yearly": {
       // Find the most recent period start on the anchor date's month/day
-      const start = new Date(now.getFullYear(), anchorDate.getMonth(), anchorDate.getDate());
+      const start = new Date(Date.UTC(now.getUTCFullYear(), anchorDate.getUTCMonth(), anchorDate.getUTCDate(), 0, 0, 0, 0));
 
       // If anchor date is in the future this year, go back one year
       if (start > now) {
-        start.setFullYear(start.getFullYear() - 1);
+        start.setUTCFullYear(start.getUTCFullYear() - 1);
       }
 
-      start.setHours(0, 0, 0, 0);
+      start.setUTCHours(0, 0, 0, 0);
       return { start, end };
     }
 
