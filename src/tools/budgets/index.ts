@@ -61,7 +61,7 @@ export function getBudgetTools(): ToolDefinition[] {
     {
       name: "upsert-budget",
       description:
-        "Create a new budget or update an existing one after calling get-budgets first. Requires ALL fields: title (display name), filter_prompt (natural language describing which transactions to include, e.g., 'Include coffee shops like Starbucks, Dunkin, and any merchant with coffee in the name'), budget_amount (dollar limit), and time_period (daily/weekly/monthly/custom). If 'id' is provided, updates existing budget; otherwise creates new one.",
+        "Create a new budget or update an existing one after calling get-budgets first. Two budget types: ROLLING (last N days, continuously rolling) or FIXED (calendar-based with custom start date). For rolling budgets: provide time_period='rolling' and custom_period_days. For fixed budgets: provide time_period (weekly/biweekly/monthly/quarterly/yearly) and fixed_period_start_date in YYYY-MM-DD format.",
       inputSchema: {
         id: z
           .string()
@@ -78,14 +78,18 @@ export function getBudgetTools(): ToolDefinition[] {
           .positive()
           .describe("Dollar amount limit for the budget"),
         time_period: z
-          .enum(["daily", "weekly", "monthly", "custom"])
-          .describe("Time period for budget tracking"),
+          .enum(["rolling", "weekly", "biweekly", "monthly", "quarterly", "yearly"])
+          .describe("Budget type: 'rolling' for last N days, or fixed periods (weekly/biweekly/monthly/quarterly/yearly)"),
         custom_period_days: z
           .number()
           .int()
           .positive()
           .optional()
-          .describe("Number of days for custom period (required if time_period is 'custom')"),
+          .describe("Required for 'rolling' budgets: number of days to track (e.g., 7, 30, 90)"),
+        fixed_period_start_date: z
+          .string()
+          .optional()
+          .describe("Required for fixed budgets: anchor date in YYYY-MM-DD format (e.g., '2025-01-15' for monthly budget starting on 15th)"),
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],
