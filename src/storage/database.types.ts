@@ -45,6 +45,7 @@ export type Database = {
           created_at: string | null
           custom_period_days: number | null
           filter_prompt: string
+          fixed_period_start_date: string | null
           id: string
           time_period: string
           title: string
@@ -56,6 +57,7 @@ export type Database = {
           created_at?: string | null
           custom_period_days?: number | null
           filter_prompt: string
+          fixed_period_start_date?: string | null
           id: string
           time_period: string
           title: string
@@ -67,6 +69,7 @@ export type Database = {
           created_at?: string | null
           custom_period_days?: number | null
           filter_prompt?: string
+          fixed_period_start_date?: string | null
           id?: string
           time_period?: string
           title?: string
@@ -182,61 +185,61 @@ export type Database = {
       }
       transactions: {
         Row: {
-          transaction_id: string
           account_id: string
-          item_id: string
-          user_id: string
-          date: string
-          name: string
+          account_name: string | null
           amount: number
-          plaid_category: Json | null
-          pending: boolean
-          custom_category: string | null
-          categorized_at: string | null
           budget_ids: string[] | null
           budgets_updated_at: string | null
-          account_name: string | null
-          institution_name: string | null
+          categorized_at: string | null
           created_at: string | null
+          custom_category: string | null
+          date: string
+          institution_name: string | null
+          item_id: string
+          name: string
+          pending: boolean
+          plaid_category: Json | null
+          transaction_id: string
           updated_at: string | null
+          user_id: string
         }
         Insert: {
-          transaction_id: string
           account_id: string
-          item_id: string
-          user_id: string
-          date: string
-          name: string
+          account_name?: string | null
           amount: number
-          plaid_category?: Json | null
-          pending?: boolean
-          custom_category?: string | null
-          categorized_at?: string | null
           budget_ids?: string[] | null
           budgets_updated_at?: string | null
-          account_name?: string | null
-          institution_name?: string | null
+          categorized_at?: string | null
           created_at?: string | null
+          custom_category?: string | null
+          date: string
+          institution_name?: string | null
+          item_id: string
+          name: string
+          pending?: boolean
+          plaid_category?: Json | null
+          transaction_id: string
           updated_at?: string | null
+          user_id: string
         }
         Update: {
-          transaction_id?: string
           account_id?: string
-          item_id?: string
-          user_id?: string
-          date?: string
-          name?: string
+          account_name?: string | null
           amount?: number
-          plaid_category?: Json | null
-          pending?: boolean
-          custom_category?: string | null
-          categorized_at?: string | null
           budget_ids?: string[] | null
           budgets_updated_at?: string | null
-          account_name?: string | null
-          institution_name?: string | null
+          categorized_at?: string | null
           created_at?: string | null
+          custom_category?: string | null
+          date?: string
+          institution_name?: string | null
+          item_id?: string
+          name?: string
+          pending?: boolean
+          plaid_category?: Json | null
+          transaction_id?: string
           updated_at?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -245,7 +248,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "plaid_connections"
             referencedColumns: ["item_id"]
-          }
+          },
         ]
       }
       user_visualizations: {

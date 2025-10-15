@@ -1,7 +1,7 @@
 /**
  * Claude API model to use for all requests
  */
-const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
 
 /**
  * Transaction data for categorization

@@ -23,45 +23,98 @@ export type GetBudgetsArgs = z.infer<typeof GetBudgetsArgsSchema>;
  */
 function getBudgetDateRange(
   timePeriod: string,
-  customPeriodDays?: number | null
+  customPeriodDays?: number | null,
+  fixedPeriodStartDate?: string | null
 ): { start: Date; end: Date } {
-  const end = new Date(); // Today
-  const start = new Date();
+  const now = new Date();
+  const end = new Date(now); // Today
+
+  // ROLLING BUDGETS: Last N days (continuously rolling window)
+  if (timePeriod === "rolling") {
+    if (!customPeriodDays) {
+      throw new Error("custom_period_days required for rolling budgets");
+    }
+    const start = new Date(now);
+    start.setDate(start.getDate() - customPeriodDays);
+    start.setHours(0, 0, 0, 0);
+    return { start, end };
+  }
+
+  // FIXED BUDGETS: Calendar-based with anchor date
+  if (!fixedPeriodStartDate) {
+    throw new Error("fixed_period_start_date required for fixed budgets");
+  }
+
+  const anchorDate = new Date(fixedPeriodStartDate);
+  anchorDate.setHours(0, 0, 0, 0);
 
   switch (timePeriod) {
-    case "daily":
-      // Start of today
+    case "weekly": {
+      // Find the most recent period start (anchor date or multiples of 7 days later)
+      const start = new Date(anchorDate);
+      const daysSinceAnchor = Math.floor((now.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24));
+      const periodsPassed = Math.floor(daysSinceAnchor / 7);
+      start.setDate(start.getDate() + periodsPassed * 7);
       start.setHours(0, 0, 0, 0);
-      break;
+      return { start, end };
+    }
 
-    case "weekly":
-      // Start of this week (Monday)
-      const dayOfWeek = start.getDay();
-      const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0
-      start.setDate(start.getDate() - daysToMonday);
+    case "biweekly": {
+      // Find the most recent period start (anchor date or multiples of 14 days later)
+      const start = new Date(anchorDate);
+      const daysSinceAnchor = Math.floor((now.getTime() - anchorDate.getTime()) / (1000 * 60 * 60 * 24));
+      const periodsPassed = Math.floor(daysSinceAnchor / 14);
+      start.setDate(start.getDate() + periodsPassed * 14);
       start.setHours(0, 0, 0, 0);
-      break;
+      return { start, end };
+    }
 
-    case "monthly":
-      // Start of this month
-      start.setDate(1);
-      start.setHours(0, 0, 0, 0);
-      break;
+    case "monthly": {
+      // Find the most recent period start on the anchor day of the month
+      const anchorDay = anchorDate.getDate();
+      const start = new Date(now.getFullYear(), now.getMonth(), anchorDay);
 
-    case "custom":
-      // Custom number of days
-      if (!customPeriodDays) {
-        throw new Error("custom_period_days required for custom time period");
+      // If anchor day is in the future this month, go back one month
+      if (start > now) {
+        start.setMonth(start.getMonth() - 1);
       }
-      start.setDate(start.getDate() - customPeriodDays);
+
       start.setHours(0, 0, 0, 0);
-      break;
+      return { start, end };
+    }
+
+    case "quarterly": {
+      // Find the most recent period start (anchor date or multiples of 3 months later)
+      const start = new Date(anchorDate);
+      const monthsSinceAnchor = (now.getFullYear() - anchorDate.getFullYear()) * 12 + (now.getMonth() - anchorDate.getMonth());
+      const periodsPassed = Math.floor(monthsSinceAnchor / 3);
+      start.setMonth(start.getMonth() + periodsPassed * 3);
+
+      // If we're past the start, we're in the right period
+      if (start > now) {
+        start.setMonth(start.getMonth() - 3);
+      }
+
+      start.setHours(0, 0, 0, 0);
+      return { start, end };
+    }
+
+    case "yearly": {
+      // Find the most recent period start on the anchor date's month/day
+      const start = new Date(now.getFullYear(), anchorDate.getMonth(), anchorDate.getDate());
+
+      // If anchor date is in the future this year, go back one year
+      if (start > now) {
+        start.setFullYear(start.getFullYear() - 1);
+      }
+
+      start.setHours(0, 0, 0, 0);
+      return { start, end };
+    }
 
     default:
       throw new Error(`Unknown time period: ${timePeriod}`);
   }
-
-  return { start, end };
 }
 
 /**
@@ -129,7 +182,8 @@ export async function getBudgetsHandler(
         // Get date range for budget period
         const { start, end } = getBudgetDateRange(
           budget.time_period,
-          budget.custom_period_days
+          budget.custom_period_days,
+          budget.fixed_period_start_date
         );
 
         // Fetch PRE-LABELED transactions from database (NO AI call)

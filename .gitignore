@@ -10,3 +10,8 @@ sandbox/data/
 
 # OpenAI example repository (local reference copy)
 openai-apps-sdk-examples/
+
+# Claude Code local configuration
+.mcp.local.json
+CLAUDE.local.md
+CLAUDE.md.backup

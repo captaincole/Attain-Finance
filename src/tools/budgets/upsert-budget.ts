@@ -13,8 +13,9 @@ export const UpsertBudgetArgsSchema = z.object({
   title: z.string().describe("Display name for the budget (e.g., 'Coffee Shop Budget')"),
   filter_prompt: z.string().describe("Natural language filter criteria describing which transactions to include"),
   budget_amount: z.number().positive().describe("Dollar amount limit for the budget"),
-  time_period: z.enum(["daily", "weekly", "monthly", "custom"]).describe("Time period for budget tracking"),
-  custom_period_days: z.number().int().positive().optional().describe("Number of days for custom period (required if time_period is 'custom')"),
+  time_period: z.enum(["rolling", "weekly", "biweekly", "monthly", "quarterly", "yearly"]).describe("Budget type: 'rolling' for last N days, or fixed periods (weekly/biweekly/monthly/quarterly/yearly)"),
+  custom_period_days: z.number().int().positive().optional().describe("Required for 'rolling' budgets: number of days to track (e.g., 7, 30, 90)"),
+  fixed_period_start_date: z.string().optional().describe("Required for fixed budgets: anchor date in YYYY-MM-DD format (e.g., '2025-01-15' for monthly budget starting on 15th)"),
 });
 
 export type UpsertBudgetArgs = z.infer<typeof UpsertBudgetArgsSchema>;
@@ -27,16 +28,44 @@ export async function upsertBudgetHandler(
   userId: string,
   args: UpsertBudgetArgs
 ) {
-  // Validate custom_period_days is provided when time_period is 'custom'
-  if (args.time_period === "custom" && !args.custom_period_days) {
+  // Validate rolling budgets have custom_period_days
+  if (args.time_period === "rolling" && !args.custom_period_days) {
     return {
       content: [
         {
           type: "text" as const,
-          text: "❌ **Error:** `custom_period_days` is required when `time_period` is 'custom'",
+          text: "❌ **Error:** `custom_period_days` is required for rolling budgets (e.g., 7 for last 7 days, 30 for last 30 days)",
         },
       ],
     };
+  }
+
+  // Validate fixed budgets have fixed_period_start_date
+  const fixedPeriods = ["weekly", "biweekly", "monthly", "quarterly", "yearly"];
+  if (fixedPeriods.includes(args.time_period) && !args.fixed_period_start_date) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `❌ **Error:** \`fixed_period_start_date\` is required for ${args.time_period} budgets (e.g., '2025-01-15')`,
+        },
+      ],
+    };
+  }
+
+  // Validate date format for fixed_period_start_date
+  if (args.fixed_period_start_date) {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(args.fixed_period_start_date)) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "❌ **Error:** `fixed_period_start_date` must be in YYYY-MM-DD format (e.g., '2025-01-15')",
+          },
+        ],
+      };
+    }
   }
 
   // If ID provided, check if budget exists
@@ -51,6 +80,7 @@ export async function upsertBudgetHandler(
         budget_amount: args.budget_amount,
         time_period: args.time_period,
         custom_period_days: args.custom_period_days || null,
+        fixed_period_start_date: args.fixed_period_start_date || null,
       });
 
       console.log(`[UPSERT-BUDGET] Updated budget ${updated.id}, triggering transaction labeling`);
@@ -113,6 +143,7 @@ export async function upsertBudgetHandler(
     budget_amount: args.budget_amount,
     time_period: args.time_period,
     custom_period_days: args.custom_period_days || null,
+    fixed_period_start_date: args.fixed_period_start_date || null,
   });
 
   console.log(`[UPSERT-BUDGET] Created budget ${created.id}, triggering transaction labeling`);
