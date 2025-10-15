@@ -47,6 +47,9 @@ export type Database = {
           filter_prompt: string
           fixed_period_start_date: string | null
           id: string
+          processing_completed_at: string | null
+          processing_error: string | null
+          processing_status: string
           time_period: string
           title: string
           updated_at: string | null
@@ -59,6 +62,9 @@ export type Database = {
           filter_prompt: string
           fixed_period_start_date?: string | null
           id: string
+          processing_completed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string
           time_period: string
           title: string
           updated_at?: string | null
@@ -71,6 +77,9 @@ export type Database = {
           filter_prompt?: string
           fixed_period_start_date?: string | null
           id?: string
+          processing_completed_at?: string | null
+          processing_error?: string | null
+          processing_status?: string
           time_period?: string
           title?: string
           updated_at?: string | null

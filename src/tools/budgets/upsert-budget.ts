@@ -73,7 +73,7 @@ export async function upsertBudgetHandler(
     const existingBudget = await getBudgetById(userId, args.id);
 
     if (existingBudget) {
-      // UPDATE existing budget
+      // UPDATE existing budget with processing status
       const updated = await updateBudget(userId, args.id, {
         title: args.title,
         filter_prompt: args.filter_prompt,
@@ -81,18 +81,35 @@ export async function upsertBudgetHandler(
         time_period: args.time_period,
         custom_period_days: args.custom_period_days || null,
         fixed_period_start_date: args.fixed_period_start_date || null,
+        processing_status: "processing",
+        processing_completed_at: null,
+        processing_error: null,
       });
 
-      console.log(`[UPSERT-BUDGET] Updated budget ${updated.id}, triggering transaction labeling`);
+      console.log(`[UPSERT-BUDGET] Updated budget ${updated.id}, starting background labeling`);
 
-      // Trigger budget labeling for this budget
-      let matchingCount = 0;
-      try {
-        matchingCount = await labelTransactionsForSingleBudget(userId, updated);
-        console.log(`[UPSERT-BUDGET] Labeled ${matchingCount} transactions for updated budget`);
-      } catch (error: any) {
-        console.error(`[UPSERT-BUDGET] Error labeling transactions:`, error.message);
-      }
+      // Trigger budget labeling in background (non-blocking)
+      labelTransactionsForSingleBudget(userId, updated)
+        .then((matchingCount) => {
+          console.log(`[UPSERT-BUDGET] Background labeling complete: ${matchingCount} transactions`);
+          // Update status to ready
+          updateBudget(userId, updated.id, {
+            processing_status: "ready",
+            processing_completed_at: new Date().toISOString(),
+          }).catch((err) => {
+            console.error(`[UPSERT-BUDGET] Failed to update processing status:`, err);
+          });
+        })
+        .catch((error: any) => {
+          console.error(`[UPSERT-BUDGET] Background labeling failed:`, error.message);
+          // Update status to error
+          updateBudget(userId, updated.id, {
+            processing_status: "error",
+            processing_error: error.message,
+          }).catch((err) => {
+            console.error(`[UPSERT-BUDGET] Failed to update error status:`, err);
+          });
+        });
 
       const now = new Date();
 
@@ -100,7 +117,7 @@ export async function upsertBudgetHandler(
         content: [
           {
             type: "text" as const,
-            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n- Matching Transactions: ${matchingCount}\n\nYour budget has been updated and transactions have been labeled!`,
+            text: `✅ **Budget Updated**\n\n**${updated.title}**\n- Amount: $${updated.budget_amount}\n- Period: ${updated.time_period}\n- Filter: ${updated.filter_prompt.substring(0, 100)}${updated.filter_prompt.length > 100 ? "..." : ""}\n- Status: ⏳ Processing transactions in background\n\nYour budget has been updated! We're analyzing your transactions to match them with this budget. Check back in a moment by running "Get budgets" to see the results.`,
           },
         ],
         structuredContent: {
@@ -111,15 +128,16 @@ export async function upsertBudgetHandler(
               amount: updated.budget_amount,
               period: updated.time_period,
               customPeriodDays: updated.custom_period_days,
-              spent: 0, // Will be calculated on next get-budgets call
+              spent: 0,
               remaining: updated.budget_amount,
               percentage: 0,
               status: "under" as const,
+              processingStatus: "processing",
               dateRange: {
                 start: now.toISOString().split("T")[0],
                 end: now.toISOString().split("T")[0],
               },
-              transactionCount: matchingCount,
+              transactionCount: 0,
             },
           ],
         },
@@ -144,18 +162,33 @@ export async function upsertBudgetHandler(
     time_period: args.time_period,
     custom_period_days: args.custom_period_days || null,
     fixed_period_start_date: args.fixed_period_start_date || null,
+    processing_status: "processing",
   });
 
-  console.log(`[UPSERT-BUDGET] Created budget ${created.id}, triggering transaction labeling`);
+  console.log(`[UPSERT-BUDGET] Created budget ${created.id}, starting background labeling`);
 
-  // Trigger budget labeling for this new budget
-  let matchingCount = 0;
-  try {
-    matchingCount = await labelTransactionsForSingleBudget(userId, created);
-    console.log(`[UPSERT-BUDGET] Labeled ${matchingCount} transactions for new budget`);
-  } catch (error: any) {
-    console.error(`[UPSERT-BUDGET] Error labeling transactions:`, error.message);
-  }
+  // Trigger budget labeling in background (non-blocking)
+  labelTransactionsForSingleBudget(userId, created)
+    .then((matchingCount) => {
+      console.log(`[UPSERT-BUDGET] Background labeling complete: ${matchingCount} transactions`);
+      // Update status to ready
+      updateBudget(userId, created.id, {
+        processing_status: "ready",
+        processing_completed_at: new Date().toISOString(),
+      }).catch((err) => {
+        console.error(`[UPSERT-BUDGET] Failed to update processing status:`, err);
+      });
+    })
+    .catch((error: any) => {
+      console.error(`[UPSERT-BUDGET] Background labeling failed:`, error.message);
+      // Update status to error
+      updateBudget(userId, created.id, {
+        processing_status: "error",
+        processing_error: error.message,
+      }).catch((err) => {
+        console.error(`[UPSERT-BUDGET] Failed to update error status:`, err);
+      });
+    });
 
   const now = new Date();
 
@@ -163,7 +196,7 @@ export async function upsertBudgetHandler(
     content: [
       {
         type: "text" as const,
-        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n- Matching Transactions: ${matchingCount}\n\nYour new budget is ready to track spending!`,
+        text: `✅ **Budget Created**\n\n**${created.title}**\n- Amount: $${created.budget_amount}\n- Period: ${created.time_period}\n- Filter: ${created.filter_prompt.substring(0, 100)}${created.filter_prompt.length > 100 ? "..." : ""}\n- Status: ⏳ Processing transactions in background\n\nYour budget is being created! We're analyzing your transactions to match them with this budget. Check back in a moment by running "Get budgets" to see the results.`,
       },
     ],
     structuredContent: {
@@ -174,15 +207,16 @@ export async function upsertBudgetHandler(
           amount: created.budget_amount,
           period: created.time_period,
           customPeriodDays: created.custom_period_days,
-          spent: 0, // Will be calculated on next get-budgets call
+          spent: 0,
           remaining: created.budget_amount,
           percentage: 0,
           status: "under" as const,
+          processingStatus: "processing",
           dateRange: {
             start: now.toISOString().split("T")[0],
             end: now.toISOString().split("T")[0],
           },
-          transactionCount: matchingCount,
+          transactionCount: 0,
         },
       ],
     },

@@ -220,6 +220,8 @@ export async function getBudgetsHandler(
           remaining,
           percentage: Math.round(percentage),
           status,
+          processingStatus: budget.processing_status,
+          processingError: budget.processing_error,
           dateRange: {
             start: start.toISOString().split("T")[0],
             end: end.toISOString().split("T")[0],
@@ -257,6 +259,23 @@ export async function getBudgetsHandler(
         continue;
       }
 
+      // Check processing status first
+      if (result.processingStatus === "processing") {
+        responseText += `⏳ **${result.title}**\n`;
+        responseText += `- Amount: $${result.amount.toFixed(2)}\n`;
+        responseText += `- Period: ${result.period}${result.customPeriodDays ? ` (${result.customPeriodDays} days)` : ""}\n`;
+        responseText += `- Status: ⏳ Processing transactions in background...\n`;
+        responseText += `- Run "Get budgets" again in a moment to see results\n\n`;
+        continue;
+      }
+
+      if (result.processingStatus === "error") {
+        responseText += `❌ **${result.title}**\n`;
+        responseText += `- Error: ${result.processingError || "Unknown error during processing"}\n\n`;
+        continue;
+      }
+
+      // Normal budget display (processingStatus === "ready")
       const statusEmoji = result.status === "over" ? "🔴" : result.status === "near" ? "🟡" : "🟢";
       responseText += `${statusEmoji} **${result.title}**\n`;
       responseText += `- Spent: $${result.spent.toFixed(2)} / $${result.amount.toFixed(2)} (${result.percentage}%)\n`;
