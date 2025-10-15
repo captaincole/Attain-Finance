@@ -441,7 +441,7 @@ export async function filterTransactionsForBudget(
   transactions: TransactionForBudgetFilter[],
   filterPrompt: string
 ): Promise<BudgetFilterResult[]> {
-  const BATCH_SIZE = 100; // Conservative batch size to stay under token limits
+  const BATCH_SIZE = 50; // Reduced batch size to avoid serverless timeouts
 
   // If small dataset, process in single batch
   if (transactions.length <= BATCH_SIZE) {
