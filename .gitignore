@@ -3,6 +3,7 @@ build/
 *.log
 .env
 .env.local
+.env.dev
 
 # Sandbox data (contains real transaction CSVs)
 sandbox/data/
