@@ -146,6 +146,37 @@ export async function markAccountSessionFailed(
 }
 
 /**
+ * Cancel all pending sessions for a user
+ * Used when creating a new session to invalidate old ones
+ */
+export async function cancelPendingSessionsForUser(userId: string): Promise<number> {
+  console.log("[REPO/ACCOUNT-SESSIONS] Cancelling pending sessions for user:", userId);
+
+  const { data, error } = await getSupabase()
+    .from("plaid_sessions")
+    .update({
+      status: "failed",
+      error: "Superseded by new connection attempt",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .select();
+
+  if (error) {
+    console.error("[REPO/ACCOUNT-SESSIONS] Update error:", error);
+    throw new Error(`Failed to cancel pending sessions: ${error.message}`);
+  }
+
+  const count = data?.length || 0;
+  if (count > 0) {
+    console.log("[REPO/ACCOUNT-SESSIONS] Cancelled", count, "pending session(s)");
+  }
+
+  return count;
+}
+
+/**
  * Delete expired sessions (cleanup utility)
  */
 export async function deleteExpiredAccountSessions(): Promise<number> {

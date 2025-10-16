@@ -16,7 +16,12 @@ import {
   createAccountSession,
   findAccountSessionById,
   markAccountSessionCompleted,
+  cancelPendingSessionsForUser,
 } from "../storage/repositories/account-sessions.js";
+import {
+  upsertAccounts,
+  PlaidAccountData,
+} from "../storage/repositories/accounts.js";
 
 /**
  * Initiate account connection flow
@@ -27,6 +32,10 @@ export async function initiateAccountConnection(
   baseUrl: string,
   plaidClient: PlaidApi
 ): Promise<{ linkUrl: string; sessionId: string }> {
+  // Cancel any existing pending sessions for this user
+  // This prevents issues when user creates multiple connection attempts
+  await cancelPendingSessionsForUser(userId);
+
   // Generate unique session ID
   const sessionId = crypto.randomUUID();
 
@@ -88,6 +97,35 @@ export async function completeAccountConnection(
 
   // Store connection
   await upsertAccountConnection(session.userId, accessToken, itemId, environment);
+
+  // Fetch and store account balances immediately
+  try {
+    const accountsResponse = await plaidClient.accountsGet({
+      access_token: accessToken,
+    });
+
+    const plaidAccounts: PlaidAccountData[] = accountsResponse.data.accounts.map(
+      (account) => ({
+        account_id: account.account_id,
+        name: account.name,
+        official_name: account.official_name || null,
+        type: account.type,
+        subtype: account.subtype || null,
+        balances: {
+          current: account.balances.current,
+          available: account.balances.available,
+          limit: account.balances.limit || null,
+          iso_currency_code: account.balances.iso_currency_code || null,
+        },
+      })
+    );
+
+    await upsertAccounts(session.userId, itemId, plaidAccounts);
+    console.log(`[ACCOUNT-SERVICE] Stored ${plaidAccounts.length} accounts for item ${itemId}`);
+  } catch (error: any) {
+    console.error("[ACCOUNT-SERVICE] Failed to fetch/store account balances:", error.message);
+    // Don't fail the entire connection if balance fetch fails
+  }
 
   // Mark session as completed
   await markAccountSessionCompleted(sessionId);

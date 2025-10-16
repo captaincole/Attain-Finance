@@ -15,6 +15,7 @@ import { categorizeTransactions, TransactionForCategorization } from "../../util
 import { getCustomRules } from "../../storage/categorization/rules.js";
 import { getBudgets } from "../../storage/budgets/budgets.js";
 import { labelTransactionsForBudgets } from "../../utils/budget-labeling.js";
+import { upsertAccounts, PlaidAccountData } from "../../storage/repositories/accounts.js";
 
 /**
  * Refresh Transactions Handler
@@ -48,10 +49,11 @@ export async function refreshTransactionsHandler(
   const allPlaidTransactions: any[] = [];
   const accountMap = new Map<string, { name: string; institution: string }>();
   const errors: string[] = [];
+  let totalAccountsRefreshed = 0;
 
   for (const connection of connections) {
     try {
-      // Get account details
+      // Get account details (includes balances)
       const accountsResponse = await plaidClient.accountsGet({
         access_token: connection.accessToken,
       });
@@ -59,7 +61,27 @@ export async function refreshTransactionsHandler(
       const institutionName =
         accountsResponse.data.item.institution_name || "Unknown";
 
-      // Build account metadata map
+      // Store account balances in database
+      const plaidAccounts: PlaidAccountData[] = accountsResponse.data.accounts.map(
+        (account) => ({
+          account_id: account.account_id,
+          name: account.name,
+          official_name: account.official_name || null,
+          type: account.type,
+          subtype: account.subtype || null,
+          balances: {
+            current: account.balances.current,
+            available: account.balances.available,
+            limit: account.balances.limit || null,
+            iso_currency_code: account.balances.iso_currency_code || null,
+          },
+        })
+      );
+
+      await upsertAccounts(userId, connection.itemId, plaidAccounts);
+      totalAccountsRefreshed += plaidAccounts.length;
+
+      // Build account metadata map for transaction labeling
       for (const account of accountsResponse.data.accounts) {
         const accountType = account.subtype || account.type || "Account";
         const mask = account.mask ? `****${account.mask}` : "";
@@ -199,18 +221,20 @@ export async function refreshTransactionsHandler(
   }
 
   // Build response
-  let responseText = `✅ **Transactions Refreshed**\n\n`;
+  let responseText = `✅ **Transactions & Balances Refreshed**\n\n`;
   responseText += `**Summary:**\n`;
+  responseText += `- Accounts Refreshed: ${totalAccountsRefreshed} account(s)\n`;
   responseText += `- Fetched: ${allPlaidTransactions.length} transactions from Plaid\n`;
   responseText += `- Categorized: ${categorizationCount} new transactions\n`;
   responseText += `- Budget Labels: ${budgetLabelCount} transactions labeled\n`;
-  responseText += `- Connections: ${connections.length} account(s)\n\n`;
+  responseText += `- Connections: ${connections.length} institution(s)\n\n`;
 
   if (errors.length > 0) {
     responseText += `**Warnings:**\n${errors.map((e) => `- ${e}`).join("\n")}\n\n`;
   }
 
   responseText += `**Next Steps:**\n`;
+  responseText += `- "Show my account balances" - View updated balances\n`;
   responseText += `- "Get my transactions" - View categorized data\n`;
   responseText += `- "Check my budgets" - See budget status\n`;
   responseText += `- "Update my categorization rules" - Customize categories\n`;

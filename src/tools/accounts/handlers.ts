@@ -12,6 +12,7 @@ import {
   getUserConnections,
 } from "../../services/account-service.js";
 import { getAccountCapabilityHints, formatHintsForChatGPT } from "../../utils/capability-hints.js";
+import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
 
 /**
  * Connect Account Tool Handler
@@ -43,7 +44,8 @@ ${linkUrl}
 **What happens next:**
 1. You'll see a secure interface to select your financial institution
 2. After connecting, the page will confirm success
-3. Return here and say: "Show me my account balances"
+3. Your account balances will be fetched and stored automatically
+4. Return here and say: "Show me my account balances"
 
 **Note:** This link expires in 30 minutes.
           `.trim(),
@@ -167,6 +169,105 @@ To get started, say: "Connect my account"
       "openai/outputTemplate": "ui://widget/connected-institutions.html",
       "openai/widgetAccessible": true,
       "openai/resultCanProduceWidget": true,
+    },
+  };
+}
+
+/**
+ * Get Account Balances Tool Handler
+ * Shows current balances from database (fast, no API calls)
+ */
+export async function getAccountBalancesHandler(userId: string) {
+  const accounts = await getAccountsByUserId(userId);
+
+  if (accounts.length === 0) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `
+❌ **No Accounts Found**
+
+You haven't connected any accounts yet.
+
+To get started, say: "Connect my account"
+          `.trim(),
+        },
+      ],
+    };
+  }
+
+  // Calculate totals by account type
+  const accountsByType = accounts.reduce((acc, account) => {
+    const type = account.type;
+    if (!acc[type]) {
+      acc[type] = { accounts: [], total: 0 };
+    }
+    acc[type].accounts.push(account);
+    if (account.current_balance !== null) {
+      acc[type].total += Number(account.current_balance);
+    }
+    return acc;
+  }, {} as Record<string, { accounts: any[]; total: number }>);
+
+  // Build response text
+  let responseText = `✓ **Account Balances** (${accounts.length} account${accounts.length > 1 ? "s" : ""})\n\n`;
+
+  // Group by type
+  Object.entries(accountsByType).forEach(([type, data]) => {
+    responseText += `**${type.charAt(0).toUpperCase() + type.slice(1)} Accounts:**\n`;
+    data.accounts.forEach((account) => {
+      const balance = account.current_balance !== null
+        ? `$${Number(account.current_balance).toFixed(2)}`
+        : "N/A";
+      const available = account.available_balance !== null
+        ? ` (Available: $${Number(account.available_balance).toFixed(2)})`
+        : "";
+      responseText += `  • ${account.name}${account.subtype ? ` (${account.subtype})` : ""}: ${balance}${available}\n`;
+
+      // Show credit limit if applicable
+      if (account.limit_amount !== null) {
+        responseText += `    Credit Limit: $${Number(account.limit_amount).toFixed(2)}\n`;
+      }
+    });
+    responseText += `  **Total:** $${data.total.toFixed(2)}\n\n`;
+  });
+
+  // Calculate net worth (assets - liabilities)
+  const assets = ["depository", "investment"].reduce((sum, type) =>
+    sum + (accountsByType[type]?.total || 0), 0);
+  const liabilities = ["credit", "loan"].reduce((sum, type) =>
+    sum + Math.abs(accountsByType[type]?.total || 0), 0);
+  const netWorth = assets - liabilities;
+
+  responseText += `**Net Worth:** $${netWorth.toFixed(2)}\n`;
+
+  // Add last synced info
+  const oldestSync = accounts.reduce((oldest, account) => {
+    const syncDate = new Date(account.last_synced_at);
+    return !oldest || syncDate < oldest ? syncDate : oldest;
+  }, null as Date | null);
+
+  if (oldestSync) {
+    responseText += `\n*Last synced: ${oldestSync.toLocaleString()}*\n`;
+    responseText += `*To update balances, say: "Refresh my transactions"*`;
+  }
+
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: responseText.trim(),
+      },
+    ],
+    structuredContent: {
+      accounts,
+      summary: {
+        totalAccounts: accounts.length,
+        accountsByType,
+        netWorth,
+        lastSynced: oldestSync?.toISOString(),
+      },
     },
   };
 }

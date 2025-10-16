@@ -295,3 +295,8 @@ Available via `.claude/commands/`:
 2. Include comments explaining what and why
 3. Test locally before deploying
 4. Commit and push (auto-deploys to Render, migrations run automatically)
+
+## Development Todos
+
+### Completed
+- ✅ **Account Balance Tracking** (2025-10-16) - Implemented end-to-end account balance feature. Created `accounts` table (migration 013), account repository layer, and `get-account-balances` MCP tool. Account balances are automatically fetched and stored during Plaid OAuth callback and refreshed during transaction syncs. Includes automatic session cleanup to prevent "session already completed" errors when users retry connections. Tool displays balances grouped by account type with net worth calculation.

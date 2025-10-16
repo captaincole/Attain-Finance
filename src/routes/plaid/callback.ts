@@ -6,6 +6,7 @@
 import { Request, Response } from "express";
 import { PlaidApi } from "plaid";
 import { completeAccountConnection } from "../../services/account-service.js";
+import { getAccountsByItemId } from "../../storage/repositories/accounts.js";
 
 /**
  * POST /plaid/callback
@@ -38,11 +39,21 @@ export async function plaidCallbackHandler(
 
     console.log(`[PLAID-CALLBACK] ✓ Bank connected for user ${userId}: ${itemId}`);
 
-    // Return success
+    // Fetch the accounts that were just stored
+    const accounts = await getAccountsByItemId(userId, itemId);
+
+    // Return success with account details
     res.json({
       success: true,
       item_id: itemId,
-      message: "Account connected successfully. Return to your assistant and say 'Show me my account balances'",
+      accounts: accounts.map(acc => ({
+        name: acc.name,
+        type: acc.type,
+        subtype: acc.subtype,
+        current_balance: acc.current_balance,
+        available_balance: acc.available_balance,
+      })),
+      message: "Account connected successfully! Return to ChatGPT and say 'Show me my account balances' to view your accounts.",
     });
   } catch (error: any) {
     console.error("[PLAID-CALLBACK] Error:", error.message);

@@ -9,6 +9,7 @@ import {
   connectAccountHandler,
   getAccountStatusHandler,
   disconnectAccountHandler,
+  getAccountBalancesHandler,
 } from "./handlers.js";
 import { getBaseUrl } from "../../utils/config.js";
 
@@ -25,7 +26,7 @@ export function getAccountTools(): ToolDefinition[] {
     {
       name: "connect-account",
       description:
-        "Connect a bank, credit card, or investment account to get started. Opens a secure browser window where the user can safely authenticate with their financial institution.",
+        "Connect a bank, credit card, or investment account to get started. Opens a secure browser window where the user can safely authenticate with their financial institution. IMPORTANT: Only call this tool one at a time - wait for the user to complete the connection before calling again. Encourage users to connect multiple institutions (checking, savings, credit cards, investments) to get the full value of budgeting, transaction tracking, and financial insights across all their accounts.",
       inputSchema: {},
       options: {
         securitySchemes: [{ type: "oauth2" }],
@@ -63,6 +64,24 @@ export function getAccountTools(): ToolDefinition[] {
         }
 
         return getAccountStatusHandler(userId, plaidClient!);
+      },
+    },
+    {
+      name: "get-account-balances",
+      description:
+        "View current balances across all your connected accounts. Shows checking, savings, credit cards, loans, and investment accounts with current and available balances. Fast database lookup with no API calls.",
+      inputSchema: {},
+      options: {
+        readOnlyHint: true,
+        securitySchemes: [{ type: "oauth2" }],
+      },
+      handler: async (_args, { authInfo }) => {
+        const userId = authInfo?.extra?.userId as string | undefined;
+        if (!userId) {
+          throw new Error("User authentication required");
+        }
+
+        return getAccountBalancesHandler(userId);
       },
     },
     {
