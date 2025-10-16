@@ -22,6 +22,8 @@ import {
   upsertAccounts,
   PlaidAccountData,
 } from "../storage/repositories/accounts.js";
+import { TransactionSyncService } from "./transaction-sync.js";
+import { getSupabase } from "../storage/supabase.js";
 
 /**
  * Initiate account connection flow
@@ -129,6 +131,20 @@ export async function completeAccountConnection(
 
   // Mark session as completed
   await markAccountSessionCompleted(sessionId);
+
+  // Initiate transaction sync in background (fire-and-forget)
+  // This runs after response is sent to avoid blocking OAuth callback
+  setImmediate(async () => {
+    try {
+      console.log(`[ACCOUNT-SERVICE] Initiating background transaction sync for item ${itemId}`);
+      const syncService = new TransactionSyncService(plaidClient, getSupabase());
+      await syncService.initiateSyncForConnection(itemId, session.userId, accessToken);
+      console.log(`[ACCOUNT-SERVICE] ✓ Background transaction sync completed for item ${itemId}`);
+    } catch (error: any) {
+      console.error(`[ACCOUNT-SERVICE] ✗ Background transaction sync failed for item ${itemId}:`, error.message);
+      // Error is logged but does not affect OAuth callback response
+    }
+  });
 
   console.log("[ACCOUNT-SERVICE] Connection completed for user:", session.userId);
 

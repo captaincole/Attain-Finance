@@ -1,0 +1,254 @@
+/**
+ * Transaction Sync Service
+ * Handles syncing transactions from Plaid using /transactions/sync endpoint
+ * Supports pagination, cursor management, and categorization
+ */
+
+import { PlaidApi, Transaction as PlaidTransaction } from "plaid";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { AccountSyncStateRepository } from "../storage/repositories/account-sync-state.js";
+import { upsertTransactions } from "../storage/repositories/transactions.js";
+import { getAccountsByItemId } from "../storage/repositories/accounts.js";
+import {
+  categorizeTransactions,
+  TransactionForCategorization,
+} from "../utils/clients/claude.js";
+
+interface TransactionSyncOptions {
+  accountId: string;
+  accessToken: string;
+  userId: string;
+  itemId: string;
+}
+
+export class TransactionSyncService {
+  private syncStateRepo: AccountSyncStateRepository;
+
+  constructor(
+    private plaidClient: PlaidApi,
+    private supabase: SupabaseClient
+  ) {
+    this.syncStateRepo = new AccountSyncStateRepository(supabase);
+  }
+
+  /**
+   * Sync transactions for a single account
+   * Handles pagination, cursor management, and categorization
+   */
+  async syncAccountTransactions(
+    options: TransactionSyncOptions
+  ): Promise<void> {
+    const { accountId, accessToken, userId, itemId } = options;
+
+    console.log(`[TRANSACTION-SYNC] Starting sync for account ${accountId}`);
+
+    try {
+      // Mark sync as in progress
+      await this.syncStateRepo.updateSyncProgress(
+        accountId,
+        "", // No cursor yet
+        "syncing",
+        0
+      );
+
+      // Get current cursor from database (if exists)
+      const syncState = await this.syncStateRepo.getSyncState(accountId);
+      let cursor = syncState?.transaction_cursor || undefined;
+
+      let hasMore = true;
+      let pageCount = 0;
+      let totalAdded = 0;
+      let totalModified = 0;
+      let totalRemoved = 0;
+
+      // Paginate through all transactions
+      while (hasMore) {
+        pageCount++;
+        console.log(
+          `[TRANSACTION-SYNC] Account ${accountId}: Fetching page ${pageCount}${cursor ? ` (cursor: ${cursor.substring(0, 20)}...)` : " (initial)"}`
+        );
+
+        // Call Plaid /transactions/sync
+        const response = await this.plaidClient.transactionsSync({
+          access_token: accessToken,
+          cursor: cursor,
+          count: 500, // Max per page
+          options: {
+            include_original_description: false,
+            account_id: accountId, // Filter to specific account
+          },
+        });
+
+        const { added, modified, removed, next_cursor, has_more } =
+          response.data;
+
+        console.log(
+          `[TRANSACTION-SYNC] Account ${accountId}: Page ${pageCount} - ${added.length} added, ${modified.length} modified, ${removed.length} removed`
+        );
+
+        // Process added and modified transactions
+        const transactionsToProcess = [...added, ...modified];
+
+        if (transactionsToProcess.length > 0) {
+          // Get account info for enrichment
+          const accounts = await getAccountsByItemId(userId, itemId);
+          const account = accounts.find((a) => a.account_id === accountId);
+
+          // Categorize transactions
+          const forCategorization: TransactionForCategorization[] =
+            transactionsToProcess.map((tx) => ({
+              date: tx.date,
+              description: tx.name,
+              amount: Math.abs(tx.amount).toFixed(2),
+              category: tx.personal_finance_category?.primary || undefined,
+              account_name: account?.name,
+              pending: tx.pending ? "true" : "false",
+            }));
+
+          console.log(
+            `[TRANSACTION-SYNC] Account ${accountId}: Categorizing ${forCategorization.length} transactions`
+          );
+
+          const categorized = await categorizeTransactions(forCategorization);
+
+          // Build transaction objects for database
+          const transactionsForDb = transactionsToProcess.map((tx, idx) => ({
+            transactionId: tx.transaction_id,
+            accountId: tx.account_id,
+            itemId: itemId,
+            userId: userId,
+            date: tx.date,
+            name: tx.name,
+            amount: tx.amount,
+            plaidCategory: tx.personal_finance_category
+              ? [
+                  tx.personal_finance_category.primary,
+                  tx.personal_finance_category.detailed,
+                ]
+              : null,
+            pending: tx.pending,
+            customCategory: categorized[idx]?.custom_category || null,
+            categorizedAt: categorized[idx]?.custom_category
+              ? new Date()
+              : null,
+            budgetIds: null, // Budget labeling happens separately
+            budgetsUpdatedAt: null,
+            accountName: account?.name || null,
+            institutionName: null, // Could be enriched later
+          }));
+
+          // Upsert to database
+          await upsertTransactions(transactionsForDb);
+        }
+
+        // Handle removed transactions (delete from database)
+        if (removed.length > 0) {
+          console.log(
+            `[TRANSACTION-SYNC] Account ${accountId}: Removing ${removed.length} deleted transactions`
+          );
+          // TODO: Implement transaction deletion
+          // For now, we'll skip this as it's rare and can be handled later
+        }
+
+        // Update cursor and counters
+        cursor = next_cursor;
+        hasMore = has_more;
+        totalAdded += added.length;
+        totalModified += modified.length;
+        totalRemoved += removed.length;
+
+        // Update sync state after each page
+        await this.syncStateRepo.updateSyncProgress(
+          accountId,
+          next_cursor,
+          "syncing",
+          added.length + modified.length
+        );
+      }
+
+      // Mark sync as complete
+      await this.syncStateRepo.markSyncComplete(accountId, cursor || "");
+
+      console.log(
+        `[TRANSACTION-SYNC] ✓ Sync complete for account ${accountId}: ${totalAdded} added, ${totalModified} modified, ${totalRemoved} removed (${pageCount} pages)`
+      );
+    } catch (error: any) {
+      console.error(
+        `[TRANSACTION-SYNC] ✗ Sync failed for account ${accountId}:`,
+        error.message
+      );
+
+      // Mark sync as failed
+      await this.syncStateRepo.markSyncError(accountId, error.message);
+
+      throw error;
+    }
+  }
+
+  /**
+   * Initiate sync for all accounts in a connection
+   * Called from OAuth callback after account connection
+   */
+  async initiateSyncForConnection(
+    itemId: string,
+    userId: string,
+    accessToken: string
+  ): Promise<void> {
+    console.log(
+      `[TRANSACTION-SYNC] Initiating sync for connection ${itemId}`
+    );
+
+    try {
+      // Get all accounts for this connection
+      const accounts = await getAccountsByItemId(userId, itemId);
+
+      console.log(
+        `[TRANSACTION-SYNC] Found ${accounts.length} accounts to sync`
+      );
+
+      // Create sync state records for each account
+      for (const account of accounts) {
+        try {
+          await this.syncStateRepo.createSyncState(account.account_id);
+          console.log(
+            `[TRANSACTION-SYNC] Created sync state for account ${account.account_id}`
+          );
+        } catch (error: any) {
+          // Ignore duplicate key errors (sync state already exists)
+          if (!error.message.includes("duplicate")) {
+            throw error;
+          }
+        }
+      }
+
+      // Sync each account independently
+      // We could parallelize this, but sequential is safer for MVP
+      for (const account of accounts) {
+        try {
+          await this.syncAccountTransactions({
+            accountId: account.account_id,
+            accessToken,
+            userId,
+            itemId,
+          });
+        } catch (error: any) {
+          // Log error but continue syncing other accounts
+          console.error(
+            `[TRANSACTION-SYNC] Failed to sync account ${account.account_id}, continuing with others:`,
+            error.message
+          );
+        }
+      }
+
+      console.log(
+        `[TRANSACTION-SYNC] ✓ Connection sync complete for ${itemId}`
+      );
+    } catch (error: any) {
+      console.error(
+        `[TRANSACTION-SYNC] ✗ Connection sync failed for ${itemId}:`,
+        error.message
+      );
+      throw error;
+    }
+  }
+}

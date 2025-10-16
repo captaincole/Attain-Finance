@@ -19,6 +19,7 @@ import { userTransactionData } from "./tools/categorization/get-transactions.js"
 import { userRawTransactionData } from "./tools/categorization/get-raw-transactions.js";
 import { getVisualization } from "./storage/visualization/scripts.js";
 import { createPlaidRouter } from "./routes/plaid/index.js";
+import adminRouter from "./routes/admin.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +111,9 @@ app.get("/.well-known/oauth-authorization-server", authServerMetadataHandlerCler
 
 // Plaid routes (Link UI and callback)
 app.use("/plaid", createPlaidRouter(plaidClient));
+
+// Admin routes (development/testing only - not exposed via MCP)
+app.use("/admin", adminRouter);
 
 // Signed URL download endpoint for user transactions
 app.get("/api/data/transactions", (req: Request, res: Response) => {

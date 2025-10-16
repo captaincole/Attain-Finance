@@ -39,6 +39,109 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_sync_state: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          error_message: string | null
+          last_synced_at: string | null
+          sync_status: string
+          total_transactions_synced: number | null
+          transaction_cursor: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          error_message?: string | null
+          last_synced_at?: string | null
+          sync_status?: string
+          total_transactions_synced?: number | null
+          transaction_cursor?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          last_synced_at?: string | null
+          sync_status?: string
+          total_transactions_synced?: number | null
+          transaction_cursor?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_sync_state_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      accounts: {
+        Row: {
+          account_id: string
+          available_balance: number | null
+          created_at: string | null
+          currency_code: string | null
+          current_balance: number | null
+          id: string
+          item_id: string
+          last_synced_at: string
+          limit_amount: number | null
+          name: string
+          official_name: string | null
+          subtype: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          available_balance?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          current_balance?: number | null
+          id?: string
+          item_id: string
+          last_synced_at: string
+          limit_amount?: number | null
+          name: string
+          official_name?: string | null
+          subtype?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          available_balance?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          current_balance?: number | null
+          id?: string
+          item_id?: string
+          last_synced_at?: string
+          limit_amount?: number | null
+          name?: string
+          official_name?: string | null
+          subtype?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "plaid_connections"
+            referencedColumns: ["item_id"]
+          },
+        ]
+      }
       budgets: {
         Row: {
           budget_amount: number

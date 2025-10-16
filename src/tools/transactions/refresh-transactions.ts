@@ -1,6 +1,11 @@
 /**
  * Refresh Transactions Tool
  * Fetches latest data from Plaid, categorizes, and labels for budgets
+ *
+ * TODO: Integrate TransactionSyncService here for manual refresh
+ * This should reuse the same /transactions/sync logic as OAuth callback
+ * instead of the current /transactions/get approach.
+ * See: src/services/transaction-sync.ts
  */
 
 import { PlaidApi } from "plaid";

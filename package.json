@@ -14,7 +14,8 @@
     "prepare": "npm run build",
     "dev": "concurrently \"npm run watch\" \"nodemon --watch build build/index.js\"",
     "sandbox:create": "tsx scripts/create-sandbox-user.ts",
-    "sandbox:validate": "tsx scripts/validate-config.ts"
+    "sandbox:validate": "tsx scripts/validate-config.ts",
+    "reset-user": "tsx scripts/reset-user.ts"
   },
   "files": [
     "build",

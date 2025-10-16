@@ -14,6 +14,7 @@ npm run typecheck        # Run TypeScript type checking
 npm test                 # Run tests
 npm run test:integration # Run integration tests
 npm run sandbox:create   # Generate Plaid sandbox config
+npm run reset-user -- --userId=user_xxx  # Reset user data (testing only)
 gh pr create             # Create pull request
 ```
 
@@ -44,6 +45,14 @@ docs/                     # Detailed documentation
 
 **NEVER edit existing migration files.** Always create a NEW migration file for schema changes.
 
+**Migration Workflow:**
+1. Create new migration file (e.g., `migrations/015_description.sql`)
+2. Run migration manually on database
+3. Regenerate TypeScript types via Supabase CLI: `npx supabase gen types typescript --local > src/storage/database.types.ts`
+4. **DO NOT EDIT `src/storage/database.types.ts` manually** - it is auto-generated
+5. Wait for types to regenerate before continuing with code that uses the new schema
+6. **If adding a new user-data table**: Update `src/storage/repositories/user-data-cleanup.ts` to include deletion logic for the new table
+
 ### Git Commits
 **Maximum 7 lines total:**
 - Line 1: Short summary (50-72 chars)
@@ -67,6 +76,7 @@ Co-Authored-By: Claude <noreply@anthropic.com>
 - **Destructuring:** Use when possible: `import { foo } from 'bar'`
 - **Database:** All queries go through repository layer in `src/storage/repositories/`
 - **No emojis** unless explicitly requested
+- **Supabase:** Does NOT support `.raw()` for SQL expressions. To increment counters, fetch current value first, then update with new value.
 
 ## Key Architectural Patterns
 
@@ -300,3 +310,20 @@ Available via `.claude/commands/`:
 
 ### Completed
 - ✅ **Account Balance Tracking** (2025-10-16) - Implemented end-to-end account balance feature. Created `accounts` table (migration 013), account repository layer, and `get-account-balances` MCP tool. Account balances are automatically fetched and stored during Plaid OAuth callback and refreshed during transaction syncs. Includes automatic session cleanup to prevent "session already completed" errors when users retry connections. Tool displays balances grouped by account type with net worth calculation.
+
+- ✅ **Background Transaction Sync** (2025-10-16) - Implemented automatic transaction sync triggered by OAuth callback. Created migrations 014-015 for `account_sync_state` table tracking. Built `TransactionSyncService` using Plaid's `/transactions/sync` endpoint with cursor-based pagination. Each account syncs independently with its own cursor for error isolation. Transactions are automatically categorized during sync. Fire-and-forget pattern via `setImmediate()` ensures OAuth callback returns 200 immediately. Includes comprehensive logging, integration tests, and observability via `account_sync_state` table. Admin endpoint (`/admin/user/:userId/data`) and interactive CLI script (`npm run reset-user`) added for testing workflow.
+
+### Key Patterns Established
+
+**Background Processing Pattern:**
+- Use `setImmediate()` for fire-and-forget async operations after HTTP response
+- Log extensively with prefixes like `[SERVICE-NAME]` for debugging
+- Store operation state in database for observability
+- Handle errors gracefully without affecting primary operation
+
+**Testing Utilities Pattern:**
+- Admin endpoints at `/admin/*` (HTTP only, not MCP tools)
+- Environment guards: reject in production via `PLAID_ENV` check
+- Explicit confirmation required: query parameter `?confirm=DELETE_ALL_DATA`
+- Interactive CLI scripts with pretty-printed JSON and y/n prompts
+- Update `user-data-cleanup.ts` when adding new user-data tables
