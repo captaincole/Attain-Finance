@@ -74,6 +74,13 @@ export function getAccountTools(): ToolDefinition[] {
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
+        _meta: {
+          "openai/outputTemplate": "ui://widget/connected-institutions.html",
+          "openai/toolInvocation/invoking": "Loading your account balances...",
+          "openai/toolInvocation/invoked": "Account balances loaded",
+          "openai/widgetAccessible": true,
+          "openai/resultCanProduceWidget": true,
+        },
       },
       handler: async (_args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;

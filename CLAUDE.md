@@ -58,16 +58,13 @@ docs/                     # Detailed documentation
 - Line 1: Short summary (50-72 chars)
 - Line 2: Blank
 - Lines 3-5: Body explaining what/why
-- Lines 6-7: Attribution footer
+- Lines 6-7: Attribution footer - Do not mention claude
 
 ```
 Fix Plaid callback error in serverless environment
 
 Migrate session storage from in-memory Map to Supabase.
 Fixes 400 errors caused by stateless instances.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
 ### Code Style
