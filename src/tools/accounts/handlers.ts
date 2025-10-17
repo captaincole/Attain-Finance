@@ -248,6 +248,45 @@ To get started, say: "Connect my account"
     responseText += `*To update balances, say: "Refresh my transactions"*`;
   }
 
+  // Transform data for widget compatibility
+  // Widget expects institutions array grouped by item_id
+  const institutionMap = new Map<string, {
+    itemId: string;
+    institutionName: string;
+    env: string;
+    connectedAt: Date;
+    accounts: Array<{
+      name: string;
+      type: string;
+      subtype?: string;
+      balances: { current?: number };
+    }>;
+  }>();
+
+  accounts.forEach(account => {
+    if (!institutionMap.has(account.item_id)) {
+      institutionMap.set(account.item_id, {
+        itemId: account.item_id,
+        institutionName: "Connected Institution", // Placeholder - institution name not stored in accounts table
+        env: "production", // Could be enriched from connection data
+        connectedAt: new Date(account.created_at),
+        accounts: []
+      });
+    }
+
+    const institution = institutionMap.get(account.item_id)!;
+    institution.accounts.push({
+      name: account.name,
+      type: account.type,
+      subtype: account.subtype || undefined,
+      balances: {
+        current: account.current_balance !== null ? Number(account.current_balance) : undefined
+      }
+    });
+  });
+
+  const institutions = Array.from(institutionMap.values());
+
   return {
     content: [
       {
@@ -256,6 +295,9 @@ To get started, say: "Connect my account"
       },
     ],
     structuredContent: {
+      institutions,
+      totalAccounts: accounts.length,
+      // Keep original data for backwards compatibility
       accounts,
       summary: {
         totalAccounts: accounts.length,
