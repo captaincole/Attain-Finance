@@ -327,3 +327,6 @@ Available via `.claude/commands/`:
 - Explicit confirmation required: query parameter `?confirm=DELETE_ALL_DATA`
 - Interactive CLI scripts with pretty-printed JSON and y/n prompts
 - Update `user-data-cleanup.ts` when adding new user-data tables
+
+### Pending
+- ⏳ **Async Recategorization** - Refactor `update-categorization-rules` tool to use background processing pattern (like transaction sync). Currently blocks MCP call while re-categorizing all transactions synchronously, which can take 30+ seconds for users with 1,000+ transactions. Should use `setImmediate()`, store progress in database, and return immediately.

@@ -1,6 +1,6 @@
 import { saveCustomRules, getCustomRules } from "../../storage/categorization/rules.js";
-import { findTransactionsByUserId, updateTransactionCategories } from "../../storage/repositories/transactions.js";
-import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
+import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
+import { recategorizeAllTransactions } from "../../services/recategorization-service.js";
 import { PlaidApi } from "plaid";
 
 export interface UpdateCategorizationArgs {
@@ -47,7 +47,7 @@ ${(await getCustomRules(userId)) || "No custom rules set (using defaults)"}
     await saveCustomRules(userId, rules.trim());
     console.log(`[UPDATE-RULES] Saved new rules for user ${userId}`);
 
-    // Re-categorize ALL user transactions in database
+    // Check if there are transactions to recategorize
     const allTransactions = await findTransactionsByUserId(userId);
 
     if (allTransactions.length === 0) {
@@ -70,43 +70,22 @@ You don't have any transactions yet. Run "Refresh transactions" to sync data fro
       };
     }
 
-    console.log(`[UPDATE-RULES] Re-categorizing ${allTransactions.length} transactions`);
+    // Trigger async recategorization in background (fire-and-forget)
+    console.log(`[UPDATE-RULES] Triggering background recategorization for ${allTransactions.length} transactions`);
+    setImmediate(() => {
+      recategorizeAllTransactions(userId, rules.trim());
+    });
 
-    // Prepare for categorization
-    const txsForCategorization: TransactionForCategorization[] =
-      allTransactions.map((tx) => ({
-        date: tx.date,
-        description: tx.name,
-        amount: tx.amount.toString(),
-        category: tx.plaidCategory?.join(", "),
-        account_name: tx.accountName || undefined,
-        pending: tx.pending ? "true" : "false",
-      }));
-
-    // Call Claude API with NEW rules
-    const categorized = await categorizeTransactions(
-      txsForCategorization,
-      rules.trim()
-    );
-
-    // Update all transactions in database
-    const updates = categorized.map((tx, index) => ({
-      transactionId: allTransactions[index].transactionId,
-      customCategory: tx.custom_category,
-    }));
-
-    await updateTransactionCategories(updates);
-
-    console.log(`[UPDATE-RULES] Re-categorized ${updates.length} transactions`);
-
+    // Return immediately
     let responseText = `✅ **Categorization Rules Updated**\n\n`;
     responseText += `**Your New Rules:**\n${rules.trim()}\n\n`;
-    responseText += `**Auto-Recategorization Complete**\n`;
-    responseText += `Re-categorized ${updates.length} transactions with new rules.\n\n`;
+    responseText += `**Background Recategorization Started**\n`;
+    responseText += `Re-categorizing ${allTransactions.length} transactions with new rules.\n`;
+    responseText += `This may take 1-2 minutes depending on transaction volume.\n\n`;
     responseText += `**Next Steps:**\n`;
+    responseText += `- Wait a minute or two for recategorization to complete\n`;
     responseText += `- "Get my transactions" - View updated categories\n`;
     responseText += `- "Check my budgets" - See if budget spending changed\n`;
-    responseText += `- "Refresh transactions" - Get latest data from bank\n`;
 
     return {
       content: [
