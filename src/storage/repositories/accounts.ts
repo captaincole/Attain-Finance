@@ -1,7 +1,5 @@
 import { getSupabase } from "../supabase.js";
 
-const supabase = getSupabase();
-
 export interface Account {
   id: string;
   user_id: string;
@@ -61,7 +59,8 @@ export async function upsertAccounts(
     updated_at: now,
   }));
 
-  const { data, error } = await (supabase as any)
+  const supabase = getSupabase();
+  const { data, error } = await supabase
     .from("accounts")
     .upsert(accountsToUpsert, {
       onConflict: "user_id,account_id",
@@ -80,7 +79,8 @@ export async function upsertAccounts(
  * Get all accounts for a user across all connected institutions.
  */
 export async function getAccountsByUserId(userId: string): Promise<Account[]> {
-  const { data, error } = await (supabase as any)
+  const supabase = getSupabase();
+  const { data, error } = await supabase
     .from("accounts")
     .select("*")
     .eq("user_id", userId)
@@ -100,7 +100,8 @@ export async function getAccountsByItemId(
   userId: string,
   itemId: string
 ): Promise<Account[]> {
-  const { data, error } = await (supabase as any)
+  const supabase = getSupabase();
+  const { data, error } = await supabase
     .from("accounts")
     .select("*")
     .eq("user_id", userId)
