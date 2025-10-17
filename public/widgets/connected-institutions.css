@@ -1,4 +1,8 @@
 /* src/connected-institutions.css */
+body {
+  margin: 0;
+  padding: 0;
+}
 .institutions-widget {
   font-family:
     -apple-system,
@@ -6,7 +10,7 @@
     "Segoe UI",
     Roboto,
     sans-serif;
-  padding: 1rem 0;
+  padding: 15px;
   width: 100%;
   box-sizing: border-box;
 }

@@ -23585,17 +23585,17 @@ function useToolOutput() {
 function BudgetListWidget() {
   const toolOutput = useToolOutput();
   if (toolOutput === null) {
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "budget-list-widget", style: { padding: "1rem 0", width: "100%", boxSizing: "border-box" } }, /* @__PURE__ */ import_react.default.createElement(
+    return /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("style", null, `body { margin: 0; padding: 0; }`), /* @__PURE__ */ import_react.default.createElement("div", { className: "budget-list-widget", style: { padding: "15px", width: "100%", boxSizing: "border-box" } }, /* @__PURE__ */ import_react.default.createElement(
       "div",
       {
         className: "loading-state",
         style: { padding: "2rem", textAlign: "center", color: "#666" }
       },
       /* @__PURE__ */ import_react.default.createElement("p", null, "Loading budgets...")
-    ));
+    )));
   }
   const budgets = toolOutput.budgets || [];
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "budget-list-widget", style: { padding: "1rem 0", width: "100%", boxSizing: "border-box" } }, budgets.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", { style: { color: "#666", textAlign: "center", padding: "1rem" } }, "No budgets found"), /* @__PURE__ */ import_react.default.createElement(
+  return /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, /* @__PURE__ */ import_react.default.createElement("style", null, `body { margin: 0; padding: 0; }`), /* @__PURE__ */ import_react.default.createElement("div", { className: "budget-list-widget", style: { padding: "15px", width: "100%", boxSizing: "border-box" } }, budgets.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", { style: { color: "#666", textAlign: "center", padding: "1rem" } }, "No budgets found"), /* @__PURE__ */ import_react.default.createElement(
     "p",
     {
       style: {
@@ -23606,7 +23606,7 @@ function BudgetListWidget() {
       }
     },
     "Create your first budget to get started"
-  )) : /* @__PURE__ */ import_react.default.createElement("div", { className: "budgets-list" }, budgets.map((budget, index) => /* @__PURE__ */ import_react.default.createElement(BudgetCard, { key: budget.id, budget, isFirst: index === 0 }))));
+  )) : /* @__PURE__ */ import_react.default.createElement("div", { className: "budgets-list" }, budgets.map((budget, index) => /* @__PURE__ */ import_react.default.createElement(BudgetCard, { key: budget.id, budget, isFirst: index === 0 })))));
 }
 function BudgetCard({ budget, isFirst }) {
   if (budget.error) {

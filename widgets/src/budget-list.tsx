@@ -61,21 +61,26 @@ function BudgetListWidget() {
   // While waiting for data, show loading state
   if (toolOutput === null) {
     return (
-      <div className="budget-list-widget" style={{ padding: "1rem 0", width: "100%", boxSizing: "border-box" }}>
-        <div
-          className="loading-state"
-          style={{ padding: "2rem", textAlign: "center", color: "#666" }}
-        >
-          <p>Loading budgets...</p>
+      <>
+        <style>{`body { margin: 0; padding: 0; }`}</style>
+        <div className="budget-list-widget" style={{ padding: "15px", width: "100%", boxSizing: "border-box" }}>
+          <div
+            className="loading-state"
+            style={{ padding: "2rem", textAlign: "center", color: "#666" }}
+          >
+            <p>Loading budgets...</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   const budgets = toolOutput.budgets || [];
 
   return (
-    <div className="budget-list-widget" style={{ padding: "1rem 0", width: "100%", boxSizing: "border-box" }}>
+    <>
+      <style>{`body { margin: 0; padding: 0; }`}</style>
+      <div className="budget-list-widget" style={{ padding: "15px", width: "100%", boxSizing: "border-box" }}>
       {budgets.length === 0 ? (
         <div className="empty-state">
           <p style={{ color: "#666", textAlign: "center", padding: "1rem" }}>
@@ -100,6 +105,7 @@ function BudgetListWidget() {
         </div>
       )}
     </div>
+    </>
   );
 }
 
