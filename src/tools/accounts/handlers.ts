@@ -36,11 +36,6 @@ export async function connectAccountHandler(
 Click this link to securely connect your account:
 ${linkUrl}
 
-**For Sandbox Testing (Demo Data):**
-- Username: \`user_good\`
-- Password: \`pass_good\`
-- 2FA Code (if prompted): \`1234\`
-
 **What happens next:**
 1. You'll see a secure interface to select your financial institution
 2. After connecting, the page will confirm success
