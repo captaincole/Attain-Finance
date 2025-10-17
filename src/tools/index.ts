@@ -101,6 +101,18 @@ function injectWidgetMetadata(server: McpServer) {
             }
           };
         }
+        if (tool.name === "get-account-balances") {
+          return {
+            ...tool,
+            _meta: {
+              "openai/outputTemplate": "ui://widget/connected-institutions.html",
+              "openai/toolInvocation/invoking": "Loading your account balances...",
+              "openai/toolInvocation/invoked": "Account balances loaded",
+              "openai/widgetAccessible": true,
+              "openai/resultCanProduceWidget": true
+            }
+          };
+        }
         if (tool.name === "get-budgets") {
           return {
             ...tool,
