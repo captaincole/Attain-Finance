@@ -50,7 +50,7 @@ export async function initiateAccountConnection(
       client_user_id: userId,
     },
     client_name: "Personal Finance MCP",
-    products: [Products.Auth, Products.Assets],
+    products: [Products.Assets],
     required_if_supported_products: [
       Products.Transactions,
       Products.Investments,
