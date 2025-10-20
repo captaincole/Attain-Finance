@@ -12,7 +12,7 @@
     "watch": "tsc --watch",
     "start": "node build/index.js",
     "prepare": "npm run build",
-    "dev": "concurrently \"npm run watch\" \"nodemon --watch build build/index.js\"",
+    "dev": "tsc-watch --onSuccess \"node build/index.js\"",
     "sandbox:create": "tsx scripts/create-sandbox-user.ts",
     "sandbox:validate": "tsx scripts/validate-config.ts",
     "reset-user": "tsx scripts/reset-user.ts"
@@ -54,6 +54,7 @@
     "nodemon": "^3.1.9",
     "shx": "^0.3.4",
     "supertest": "^7.1.4",
+    "tsc-watch": "^7.2.0",
     "tsx": "^4.20.6",
     "typescript": "^5.7.3"
   }
