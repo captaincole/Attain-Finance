@@ -50,7 +50,16 @@ export async function initiateAccountConnection(
       client_user_id: userId,
     },
     client_name: "Personal Finance MCP",
-    products: [Products.Transactions],
+    products: [
+      Products.Transactions,
+      Products.Investments,
+      Products.Liabilities,
+      Products.Assets,
+      Products.Statements,
+    ],
+    transactions: {
+      days_requested: 730, // 2 years of transaction history
+    },
     country_codes: [CountryCode.Us],
     language: "en",
   });
