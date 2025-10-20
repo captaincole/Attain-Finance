@@ -10,15 +10,21 @@ This file provides guidance to Claude Code when working with the Personal Financ
 ```bash
 npm run dev              # Start development server (http://localhost:3000)
 npm run build            # Build TypeScript to build/
-npm run typecheck        # Run TypeScript type checking
 npm test                 # Run tests
 npm run test:integration # Run integration tests
 npm run sandbox:create   # Generate Plaid sandbox config
 npm run reset-user -- --userId=user_xxx  # Reset user data (testing only)
+
+# Cron Jobs
+npm run cron:list                        # List all cron jobs
+npm run cron:sync-transactions           # Sync all users (production)
+npm run cron:sync-transactions-sandbox   # Sync sandbox users only (testing)
+
+# Git
 gh pr create             # Create pull request
 ```
 
-**YOU MUST** run `npm run typecheck` after making code changes.
+**YOU MUST** run `npx tsc --noEmit` after making code changes.
 
 ### Project Structure
 ```
@@ -29,6 +35,11 @@ src/
 ├── routes/               # Express routes (Plaid, OAuth)
 ├── storage/              # Database access layer
 │   └── repositories/     # Transaction, budget, connection repos
+├── cron/                 # Cron job infrastructure
+│   ├── jobs/             # Individual job definitions
+│   ├── services/         # Reusable sync services
+│   ├── utils/            # Cron-specific utilities
+│   └── runner.ts         # CLI entry point
 ├── utils/                # Shared utilities
 └── prompts/              # AI prompt templates
 
@@ -247,6 +258,104 @@ mcp__render__list_logs({
 ```
 
 **CI/CD:** Every push to `main` automatically deploys to Render.
+
+## Cron Jobs
+
+### Architecture
+
+Cron jobs use a structured pattern for reusability and maintainability:
+
+```
+src/cron/
+├── jobs/                 # Individual job definitions
+│   ├── sync-transactions.ts
+│   └── sync-transactions-sandbox.ts
+├── services/            # Reusable sync services
+│   └── user-batch-sync.service.ts
+├── utils/              # Shared utilities
+│   └── cron-logger.ts
+└── runner.ts           # CLI entry point
+```
+
+### Available Jobs
+
+**sync-transactions** - Daily transaction sync from Plaid for all users
+- **Production Render Schedule**: `0 8 * * *` (midnight PST / 8am UTC)
+- **Manual Trigger**: `npm run cron:sync-transactions`
+- **Syncs**: All Plaid connections (sandbox, development, production)
+
+**sync-transactions-sandbox** - Sandbox-only transaction sync (for testing)
+- **Production Render Schedule**: N/A (manual only)
+- **Manual Trigger**: `npm run cron:sync-transactions-sandbox`
+- **Syncs**: Only connections created with sandbox Plaid credentials
+
+### Creating New Cron Jobs
+
+1. **Create job file**: `src/cron/jobs/my-job.ts`
+   ```typescript
+   export const myJob: CronJob = {
+     name: "my-job",
+     description: "Description of what this job does",
+     async run(): Promise<void> {
+       const logger = new CronLogger("my-job");
+       // Job implementation
+     }
+   };
+   ```
+
+2. **Register in runner**: Add to `src/cron/runner.ts`:
+   ```typescript
+   import { myJob } from "./jobs/my-job.js";
+   const jobs = {
+     "my-job": myJob,
+     // ... other jobs
+   };
+   ```
+
+3. **Add npm script**: Update `package.json`:
+   ```json
+   "cron:my-job": "npm run cron -- my-job"
+   ```
+
+4. **Create Render cron job**:
+   - Go to [Render Dashboard](https://dashboard.render.com)
+   - Click "New +" → "Cron Job"
+   - **Name**: `my-job`
+   - **Schedule**: Cron expression (e.g., `0 8 * * *`)
+   - **Command**: `npm run cron:my-job`
+   - **Environment**: Use same env vars as web service
+   - **Region**: Oregon (same as web service)
+
+### Monitoring Cron Jobs
+
+Use Render MCP tools to monitor cron job execution:
+
+```typescript
+// List all cron jobs
+mcp__render__list_services({ includePreviews: false })
+
+// Get cron job details
+mcp__render__get_service({ serviceId: "crn-xxx" })
+
+// View cron job logs
+mcp__render__list_logs({
+  resource: ["crn-xxx"],
+  limit: 50,
+  direction: "backward"
+})
+```
+
+### Testing Cron Jobs Locally
+
+```bash
+# Test with actual database (requires .env configured)
+npm run cron:sync-transactions-sandbox
+
+# List all jobs
+npm run cron:list
+```
+
+**Important**: Cron jobs run with production environment variables. Test with sandbox-only jobs when possible.
 
 ## Detailed Documentation
 

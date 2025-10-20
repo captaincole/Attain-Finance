@@ -8,14 +8,18 @@
     "test": "NODE_ENV=test npm run test:integration",
     "test:integration": "NODE_ENV=test tsx --test --test-concurrency=1 --test-force-exit test/integration/**/*.test.ts",
     "build:widgets": "cd widgets && npm install && npm run build:all",
-    "build": "shx mkdir -p public/widgets && npm run build:widgets && tsc && shx chmod +x build/*.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
+    "build": "shx mkdir -p public/widgets && npm run build:widgets && tsc && shx chmod +x build/*.js && shx chmod +x build/cron/runner.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
     "watch": "tsc --watch",
     "start": "node build/index.js",
     "prepare": "npm run build",
     "dev": "tsc-watch --onSuccess \"node build/index.js\"",
     "sandbox:create": "tsx scripts/create-sandbox-user.ts",
     "sandbox:validate": "tsx scripts/validate-config.ts",
-    "reset-user": "tsx scripts/reset-user.ts"
+    "reset-user": "tsx scripts/reset-user.ts",
+    "cron": "node build/cron/runner.js",
+    "cron:list": "npm run cron -- --list",
+    "cron:sync-transactions": "npm run cron -- sync-transactions",
+    "cron:sync-transactions-sandbox": "npm run cron -- sync-transactions-sandbox"
   },
   "files": [
     "build",

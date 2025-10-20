@@ -12,13 +12,13 @@ import {
   authServerMetadataHandlerClerk,
   streamableHttpHandler,
 } from "@clerk/mcp-tools/express";
-import { Configuration, PlaidApi, PlaidEnvironments } from "plaid";
 import { createServer } from "./create-server.js";
 import { verifySignedToken } from "./utils/signed-urls.js";
 import { userTransactionData } from "./tools/categorization/get-transactions.js";
 import { userRawTransactionData } from "./tools/categorization/get-raw-transactions.js";
 import { getVisualization } from "./storage/visualization/scripts.js";
 import { createPlaidRouter } from "./routes/plaid/index.js";
+import { createPlaidClient } from "./utils/clients/plaid.js";
 import adminRouter from "./routes/admin.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,22 +29,7 @@ dotenv.config();
 const PORT = process.env.PORT || 3000;
 
 // Initialize Plaid client
-const plaidConfiguration = new Configuration({
-  basePath:
-    process.env.PLAID_ENV === "production"
-      ? PlaidEnvironments.production
-      : process.env.PLAID_ENV === "development"
-      ? PlaidEnvironments.development
-      : PlaidEnvironments.sandbox,
-  baseOptions: {
-    headers: {
-      "PLAID-CLIENT-ID": process.env.PLAID_CLIENT_ID || "",
-      "PLAID-SECRET": process.env.PLAID_SECRET || "",
-    },
-  },
-});
-
-const plaidClient = new PlaidApi(plaidConfiguration);
+const plaidClient = createPlaidClient();
 
 // Initialize Express app
 const app = express();
