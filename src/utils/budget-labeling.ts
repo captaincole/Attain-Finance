@@ -14,6 +14,109 @@ import {
 } from "./clients/claude.js";
 
 /**
+ * Minimal transaction shape needed for budget labeling
+ */
+export interface TransactionForBudgetLabeling {
+  transactionId: string;
+  date: string;
+  name: string;
+  amount: number;
+  customCategory: string | null;
+  accountName: string | null;
+  pending: boolean;
+}
+
+/**
+ * Label specific transactions for budgets
+ * Takes an array of transactions and labels them for all budgets
+ * Used during transaction sync to label only new/modified transactions
+ */
+export async function labelTransactionArrayForBudgets(
+  transactions: TransactionForBudgetLabeling[],
+  budgets: Budget[]
+): Promise<void> {
+  console.log(
+    `[BUDGET-LABELING] Labeling ${transactions.length} transactions for ${budgets.length} budgets`
+  );
+
+  if (transactions.length === 0) {
+    console.log("[BUDGET-LABELING] No transactions to label");
+    return;
+  }
+
+  if (budgets.length === 0) {
+    console.log("[BUDGET-LABELING] No budgets defined, skipping");
+    return;
+  }
+
+  // Map: transaction_id -> Set<budget_id>
+  const transactionBudgetMap = new Map<string, Set<string>>();
+
+  // For each budget, filter transactions using Claude
+  for (const budget of budgets) {
+    console.log(
+      `[BUDGET-LABELING] Processing budget: ${budget.title} (${budget.id})`
+    );
+
+    // Prepare transactions for budget filter
+    const txsForFilter: TransactionForBudgetFilter[] = transactions.map(
+      (tx) => ({
+        id: tx.transactionId,
+        date: tx.date,
+        description: tx.name,
+        amount: tx.amount,
+        category: tx.customCategory || "Uncategorized",
+        account_name: tx.accountName || "",
+        pending: tx.pending,
+      })
+    );
+
+    try {
+      // Call Claude API to filter
+      const filterResults = await filterTransactionsForBudget(
+        txsForFilter,
+        budget.filter_prompt
+      );
+
+      // Add budget ID to matching transactions
+      let matchCount = 0;
+      for (const result of filterResults) {
+        if (result.matches) {
+          if (!transactionBudgetMap.has(result.transaction_id)) {
+            transactionBudgetMap.set(result.transaction_id, new Set());
+          }
+          transactionBudgetMap.get(result.transaction_id)!.add(budget.id);
+          matchCount++;
+        }
+      }
+
+      console.log(
+        `[BUDGET-LABELING] Budget "${budget.title}": ${matchCount} matching transactions`
+      );
+    } catch (error: any) {
+      console.error(
+        `[BUDGET-LABELING] Error filtering for budget ${budget.id}:`,
+        error.message
+      );
+      // Continue with other budgets
+    }
+  }
+
+  // Update database with budget associations
+  const updates = transactions.map((tx) => ({
+    transactionId: tx.transactionId,
+    budgetIds: Array.from(transactionBudgetMap.get(tx.transactionId) || []),
+  }));
+
+  await batchUpdateTransactionBudgets(updates);
+
+  const txsWithBudgets = updates.filter((u) => u.budgetIds.length > 0).length;
+  console.log(
+    `[BUDGET-LABELING] Complete: ${txsWithBudgets}/${transactions.length} transactions labeled`
+  );
+}
+
+/**
  * Label all transactions for all budgets
  * Returns count of transactions updated
  */

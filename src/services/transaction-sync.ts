@@ -13,6 +13,11 @@ import {
   categorizeTransactions,
   TransactionForCategorization,
 } from "../utils/clients/claude.js";
+import {
+  labelTransactionArrayForBudgets,
+  TransactionForBudgetLabeling,
+} from "../utils/budget-labeling.js";
+import { getBudgets } from "../storage/budgets/budgets.js";
 
 interface TransactionSyncOptions {
   accountId: string;
@@ -64,6 +69,9 @@ export class TransactionSyncService {
       let totalAdded = 0;
       let totalModified = 0;
       let totalRemoved = 0;
+
+      // Track all synced transactions for budget labeling
+      const allSyncedTransactions: TransactionForBudgetLabeling[] = [];
 
       // Paginate through all transactions
       while (hasMore) {
@@ -174,6 +182,19 @@ export class TransactionSyncService {
         const allTransactions = [...addedForDb, ...modifiedForDb];
         if (allTransactions.length > 0) {
           await upsertTransactions(allTransactions);
+
+          // Track these transactions for budget labeling later
+          allSyncedTransactions.push(
+            ...allTransactions.map((tx) => ({
+              transactionId: tx.transactionId,
+              date: tx.date,
+              name: tx.name,
+              amount: tx.amount,
+              customCategory: tx.customCategory,
+              accountName: tx.accountName,
+              pending: tx.pending,
+            }))
+          );
         }
 
         // Handle removed transactions (delete from database)
@@ -207,6 +228,33 @@ export class TransactionSyncService {
       console.log(
         `[TRANSACTION-SYNC] ✓ Sync complete for account ${accountId}: ${totalAdded} added, ${totalModified} modified, ${totalRemoved} removed (${pageCount} pages)`
       );
+
+      // Label synced transactions for budgets
+      if (allSyncedTransactions.length > 0) {
+        console.log(
+          `[TRANSACTION-SYNC] Labeling ${allSyncedTransactions.length} transactions for budgets`
+        );
+
+        try {
+          const budgets = await getBudgets(userId);
+          if (budgets.length > 0) {
+            await labelTransactionArrayForBudgets(
+              allSyncedTransactions,
+              budgets
+            );
+          } else {
+            console.log(
+              `[TRANSACTION-SYNC] No budgets defined, skipping budget labeling`
+            );
+          }
+        } catch (error: any) {
+          console.error(
+            `[TRANSACTION-SYNC] Budget labeling error (non-fatal):`,
+            error.message
+          );
+          // Don't throw - budget labeling failure shouldn't fail the entire sync
+        }
+      }
     } catch (error: any) {
       console.error(
         `[TRANSACTION-SYNC] ✗ Sync failed for account ${accountId}:`,
