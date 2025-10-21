@@ -23,6 +23,17 @@ export const syncTransactionsSandboxJob: CronJob = {
   description: "Transaction sync for SANDBOX Plaid connections only (testing)",
 
   async run(): Promise<void> {
+    // Validate PLAID_ENV is set to sandbox
+    if (process.env.PLAID_ENV === "production") {
+      console.error(
+        `[SYNC-TRANSACTIONS-SANDBOX] ERROR: This job cannot run with PLAID_ENV=production`
+      );
+      console.error(
+        `[SYNC-TRANSACTIONS-SANDBOX] Use sync-transactions for production`
+      );
+      process.exit(1);
+    }
+
     const logger = new CronLogger("sync-transactions-sandbox");
     const plaidClient = createPlaidClient();
     const supabase = getSupabase();

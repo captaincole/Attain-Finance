@@ -242,42 +242,53 @@ export async function categorizeTransactions(
     return categorizeBatch(transactions, customRules);
   }
 
-  // For large datasets, process in batches (in parallel for speed)
+  // For large datasets, process in batches with concurrency limit
   const batchCount = Math.ceil(transactions.length / BATCH_SIZE);
-  console.log(`[CATEGORIZATION] Processing ${transactions.length} transactions in ${batchCount} parallel batches of ${BATCH_SIZE}`);
+  const CONCURRENCY_LIMIT = 5; // Max 5 concurrent batches at a time
+  console.log(`[CATEGORIZATION] Processing ${transactions.length} transactions in ${batchCount} batches of ${BATCH_SIZE} (max ${CONCURRENCY_LIMIT} concurrent)`);
 
-  // Create batch promises
-  const batchPromises: Promise<{ index: number; result: CategorizedTransaction[] }>[] = [];
+  const allCategorized: CategorizedTransaction[] = [];
 
-  for (let i = 0; i < batchCount; i++) {
-    const start = i * BATCH_SIZE;
-    const end = Math.min(start + BATCH_SIZE, transactions.length);
-    const batch = transactions.slice(start, end);
+  // Process batches in groups of CONCURRENCY_LIMIT
+  for (let groupStart = 0; groupStart < batchCount; groupStart += CONCURRENCY_LIMIT) {
+    const groupEnd = Math.min(groupStart + CONCURRENCY_LIMIT, batchCount);
+    const groupSize = groupEnd - groupStart;
 
-    console.log(`[CATEGORIZATION] Batch ${i + 1}/${batchCount}: Queueing ${batch.length} transactions (${start + 1}-${end})`);
+    console.log(`[CATEGORIZATION] Processing batch group ${groupStart + 1}-${groupEnd} (${groupSize} batches in parallel)`);
 
-    // Queue batch for parallel processing
-    batchPromises.push(
-      categorizeBatch(batch, customRules)
-        .then((result) => {
-          console.log(`[CATEGORIZATION] Batch ${i + 1}/${batchCount}: ✓ Categorized ${result.length} transactions`);
-          return { index: i, result };
-        })
-        .catch((error) => {
-          console.error(`[CATEGORIZATION] Batch ${i + 1}/${batchCount}: Failed - ${error.message}`);
-          throw new Error(`Batch ${i + 1}/${batchCount} failed: ${error.message}`);
-        })
-    );
+    // Create promises for this group
+    const groupPromises = [];
+    for (let i = groupStart; i < groupEnd; i++) {
+      const start = i * BATCH_SIZE;
+      const end = Math.min(start + BATCH_SIZE, transactions.length);
+      const batch = transactions.slice(start, end);
+
+      console.log(`[CATEGORIZATION] Batch ${i + 1}/${batchCount}: Queueing ${batch.length} transactions (${start + 1}-${end})`);
+
+      groupPromises.push(
+        categorizeBatch(batch, customRules)
+          .then((result) => {
+            console.log(`[CATEGORIZATION] Batch ${i + 1}/${batchCount}: ✓ Categorized ${result.length} transactions`);
+            return { index: i, result };
+          })
+          .catch((error) => {
+            console.error(`[CATEGORIZATION] Batch ${i + 1}/${batchCount}: Failed - ${error.message}`);
+            throw new Error(`Batch ${i + 1}/${batchCount} failed: ${error.message}`);
+          })
+      );
+    }
+
+    // Wait for this group to complete before starting next group
+    console.log(`[CATEGORIZATION] Waiting for ${groupSize} batches to complete...`);
+    const groupResults = await Promise.all(groupPromises);
+
+    // Add results to final array (sorted by index)
+    groupResults
+      .sort((a, b) => a.index - b.index)
+      .forEach((batch) => allCategorized.push(...batch.result));
+
+    console.log(`[CATEGORIZATION] ✓ Group complete (processed ${groupResults.reduce((sum, r) => sum + r.result.length, 0)} transactions)`);
   }
-
-  // Wait for all batches to complete in parallel
-  console.log(`[CATEGORIZATION] Waiting for ${batchCount} batches to complete in parallel...`);
-  const batchResults = await Promise.all(batchPromises);
-
-  // Sort results by original batch order and flatten
-  const allCategorized = batchResults
-    .sort((a, b) => a.index - b.index)
-    .flatMap((batch) => batch.result);
 
   console.log(`[CATEGORIZATION] ✓ All batches complete: ${allCategorized.length} total categorized`);
   return allCategorized;
@@ -449,42 +460,53 @@ export async function filterTransactionsForBudget(
     return filterBatch(transactions, filterPrompt);
   }
 
-  // For large datasets, process in batches (in parallel for speed)
+  // For large datasets, process in batches with concurrency limit
   const batchCount = Math.ceil(transactions.length / BATCH_SIZE);
-  console.log(`[BUDGET_FILTER] Processing ${transactions.length} transactions in ${batchCount} parallel batches of ${BATCH_SIZE}`);
+  const CONCURRENCY_LIMIT = 5; // Max 5 concurrent batches at a time
+  console.log(`[BUDGET_FILTER] Processing ${transactions.length} transactions in ${batchCount} batches of ${BATCH_SIZE} (max ${CONCURRENCY_LIMIT} concurrent)`);
 
-  // Create batch promises
-  const batchPromises: Promise<{ index: number; result: BudgetFilterResult[] }>[] = [];
+  const allFilterResults: BudgetFilterResult[] = [];
 
-  for (let i = 0; i < batchCount; i++) {
-    const start = i * BATCH_SIZE;
-    const end = Math.min(start + BATCH_SIZE, transactions.length);
-    const batch = transactions.slice(start, end);
+  // Process batches in groups of CONCURRENCY_LIMIT
+  for (let groupStart = 0; groupStart < batchCount; groupStart += CONCURRENCY_LIMIT) {
+    const groupEnd = Math.min(groupStart + CONCURRENCY_LIMIT, batchCount);
+    const groupSize = groupEnd - groupStart;
 
-    console.log(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: Queueing ${batch.length} transactions (${start + 1}-${end})`);
+    console.log(`[BUDGET_FILTER] Processing batch group ${groupStart + 1}-${groupEnd} (${groupSize} batches in parallel)`);
 
-    // Queue batch for parallel processing
-    batchPromises.push(
-      filterBatch(batch, filterPrompt)
-        .then((result) => {
-          console.log(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: ✓ Filtered ${result.length} transactions`);
-          return { index: i, result };
-        })
-        .catch((error) => {
-          console.error(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: Failed - ${error.message}`);
-          throw new Error(`Batch ${i + 1}/${batchCount} failed: ${error.message}`);
-        })
-    );
+    // Create promises for this group
+    const groupPromises = [];
+    for (let i = groupStart; i < groupEnd; i++) {
+      const start = i * BATCH_SIZE;
+      const end = Math.min(start + BATCH_SIZE, transactions.length);
+      const batch = transactions.slice(start, end);
+
+      console.log(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: Queueing ${batch.length} transactions (${start + 1}-${end})`);
+
+      groupPromises.push(
+        filterBatch(batch, filterPrompt)
+          .then((result) => {
+            console.log(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: ✓ Filtered ${result.length} transactions`);
+            return { index: i, result };
+          })
+          .catch((error) => {
+            console.error(`[BUDGET_FILTER] Batch ${i + 1}/${batchCount}: Failed - ${error.message}`);
+            throw new Error(`Batch ${i + 1}/${batchCount} failed: ${error.message}`);
+          })
+      );
+    }
+
+    // Wait for this group to complete before starting next group
+    console.log(`[BUDGET_FILTER] Waiting for ${groupSize} batches to complete...`);
+    const groupResults = await Promise.all(groupPromises);
+
+    // Add results to final array (sorted by index)
+    groupResults
+      .sort((a, b) => a.index - b.index)
+      .forEach((batch) => allFilterResults.push(...batch.result));
+
+    console.log(`[BUDGET_FILTER] ✓ Group complete (processed ${groupResults.reduce((sum, r) => sum + r.result.length, 0)} transactions)`);
   }
-
-  // Wait for all batches to complete in parallel
-  console.log(`[BUDGET_FILTER] Waiting for ${batchCount} batches to complete in parallel...`);
-  const batchResults = await Promise.all(batchPromises);
-
-  // Sort results by original batch order and flatten
-  const allFilterResults = batchResults
-    .sort((a, b) => a.index - b.index)
-    .flatMap((batch) => batch.result);
 
   const matchCount = allFilterResults.filter((r) => r.matches).length;
   console.log(`[BUDGET_FILTER] ✓ All batches complete: ${matchCount} matches out of ${allFilterResults.length} total transactions`);

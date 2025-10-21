@@ -43,17 +43,21 @@ export class TransactionSyncService {
     console.log(`[TRANSACTION-SYNC] Starting sync for account ${accountId}`);
 
     try {
-      // Mark sync as in progress
+      // Get current cursor from database FIRST (before updating status)
+      const syncState = await this.syncStateRepo.getSyncState(accountId);
+      let cursor = syncState?.transaction_cursor || undefined;
+
+      console.log(
+        `[TRANSACTION-SYNC] Account ${accountId}: Starting sync with cursor: ${cursor ? cursor.substring(0, 30) + "..." : "none (full history)"}`
+      );
+
+      // Mark sync as in progress (preserve existing cursor)
       await this.syncStateRepo.updateSyncProgress(
         accountId,
-        "", // No cursor yet
+        cursor || "", // Keep existing cursor
         "syncing",
         0
       );
-
-      // Get current cursor from database (if exists)
-      const syncState = await this.syncStateRepo.getSyncState(accountId);
-      let cursor = syncState?.transaction_cursor || undefined;
 
       let hasMore = true;
       let pageCount = 0;
@@ -86,17 +90,19 @@ export class TransactionSyncService {
           `[TRANSACTION-SYNC] Account ${accountId}: Page ${pageCount} - ${added.length} added, ${modified.length} modified, ${removed.length} removed`
         );
 
-        // Process added and modified transactions
-        const transactionsToProcess = [...added, ...modified];
-
-        if (transactionsToProcess.length > 0) {
-          // Get account info for enrichment
+        // Get account info for enrichment (if we have any transactions)
+        let account: any = null;
+        if (added.length > 0 || modified.length > 0) {
           const accounts = await getAccountsByItemId(userId, itemId);
-          const account = accounts.find((a) => a.account_id === accountId);
+          account = accounts.find((a) => a.account_id === accountId);
+        }
 
-          // Categorize transactions
+        // Only categorize NEWLY ADDED transactions (not modified ones)
+        // Modified transactions already have categories from when they were first added
+        const categorizedAdded: any[] = [];
+        if (added.length > 0) {
           const forCategorization: TransactionForCategorization[] =
-            transactionsToProcess.map((tx) => ({
+            added.map((tx) => ({
               date: tx.date,
               description: tx.name,
               amount: Math.abs(tx.amount).toFixed(2),
@@ -106,39 +112,68 @@ export class TransactionSyncService {
             }));
 
           console.log(
-            `[TRANSACTION-SYNC] Account ${accountId}: Categorizing ${forCategorization.length} transactions`
+            `[TRANSACTION-SYNC] Account ${accountId}: Categorizing ${added.length} new transactions`
           );
 
-          const categorized = await categorizeTransactions(forCategorization);
+          const result = await categorizeTransactions(forCategorization);
+          categorizedAdded.push(...result);
+        }
 
-          // Build transaction objects for database
-          const transactionsForDb = transactionsToProcess.map((tx, idx) => ({
-            transactionId: tx.transaction_id,
-            accountId: tx.account_id,
-            itemId: itemId,
-            userId: userId,
-            date: tx.date,
-            name: tx.name,
-            amount: tx.amount,
-            plaidCategory: tx.personal_finance_category
-              ? [
-                  tx.personal_finance_category.primary,
-                  tx.personal_finance_category.detailed,
-                ]
-              : null,
-            pending: tx.pending,
-            customCategory: categorized[idx]?.custom_category || null,
-            categorizedAt: categorized[idx]?.custom_category
-              ? new Date()
-              : null,
-            budgetIds: null, // Budget labeling happens separately
-            budgetsUpdatedAt: null,
-            accountName: account?.name || null,
-            institutionName: null, // Could be enriched later
-          }));
+        // Build database objects for added transactions (with AI categorization)
+        const addedForDb = added.map((tx, idx) => ({
+          transactionId: tx.transaction_id,
+          accountId: tx.account_id,
+          itemId: itemId,
+          userId: userId,
+          date: tx.date,
+          name: tx.name,
+          amount: tx.amount,
+          plaidCategory: tx.personal_finance_category
+            ? [
+                tx.personal_finance_category.primary,
+                tx.personal_finance_category.detailed,
+              ]
+            : null,
+          pending: tx.pending,
+          customCategory: categorizedAdded[idx]?.custom_category || null,
+          categorizedAt: categorizedAdded[idx]?.custom_category
+            ? new Date()
+            : null,
+          budgetIds: null, // Budget labeling happens separately
+          budgetsUpdatedAt: null,
+          accountName: account?.name || null,
+          institutionName: null, // Could be enriched later
+        }));
 
-          // Upsert to database
-          await upsertTransactions(transactionsForDb);
+        // Build database objects for modified transactions (NO re-categorization)
+        const modifiedForDb = modified.map((tx) => ({
+          transactionId: tx.transaction_id,
+          accountId: tx.account_id,
+          itemId: itemId,
+          userId: userId,
+          date: tx.date,
+          name: tx.name,
+          amount: tx.amount,
+          plaidCategory: tx.personal_finance_category
+            ? [
+                tx.personal_finance_category.primary,
+                tx.personal_finance_category.detailed,
+              ]
+            : null,
+          pending: tx.pending,
+          // Keep existing categorization - upsert will preserve these fields
+          customCategory: null, // Will be ignored by upsert if already exists
+          categorizedAt: null, // Will be ignored by upsert if already exists
+          budgetIds: null,
+          budgetsUpdatedAt: null,
+          accountName: account?.name || null,
+          institutionName: null,
+        }));
+
+        // Upsert both added and modified transactions to database
+        const allTransactions = [...addedForDb, ...modifiedForDb];
+        if (allTransactions.length > 0) {
+          await upsertTransactions(allTransactions);
         }
 
         // Handle removed transactions (delete from database)

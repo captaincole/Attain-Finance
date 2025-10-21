@@ -23,6 +23,20 @@ export const syncTransactionsJob: CronJob = {
   description: "Daily transaction sync from Plaid for all users",
 
   async run(): Promise<void> {
+    // Validate PLAID_ENV is set to production
+    if (process.env.PLAID_ENV !== "production") {
+      console.error(
+        `[SYNC-TRANSACTIONS] ERROR: This job requires PLAID_ENV=production`
+      );
+      console.error(
+        `[SYNC-TRANSACTIONS] Current PLAID_ENV: ${process.env.PLAID_ENV || "not set"}`
+      );
+      console.error(
+        `[SYNC-TRANSACTIONS] Use sync-transactions-sandbox for testing`
+      );
+      process.exit(1);
+    }
+
     const logger = new CronLogger("sync-transactions");
     const plaidClient = createPlaidClient();
     const supabase = getSupabase();
@@ -34,6 +48,7 @@ export const syncTransactionsJob: CronJob = {
 
     await batchSyncService.syncAllUsers({
       logger,
+      environment: "production", // Only sync production connections
       syncFn: async (userId, connection) => {
         // Sync all accounts for this connection
         await transactionSyncService.initiateSyncForConnection(
