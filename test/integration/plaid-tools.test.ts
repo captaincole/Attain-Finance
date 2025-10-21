@@ -1,40 +1,38 @@
 /**
- * Integration tests for Plaid tools with mocked Plaid client
+ * Integration tests for Plaid tools with local Supabase
  * Tests tool handlers directly without full MCP protocol overhead
  */
 
 import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
-import { MockSupabaseClient } from "../mocks/supabase-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import {
   connectAccountHandler,
-  getAccountStatusHandler,
+  getAccountBalancesHandler,
 } from "../../src/tools/accounts/handlers.js";
+import {
+  createTestSupabaseClient,
+  cleanupTestUser,
+} from "../helpers/test-db.js";
 
 describe("Plaid Tool Integration Tests", () => {
+  const supabase = createTestSupabaseClient();
   let mockPlaidClient: any;
-  let mockSupabase: any;
-  const testUserId = "test-user-123";
+  const testUserId = "test-user-plaid";
   const testBaseUrl = "http://localhost:3000";
 
   before(() => {
-    // Mock Plaid
+    setSupabaseMock(supabase);
     mockPlaidClient = new MockPlaidClient();
-
-    // Mock Supabase
-    mockSupabase = new MockSupabaseClient();
-    setSupabaseMock(mockSupabase);
   });
 
-  beforeEach(() => {
-    // Clear mock data between tests to prevent state leakage
-    mockSupabase.clear();
+  beforeEach(async () => {
+    await cleanupTestUser(supabase, testUserId);
   });
 
-  after(() => {
-    // Cleanup: reset Supabase
+  after(async () => {
+    await cleanupTestUser(supabase, testUserId);
     resetSupabase();
   });
 
@@ -66,7 +64,7 @@ describe("Plaid Tool Integration Tests", () => {
     );
 
     // Then check the status
-    const result = await getAccountStatusHandler(testUserId, mockPlaidClient);
+    const result = await getAccountBalancesHandler(testUserId);
 
     // Verify response structure
     assert(result.content, "Response should have content");

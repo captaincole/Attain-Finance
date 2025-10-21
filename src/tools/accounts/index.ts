@@ -69,7 +69,7 @@ export function getAccountTools(): ToolDefinition[] {
     {
       name: "update-account-link",
       description:
-        "Update a broken or expired account connection by re-authenticating with your financial institution. Use this when an account shows an error status or when prompted to fix login issues. Returns a secure link to complete the update process.",
+        "IMPORTANT: Only use this tool when an account connection is broken. ALWAYS call get-account-balances FIRST to verify the connection shows an error status (⚠️) before calling this tool. This tool updates a broken or expired account connection by re-authenticating with the financial institution. Returns a secure link for the user to complete re-authentication. After the user completes the update, they should say 'I've updated it, please refresh my transactions' to sync their data.",
       inputSchema: {
         item_id: z
           .string()

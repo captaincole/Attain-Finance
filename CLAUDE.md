@@ -11,7 +11,7 @@ This file provides guidance to Claude Code when working with the Personal Financ
 npm run dev              # Start development server (http://localhost:3000)
 npm run build            # Build TypeScript to build/
 npm test                 # Run tests
-npm run test:integration # Run integration tests
+npm run test:integration # Run integration tests (requires Docker + local Supabase)
 npm run sandbox:create   # Generate Plaid sandbox config
 npm run reset-user -- --userId=user_xxx  # Reset user data (testing only)
 
@@ -25,6 +25,52 @@ gh pr create             # Create pull request
 ```
 
 **YOU MUST** run `npx tsc --noEmit` after making code changes.
+
+### Testing Requirements
+
+**Integration tests require Docker and local Supabase:**
+
+1. **Install Docker Desktop** - Required to run local Supabase
+   ```bash
+   # macOS: Download from https://www.docker.com/products/docker-desktop
+   # Or use homebrew:
+   brew install --cask docker
+   ```
+
+2. **Start Docker Desktop** - Ensure Docker is running before starting Supabase
+
+3. **Start local Supabase** (first time setup):
+   ```bash
+   # Initialize Supabase (already done, skip if supabase/ folder exists)
+   supabase init
+
+   # Start all Supabase services (Postgres, Auth, Storage, etc.)
+   supabase start
+   ```
+
+   This will:
+   - Start 10 Docker containers (Postgres, PostgREST, Auth, Storage, etc.)
+   - Apply all migrations from `supabase/migrations/`
+   - Create a local database at `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+   - Provide credentials in `.env.test`
+
+4. **Run integration tests**:
+   ```bash
+   npm run test:integration
+   ```
+
+**Important Notes:**
+- Integration tests use **real local Supabase database**, not mocks
+- Tests create/cleanup data in local database automatically
+- Claude API calls are mocked (no credits used)
+- Plaid API calls are mocked (no real connections)
+- All tests should pass with 0 API calls to external services
+
+**Stopping Supabase:**
+```bash
+supabase stop    # Stop all containers
+supabase stop --no-backup  # Stop and remove all data (full reset)
+```
 
 ### Project Structure
 ```
@@ -388,6 +434,67 @@ Available via `.claude/commands/`:
 - `/project:morning-coding-routine` - Daily startup routine with 5S refactor suggestions
 
 ## Testing Workflow
+
+### Integration Test Architecture
+
+**Local Supabase Setup:**
+- Tests run against **real local Supabase database** (not mocks)
+- All migrations applied automatically via `supabase start`
+- Database at `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+- Credentials in `.env.test`
+
+**Test Helpers** (`test/helpers/test-db.ts`):
+```typescript
+// Create real Supabase client for testing
+const supabase = createTestSupabaseClient();
+
+// Clean up all test data for a user (respects foreign keys)
+await cleanupTestUser(supabase, testUserId);
+
+// Create test Plaid connection with properly encrypted access token
+await createTestConnection(supabase, {
+  itemId: "test-item-123",
+  userId: testUserId,
+  institutionName: "Test Bank",
+});
+
+// Create test transactions
+await createTestTransactions(supabase, [
+  { transaction_id: "tx_1", user_id: testUserId, ... },
+]);
+
+// Setup common test data (connection + 3 sample transactions)
+const { connection, transactions } = await setupCommonTestData(supabase, testUserId);
+```
+
+**Mocking Strategy:**
+- **Supabase**: Real local database (no mocking)
+- **Plaid API**: Mocked via `MockPlaidClient` (passed as parameter to handlers)
+- **Claude API**: Auto-mocked in test mode (detects `ANTHROPIC_API_KEY=mock-api-key-for-testing`)
+  - See `src/utils/clients/claude.ts` → `isTestMode()` and `mockCategorizationForTests()`
+  - Uses simple keyword-based categorization for zero API calls
+
+**Why Plaid Mock Works but Claude Mock Required Different Approach:**
+- **Plaid**: Uses dependency injection pattern (plaidClient passed as parameter)
+  ```typescript
+  await connectAccountHandler(userId, baseUrl, mockPlaidClient);
+  ```
+- **Claude**: Static import pattern (no parameter to override)
+  ```typescript
+  import { categorizeTransactions } from "../utils/clients/claude.js";
+  await categorizeTransactions(transactions); // No way to inject mock
+  ```
+- **Solution**: Environment-based mocking inside `categorizeTransactions()` function
+
+**Test Database Cleanup:**
+The `cleanupTestUser()` helper deletes data in correct order to respect foreign keys:
+1. `transactions` (depends on plaid_connections)
+2. `account_sync_state` (depends on plaid_connections)
+3. `accounts` (depends on plaid_connections)
+4. `budgets`
+5. `categorization_prompts`
+6. `plaid_connections`
+7. `plaid_sessions`
 
 **Recommended TDD approach:**
 1. Write tests first (tell Claude: "Write tests, do NOT implement yet")

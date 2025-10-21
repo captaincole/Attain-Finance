@@ -20,28 +20,26 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Mock external dependencies
-import { MockSupabaseClient } from "../mocks/supabase-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
+import { createTestSupabaseClient, cleanupTestUser } from "../helpers/test-db.js";
 
 // Import app after environment is set up
 import { app } from "../../src/index.js";
 
 describe("MCP Widget Protocol (OpenAI Extensions)", () => {
-  let mockSupabase: any;
+  const supabase = createTestSupabaseClient();
+  const testUserId = "test-user-widget-protocol";
 
   before(() => {
-    // Set up Supabase mock
-    mockSupabase = new MockSupabaseClient();
-    setSupabaseMock(mockSupabase);
+    setSupabaseMock(supabase);
   });
 
-  beforeEach(() => {
-    // Clear mock data between tests to prevent state leakage
-    mockSupabase.clear();
+  beforeEach(async () => {
+    await cleanupTestUser(supabase, testUserId);
   });
 
-  after(() => {
-    // Clean up
+  after(async () => {
+    await cleanupTestUser(supabase, testUserId);
     resetSupabase();
   });
 

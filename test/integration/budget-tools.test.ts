@@ -1,46 +1,36 @@
 /**
- * Integration tests for Budget tools with mocked dependencies
+ * Integration tests for Budget tools with local Supabase
  * Tests tool handlers directly without full MCP protocol overhead
  */
 
 import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert";
-
-// Load environment variables before importing modules that need them
-import dotenv from "dotenv";
-dotenv.config();
-
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
-import { MockSupabaseClient } from "../mocks/supabase-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import { getBudgetsHandler } from "../../src/tools/budgets/get-budgets.js";
 import { upsertBudgetHandler } from "../../src/tools/budgets/upsert-budget.js";
+import {
+  createTestSupabaseClient,
+  cleanupTestUser,
+  createTestConnection,
+} from "../helpers/test-db.js";
 
 describe("Budget Tool Integration Tests", () => {
+  const supabase = createTestSupabaseClient();
   let mockPlaidClient: any;
-  let mockSupabase: any;
-  const testUserId = "test-user-123";
+  const testUserId = "test-user-budget";
 
   before(() => {
-    // Set up encryption key for Plaid connection storage (override dotenv for test consistency)
-    process.env.ENCRYPTION_KEY = "a".repeat(64); // 64-char hex for AES-256
-
-    // Mock Plaid
+    setSupabaseMock(supabase);
     mockPlaidClient = new MockPlaidClient();
-
-    // Mock Supabase with budget support
-    mockSupabase = new MockSupabaseClient();
-    mockSupabase.addBudgetSupport();
-    setSupabaseMock(mockSupabase);
   });
 
-  beforeEach(() => {
-    // Clear mock data between tests to prevent state leakage
-    mockSupabase.clear();
+  beforeEach(async () => {
+    await cleanupTestUser(supabase, testUserId);
   });
 
-  after(() => {
-    // Cleanup: reset Supabase
+  after(async () => {
+    await cleanupTestUser(supabase, testUserId);
     resetSupabase();
   });
 
@@ -63,9 +53,12 @@ describe("Budget Tool Integration Tests", () => {
   });
 
   it("should return empty budgets list with creation guidance when no budgets exist", async () => {
-    // First, mock a Plaid connection
-    const { upsertAccountConnection } = await import("../../src/storage/repositories/account-connections.js");
-    await upsertAccountConnection(testUserId, "access-sandbox-test-token", "test-item-123", "sandbox");
+    // Create a test Plaid connection
+    await createTestConnection(supabase, {
+      itemId: "test-item-123",
+      userId: testUserId,
+      institutionName: "Test Bank",
+    });
 
     const result = await getBudgetsHandler(
       testUserId,
@@ -102,6 +95,7 @@ describe("Budget Tool Integration Tests", () => {
       filter_prompt: "Include coffee shops like Starbucks, Dunkin, and any merchant with 'coffee' in the name",
       budget_amount: 100,
       time_period: "weekly" as const,
+      fixed_period_start_date: "2025-01-01", // Required for fixed period budgets
     };
 
     const result = await upsertBudgetHandler(testUserId, budgetArgs);
@@ -156,9 +150,12 @@ describe("Budget Tool Integration Tests", () => {
   });
 
   it("should show budget with spending status when budget exists", async () => {
-    // First, set up a Plaid connection
-    const { upsertAccountConnection } = await import("../../src/storage/repositories/account-connections.js");
-    await upsertAccountConnection(testUserId, "access-sandbox-test-token", "test-item-123", "sandbox");
+    // Create a test Plaid connection
+    await createTestConnection(supabase, {
+      itemId: "test-item-456",
+      userId: testUserId,
+      institutionName: "Test Bank",
+    });
 
     // Create a budget
     const budgetArgs = {
@@ -166,6 +163,7 @@ describe("Budget Tool Integration Tests", () => {
       filter_prompt: "Include grocery stores like Whole Foods, Safeway, Trader Joe's",
       budget_amount: 400,
       time_period: "monthly" as const,
+      fixed_period_start_date: "2025-01-01", // Required for fixed period budgets
     };
 
     await upsertBudgetHandler(testUserId, budgetArgs);
@@ -208,6 +206,7 @@ describe("Budget Tool Integration Tests", () => {
       filter_prompt: "Include restaurants and food delivery",
       budget_amount: 200,
       time_period: "weekly" as const,
+      fixed_period_start_date: "2025-01-01", // Required for fixed period budgets
     });
 
     const budgetId = createResult.budgetId;
@@ -219,6 +218,7 @@ describe("Budget Tool Integration Tests", () => {
       filter_prompt: "Include restaurants and food delivery",
       budget_amount: 250, // Increased amount
       time_period: "weekly" as const,
+      fixed_period_start_date: "2025-01-01", // Required for fixed period budgets
     });
 
     // Verify update response
@@ -229,13 +229,13 @@ describe("Budget Tool Integration Tests", () => {
     assert(text.includes("$250"), "Should include updated amount");
   });
 
-  it("should validate custom_period_days when time_period is custom", async () => {
-    // Without custom_period_days
+  it("should validate custom_period_days when time_period is rolling", async () => {
+    // Without custom_period_days - should show error
     const result1 = await upsertBudgetHandler(testUserId, {
-      title: "Custom Budget",
+      title: "Rolling Budget",
       filter_prompt: "Include all transactions",
       budget_amount: 500,
-      time_period: "custom" as const,
+      time_period: "rolling" as const,
       // Missing custom_period_days
     } as any);
 
@@ -246,10 +246,10 @@ describe("Budget Tool Integration Tests", () => {
 
     // With custom_period_days
     const result2 = await upsertBudgetHandler(testUserId, {
-      title: "Custom Budget",
+      title: "Rolling Budget",
       filter_prompt: "Include all transactions",
       budget_amount: 500,
-      time_period: "custom" as const,
+      time_period: "rolling" as const,
       custom_period_days: 14,
     });
 

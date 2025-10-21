@@ -42,8 +42,9 @@ The steps are:
 Then ChatGPT should do the rest.
 
 ## Testing
+To run the automated tests, you will need to have docker desktop setup so you can create a local supabase db needed to run the integration tests. Once you start docker desktop, you should then be able to run
 
-To run the automated tests, simply run
+Reminder: You will need a .env.test file to run this as well. Please request that before you run the tests.
 
 ```bash
 npm test

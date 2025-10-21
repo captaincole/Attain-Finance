@@ -1,6 +1,14 @@
 # Test Implementation Plan - 4 Priority Tests
 
-This document provides detailed implementation specifications for the 4 priority integration tests, including comprehensive mocking strategies to avoid using API credits.
+This document provides detailed implementation specifications for the 4 priority integration tests.
+
+**🎉 UPDATED APPROACH (2025-10-21):**
+- **Real Local Supabase** - Tests now use actual local database instead of mocks
+- **Auto-Mocking Claude API** - Automatic test mode detection, no manual mocking required
+- **Test Helpers** - Centralized helpers in `test/helpers/test-db.ts`
+- **Zero API Credits** - All external APIs still mocked (Plaid, Claude)
+
+See the updated test pattern in [Test Pattern Summary](#test-pattern-summary) section below.
 
 ## Quick Reference Links
 
@@ -51,13 +59,51 @@ Our code uses these external APIs that need mocking:
 
 ---
 
-## Mock Infrastructure Setup
+## Test Infrastructure Setup
 
-### New Mock: Claude API Client
+### ✅ Completed: Local Supabase Database
 
-**Location:** `test/mocks/claude-mock.ts`
+**All tests now use real local Supabase database instead of mocks.**
 
-**Purpose:** Mock all Claude API calls to avoid using Anthropic API credits
+**Setup:**
+```bash
+# Start Docker Desktop
+# Start local Supabase (applies all migrations automatically)
+supabase start
+
+# Run integration tests
+npm run test:integration
+```
+
+**Test Helpers** - Use these instead of creating mocks:
+- `createTestSupabaseClient()` - Real Supabase client for local database
+- `cleanupTestUser(supabase, userId)` - Automatic cleanup (respects foreign keys)
+- `createTestConnection(supabase, {...})` - Create encrypted Plaid connections
+- `createTestTransactions(supabase, [...])` - Create test transactions
+- `setupCommonTestData(supabase, userId)` - Common test data factory
+
+See `test/helpers/test-db.ts` for all available helpers.
+
+### ✅ Completed: Claude API Auto-Mocking
+
+**Claude API calls are automatically mocked in test mode.**
+
+**How it works:**
+- Detection: `src/utils/clients/claude.ts` → `isTestMode()` checks for `ANTHROPIC_API_KEY=mock-api-key-for-testing`
+- Mocking: `mockCategorizationForTests()` provides simple keyword-based categorization
+- **No manual mocking required** - just ensure `.env.test` has mock API key
+
+**Old approach (don't use):**
+```typescript
+// ❌ Old: Manual mock injection (doesn't work with static imports)
+vi.mock("../../src/utils/clients/claude.js", () => ({...}));
+```
+
+**New approach (automatic):**
+```typescript
+// ✅ New: Automatic - just run tests with .env.test loaded
+// Tests automatically use mock categorization
+```
 
 ```typescript
 /**
@@ -216,54 +262,87 @@ vi.mock("../../src/utils/clients/claude.js", () => ({
 ### Test Cases (4 Essential Tests)
 
 ```typescript
+import { createTestSupabaseClient, cleanupTestUser, createTestConnection, createTestTransactions } from "../helpers/test-db.js";
+
 describe("Async Recategorization Integration Tests", () => {
-  let mockSupabase: MockSupabaseClient;
-  let mockCategorize: any;
+  const supabase = createTestSupabaseClient();
   const testUserId = "test-user-recategorization";
 
   before(() => {
-    // Set up mocks
-    mockSupabase = new MockSupabaseClient();
-    setSupabaseMock(mockSupabase);
-
-    // Mock Claude API
-    mockCategorize = vi.fn(MockClaudeClient.categorizeTransactions);
+    setSupabaseMock(supabase);
   });
 
-  beforeEach(() => {
-    mockSupabase.clear();
-    mockCategorize.mockClear();
+  beforeEach(async () => {
+    await cleanupTestUser(supabase, testUserId);
+  });
+
+  after(async () => {
+    await cleanupTestUser(supabase, testUserId);
+    resetSupabase();
   });
 
   it("should save custom rules and return immediately (fire-and-forget)", async () => {
-    // Populate with 50 transactions
+    // Create test connection
+    await createTestConnection(supabase, {
+      itemId: "item_test_1",
+      userId: testUserId,
+      institutionName: "Test Bank",
+    });
+
+    // Create 50 test transactions
+    const transactions = Array.from({ length: 50 }, (_, i) => ({
+      transaction_id: `tx_${i}`,
+      user_id: testUserId,
+      item_id: "item_test_1",
+      account_id: "acc_1",
+      date: "2024-01-01",
+      name: `Transaction ${i}`,
+      amount: 10.0,
+      pending: false,
+    }));
+    await createTestTransactions(supabase, transactions);
+
     // Call update-categorization-rules with custom rule
-    // Verify response returned in < 500ms
-    // Verify response says "background recategorization started"
-    // Verify rules are stored in categorization_rules table
+    // Verify response returned quickly and rules saved
   });
 
   it("should recategorize all transactions in background", async () => {
-    // Populate with 20 transactions (mix of Amazon, Starbucks, etc.)
+    // Use setupCommonTestData for quick setup
+    const { connection, transactions } = await setupCommonTestData(supabase, testUserId);
+
     // Call update-categorization-rules with "Amazon = Business"
     // Poll database for updated custom_category values
     // Verify all transactions were updated within 5 seconds
-    // Verify Amazon transactions are now "Business"
   });
 
   it("should handle empty transaction list", async () => {
-    // No transactions exist
+    // No transactions exist (cleanup already ran)
     // Call update-categorization-rules
     // Verify response says "no transactions to recategorize"
-    // Verify mockCategorize was NOT called
   });
 
   it("should handle errors silently without crashing", async () => {
-    // Create 10 transactions
-    // Mock categorizeTransactions to throw error
-    // Call update-categorization-rules
-    // Verify tool returns successfully (doesn't throw)
-    // Verify error is logged but handler completed
+    // Create test data
+    await createTestConnection(supabase, {
+      itemId: "item_test_2",
+      userId: testUserId,
+      institutionName: "Test Bank",
+    });
+
+    const transactions = Array.from({ length: 10 }, (_, i) => ({
+      transaction_id: `tx_error_${i}`,
+      user_id: testUserId,
+      item_id: "item_test_2",
+      account_id: "acc_1",
+      date: "2024-01-01",
+      name: `Test ${i}`,
+      amount: 10.0,
+      pending: false,
+    }));
+    await createTestTransactions(supabase, transactions);
+
+    // Note: Claude API errors are automatically handled in test mode
+    // The mock categorization will succeed, so test error handling differently
   });
 });
 ```
@@ -714,58 +793,93 @@ assert.equal(callArgs.environment, "production");
 
 ---
 
-## Mock Organization Summary
+## Test Pattern Summary
 
-### Files to Create/Update
-
-1. **NEW:** `test/mocks/claude-mock.ts`
-   - `MockClaudeClient` class
-   - `categorizeTransactions()` method
-   - `filterTransactionsForBudget()` method
-
-2. **UPDATE:** `test/mocks/supabase-mock.ts`
-   - Add `accounts` Map and support
-   - Add `transactions` Map with `budget_ids` array support
-   - Add `categorization_rules` Map and support
-   - Add `account_sync_state` Map (verify exists)
-
-3. **EXISTING:** `test/mocks/plaid-mock.ts`
-   - Already supports all needed Plaid endpoints
-   - No changes required
-
-### Mock Usage Pattern
+### ✅ Updated Test Pattern (Use This)
 
 ```typescript
-// Standard test setup
+// Import test helpers
+import {
+  createTestSupabaseClient,
+  cleanupTestUser,
+  createTestConnection,
+  createTestTransactions,
+  setupCommonTestData,
+} from "../helpers/test-db.js";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
-import { MockSupabaseClient } from "../mocks/supabase-mock.js";
-import { MockClaudeClient } from "../mocks/claude-mock.js";  // NEW
-import { setSupabaseMock } from "../../src/storage/supabase.js";
+import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 
-// Mock Claude API module
-vi.mock("../../src/utils/clients/claude.js", () => ({
-  categorizeTransactions: vi.fn(MockClaudeClient.categorizeTransactions),
-  filterTransactionsForBudget: vi.fn(MockClaudeClient.filterTransactionsForBudget),
-}));
+describe("Your Test Suite", () => {
+  const supabase = createTestSupabaseClient(); // Real local database
+  const mockPlaidClient = new MockPlaidClient(); // Still mock Plaid API
+  const testUserId = "test-user-your-feature";
 
-// Set up test environment
-before(() => {
-  process.env.ANTHROPIC_API_KEY = "mock-api-key";
-  const mockSupabase = new MockSupabaseClient();
-  setSupabaseMock(mockSupabase);
+  before(() => {
+    setSupabaseMock(supabase);
+  });
+
+  beforeEach(async () => {
+    await cleanupTestUser(supabase, testUserId); // Auto-cleanup
+  });
+
+  after(async () => {
+    await cleanupTestUser(supabase, testUserId);
+    resetSupabase();
+  });
+
+  it("your test case", async () => {
+    // Create test data using helpers
+    await createTestConnection(supabase, {
+      itemId: "item_1",
+      userId: testUserId,
+      institutionName: "Test Bank",
+    });
+
+    const transactions = [
+      { transaction_id: "tx_1", user_id: testUserId, item_id: "item_1", ... },
+    ];
+    await createTestTransactions(supabase, transactions);
+
+    // Run your test logic
+    // Claude API is automatically mocked
+    // Plaid API is mocked via mockPlaidClient parameter
+  });
 });
 ```
+
+### Files That Exist
+
+1. **✅ KEEP:** `test/mocks/plaid-mock.ts`
+   - Mock Plaid API (dependency injection works well)
+   - Pass as parameter to handlers
+
+2. **✅ KEEP:** `test/helpers/test-db.ts`
+   - Real database helpers (replaces Supabase mock)
+   - All test data creation utilities
+
+3. **❌ DELETED:** `test/mocks/supabase-mock.ts`
+   - No longer needed (using real local Supabase)
+
+4. **❌ DELETED:** `test/mocks/claude-mock.ts`
+   - No longer needed (auto-mocking in production code)
 
 ---
 
 ## Execution Plan
 
-### Phase 1: Create Mock Infrastructure (20 mins)
-1. Create `test/mocks/claude-mock.ts`
-2. Update `test/mocks/supabase-mock.ts` with new tables
-3. Test mocks in isolation (simple unit tests)
+### Phase 1: Setup Local Supabase (5 mins - One Time Only)
+```bash
+# Start Docker Desktop
+# Initialize Supabase (if not already done)
+supabase init
 
-### Phase 2: Write Test 1 - Async Recategorization (30 mins)
+# Start all Supabase services
+supabase start
+```
+
+**Note:** This is already done in this project. Just ensure Docker is running and `supabase start` completes successfully.
+
+### Phase 2: Write Test 1 - Async Recategorization (25 mins)
 1. Create `test/integration/async-recategorization.test.ts`
 2. Implement 4 test cases
 3. Run `npm test` and verify all pass
@@ -791,7 +905,7 @@ before(() => {
 3. Update [test/README.md](test/README.md) with new test files
 4. Document any edge cases discovered
 
-**Total Estimated Time:** ~2.5 hours (reduced from 3.5 hours by limiting to 4 tests each)
+**Total Estimated Time:** ~2 hours (reduced from 3.5 hours by using real database instead of mocks)
 
 ---
 
@@ -824,10 +938,11 @@ This ensures your refactoring doesn't break existing functionality.
 
 When you're ready to implement these tests, follow this checklist:
 
-- [ ] **Phase 1:** Create mock infrastructure
-  - [ ] Create `test/mocks/claude-mock.ts`
-  - [ ] Update `test/mocks/supabase-mock.ts` with accounts, transactions, categorization_rules tables
-  - [ ] Test mocks in isolation
+- [x] **Phase 1:** Setup local Supabase (Already completed)
+  - [x] Docker Desktop installed
+  - [x] `supabase start` running successfully
+  - [x] All migrations applied to local database
+  - [x] Test helpers created in `test/helpers/test-db.ts`
 
 - [ ] **Phase 2:** Async recategorization tests
   - [ ] Create `test/integration/async-recategorization.test.ts`

@@ -10,7 +10,7 @@ import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import { createServer } from "../../src/create-server.js";
 
 describe("MCP Widget Metadata Configuration", () => {
-  it("should register get-account-status tool with OpenAI widget metadata", async () => {
+  it("should register get-account-balances tool with OpenAI widget metadata", async () => {
     // Create server with mock Plaid client
     const mockPlaidClient = new MockPlaidClient();
     const { server } = createServer(mockPlaidClient as any);
@@ -34,66 +34,66 @@ describe("MCP Widget Metadata Configuration", () => {
     assert(Array.isArray(result.tools), "Tools should be an array");
     assert(result.tools.length > 0, "Should have at least one tool");
 
-    // Find get-account-status tool
-    const getAccountStatusTool = result.tools.find(
-      (t: any) => t.name === "get-account-status"
+    // Find get-account-balances tool
+    const getAccountBalancesTool = result.tools.find(
+      (t: any) => t.name === "get-account-balances"
     );
 
-    assert(getAccountStatusTool, "Should include get-account-status tool");
+    assert(getAccountBalancesTool, "Should include get-account-balances tool");
 
     // Verify basic tool fields
-    assert.equal(getAccountStatusTool.name, "get-account-status");
+    assert.equal(getAccountBalancesTool.name, "get-account-balances");
     assert(
-      getAccountStatusTool.description,
+      getAccountBalancesTool.description,
       "Tool should have description"
     );
     assert(
-      getAccountStatusTool.inputSchema,
+      getAccountBalancesTool.inputSchema,
       "Tool should have inputSchema"
     );
 
     // CRITICAL: Verify _meta field exists
     assert(
-      getAccountStatusTool._meta,
-      "get-account-status tool MUST have _meta field for ChatGPT widget discovery"
+      getAccountBalancesTool._meta,
+      "get-account-balances tool MUST have _meta field for ChatGPT widget discovery"
     );
 
     // Verify OpenAI widget extension fields
     assert.equal(
-      getAccountStatusTool._meta["openai/outputTemplate"],
+      getAccountBalancesTool._meta["openai/outputTemplate"],
       "ui://widget/connected-institutions.html",
       "Must have outputTemplate pointing to widget resource URI"
     );
 
     assert.equal(
-      getAccountStatusTool._meta["openai/widgetAccessible"],
+      getAccountBalancesTool._meta["openai/widgetAccessible"],
       true,
       "Must mark widget as accessible"
     );
 
     assert.equal(
-      getAccountStatusTool._meta["openai/resultCanProduceWidget"],
+      getAccountBalancesTool._meta["openai/resultCanProduceWidget"],
       true,
       "Must indicate tool can produce widgets"
     );
 
     // Verify tool invocation messages (loading states)
     assert(
-      getAccountStatusTool._meta["openai/toolInvocation/invoking"],
+      getAccountBalancesTool._meta["openai/toolInvocation/invoking"],
       "Must have invoking message for loading state"
     );
     assert.equal(
-      getAccountStatusTool._meta["openai/toolInvocation/invoking"],
+      getAccountBalancesTool._meta["openai/toolInvocation/invoking"],
       "Loading your account balances...",
       "Invoking message should match expected text"
     );
 
     assert(
-      getAccountStatusTool._meta["openai/toolInvocation/invoked"],
+      getAccountBalancesTool._meta["openai/toolInvocation/invoked"],
       "Must have invoked message for completion state"
     );
     assert.equal(
-      getAccountStatusTool._meta["openai/toolInvocation/invoked"],
+      getAccountBalancesTool._meta["openai/toolInvocation/invoked"],
       "Account balances loaded",
       "Invoked message should match expected text"
     );
@@ -113,7 +113,7 @@ describe("MCP Widget Metadata Configuration", () => {
     });
 
     // Tools that SHOULD have widget metadata
-    const widgetTools = ["get-account-status", "get-budgets"];
+    const widgetTools = ["get-account-balances", "get-budgets", "upsert-budget"];
 
     // Find tools that are NOT widget tools
     const otherTools = result.tools.filter(

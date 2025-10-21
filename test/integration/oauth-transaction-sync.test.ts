@@ -3,18 +3,27 @@
  * Tests that when a user completes OAuth, transactions are synced in background
  */
 
-import { describe, it, before, beforeEach } from "node:test";
+import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert";
+import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
-import { MockSupabaseClient } from "../mocks/supabase-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import { completeAccountConnection } from "../../src/services/account-service.js";
 import { getAccountsByItemId } from "../../src/storage/repositories/accounts.js";
 import { findTransactionsByUserId } from "../../src/storage/repositories/transactions.js";
 import { AccountSyncStateRepository } from "../../src/storage/repositories/account-sync-state.js";
 
-// Mock environment for categorization (skip actual Claude API calls in tests)
-process.env.ANTHROPIC_API_KEY = "mock-api-key";
+// Load test environment variables
+dotenv.config({ path: ".env.test" });
+
+// Verify required env vars
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env.test");
+}
+if (!process.env.ENCRYPTION_KEY) {
+  throw new Error("Missing ENCRYPTION_KEY in .env.test");
+}
 
 // Mock categorization function to avoid real API calls
 const originalCategorize = await import("../../src/utils/clients/claude.js");
@@ -33,37 +42,62 @@ const mockCategorize = {
 
 describe("OAuth Transaction Sync Integration Test", () => {
   let mockPlaidClient: any;
-  let mockSupabase: any;
+  let supabase: any;
   let syncStateRepo: AccountSyncStateRepository;
   const testUserId = "test-user-oauth-sync";
   const testSessionId = "test-session-oauth-sync";
 
   before(() => {
-    // Mock Plaid client
+    // Create real Supabase client for local testing
+    supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!
+    );
+    setSupabaseMock(supabase);
+
+    // Mock Plaid client (still using mock to avoid API calls)
     mockPlaidClient = new MockPlaidClient();
 
-    // Mock Supabase
-    mockSupabase = new MockSupabaseClient();
-    setSupabaseMock(mockSupabase);
-
-    // Initialize sync state repository
-    syncStateRepo = new AccountSyncStateRepository(mockSupabase);
+    // Initialize sync state repository with real Supabase
+    syncStateRepo = new AccountSyncStateRepository(supabase);
   });
 
-  beforeEach(() => {
-    // Clear mock data between tests
-    mockSupabase.clear();
+  beforeEach(async () => {
+    // Clean up test data between tests
+    await supabase.from("transactions").delete().eq("user_id", testUserId);
+    await supabase.from("account_sync_state").delete().eq("user_id", testUserId);
+    await supabase.from("accounts").delete().eq("user_id", testUserId);
+    await supabase.from("plaid_connections").delete().eq("user_id", testUserId);
+    await supabase.from("plaid_sessions").delete().eq("user_id", testUserId);
+  });
+
+  after(async () => {
+    // Final cleanup after all tests
+    await supabase.from("transactions").delete().eq("user_id", testUserId);
+    await supabase.from("account_sync_state").delete().eq("user_id", testUserId);
+    await supabase.from("accounts").delete().eq("user_id", testUserId);
+    await supabase.from("plaid_connections").delete().eq("user_id", testUserId);
+    await supabase.from("plaid_sessions").delete().eq("user_id", testUserId);
+
+    // Also clean up error test data
+    await supabase.from("transactions").delete().eq("user_id", "error-user");
+    await supabase.from("account_sync_state").delete().eq("user_id", "error-user");
+    await supabase.from("accounts").delete().eq("user_id", "error-user");
+    await supabase.from("plaid_connections").delete().eq("user_id", "error-user");
+    await supabase.from("plaid_sessions").delete().eq("user_id", "error-user");
+
+    resetSupabase();
   });
 
   it("should sync transactions in background after OAuth callback", async () => {
     // Step 1: Create a pending account session (simulates user starting OAuth flow)
-    await mockSupabase.from("account_sessions").insert({
+    await supabase.from("plaid_sessions").insert({
       session_id: testSessionId,
       user_id: testUserId,
       status: "pending",
       created_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    });
+    }).select().single();
 
     // Step 2: Complete account connection (simulates OAuth callback)
     const { userId, itemId } = await completeAccountConnection(
@@ -181,20 +215,18 @@ describe("OAuth Transaction Sync Integration Test", () => {
 
   it("should handle sync errors gracefully", async () => {
     // Create a session
-    await mockSupabase.from("account_sessions").insert({
+    await supabase.from("plaid_sessions").insert({
       session_id: "error-session",
       user_id: "error-user",
       status: "pending",
       created_at: new Date().toISOString(),
       expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-    });
+    }).select().single();
 
     // Create a mock Plaid client that fails on transactionsSync
-    const failingPlaidClient = {
-      ...mockPlaidClient,
-      transactionsSync: async () => {
-        throw new Error("Mock Plaid API error");
-      },
+    const failingPlaidClient = Object.create(mockPlaidClient);
+    failingPlaidClient.transactionsSync = async () => {
+      throw new Error("Mock Plaid API error");
     };
 
     // Complete connection should still succeed (sync is fire-and-forget)
