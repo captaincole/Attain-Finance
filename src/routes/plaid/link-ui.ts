@@ -13,10 +13,12 @@ import { getBaseUrl } from "../../utils/config.js";
 export function plaidLinkHandler(req: Request, res: Response) {
   const { token, session } = req.query;
 
-  if (!token || !session) {
-    return res.status(400).send("Missing token or session parameter");
+  if (!token) {
+    return res.status(400).send("Missing token parameter");
   }
 
+  // Session is optional - required for new connections, not needed for update mode
+  const isUpdateMode = !session;
   const baseUrl = getBaseUrl();
 
   // Serve HTML page that initializes Plaid Link
@@ -86,16 +88,28 @@ export function plaidLinkHandler(req: Request, res: Response) {
 
       <script>
         const linkToken = "${token}";
-        const sessionId = "${session}";
+        const sessionId = "${session || ''}";
+        const isUpdateMode = ${isUpdateMode};
 
         // Initialize Plaid Link
         const handler = Plaid.create({
           token: linkToken,
           onSuccess: async (public_token, metadata) => {
+            // Update mode: No callback needed (access_token stays the same)
+            if (isUpdateMode) {
+              document.getElementById('status').innerHTML =
+                \`<h2 class="success">✓ Update Complete!</h2>
+                 <p>Your account connection has been updated successfully.</p>
+                 <p style="margin-top: 2rem; color: #666; font-size: 0.9rem;">
+                   Return to ChatGPT and say: <strong>"I've updated it, please refresh my transactions"</strong>
+                 </p>\`;
+              return;
+            }
+
+            // New connection: Exchange public token via callback
             document.getElementById('status').innerHTML =
               '<div class="spinner"></div><p>Connecting your bank...</p>';
 
-            // Send public_token to our server
             try {
               const response = await fetch('${baseUrl}/plaid/callback', {
                 method: 'POST',

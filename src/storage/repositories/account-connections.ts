@@ -91,6 +91,10 @@ export interface AccountConnection {
   itemId: string;
   connectedAt: Date;
   environment: "sandbox" | "development" | "production";
+  institutionName?: string | null;
+  status?: string;
+  errorCode?: string | null;
+  errorMessage?: string | null;
 }
 
 /**
@@ -100,7 +104,8 @@ export async function upsertAccountConnection(
   userId: string,
   accessToken: string,
   itemId: string,
-  environment: "sandbox" | "development" | "production"
+  environment: "sandbox" | "development" | "production",
+  institutionName?: string
 ): Promise<void> {
   console.log("[REPO/ACCOUNT-CONNECTIONS] Upserting connection for user:", userId);
 
@@ -115,6 +120,8 @@ export async function upsertAccountConnection(
         item_id: itemId,
         connected_at: new Date().toISOString(),
         plaid_env: environment,
+        institution_name: institutionName || null,
+        status: 'active',
       },
       {
         onConflict: "item_id",
@@ -162,6 +169,10 @@ export async function findAccountConnectionsByUserId(
     itemId: row.item_id,
     connectedAt: new Date(row.connected_at || new Date()),
     environment: (row.plaid_env || "sandbox") as "sandbox" | "development" | "production",
+    institutionName: row.institution_name || null,
+    status: row.status || 'active',
+    errorCode: row.error_code || null,
+    errorMessage: row.error_message || null,
   }));
 }
 

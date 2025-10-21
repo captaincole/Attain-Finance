@@ -7,11 +7,9 @@
 import { PlaidApi } from "plaid";
 import {
   initiateAccountConnection,
-  getUserAccountsWithDetails,
   disconnectAccount,
   getUserConnections,
 } from "../../services/account-service.js";
-import { getAccountCapabilityHints, formatHintsForChatGPT } from "../../utils/capability-hints.js";
 import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
 
 /**
@@ -82,93 +80,6 @@ Please check your environment variables and try again.
 }
 
 /**
- * Get Account Status Tool Handler
- * Shows user's connected accounts and current balances
- */
-export async function getAccountStatusHandler(
-  userId: string,
-  plaidClient: PlaidApi
-) {
-  const { connections, accountDetails } = await getUserAccountsWithDetails(
-    userId,
-    plaidClient
-  );
-
-  if (connections.length === 0) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: `
-❌ **No Accounts Connected**
-
-You haven't connected any accounts yet.
-
-To get started, say: "Connect my account"
-          `.trim(),
-        },
-      ],
-    };
-  }
-
-  // Build response text
-  const totalAccounts = accountDetails.reduce(
-    (sum, inst) => sum + inst.accounts.length,
-    0
-  );
-
-  let responseText = `✓ **Connected Accounts (${connections.length} institution${
-    connections.length > 1 ? "s" : ""
-  })**\n\n`;
-
-  accountDetails.forEach((inst) => {
-    responseText += `**${inst.institutionName}** (${inst.environment})\n`;
-    responseText += `Connected: ${inst.connectedAt.toLocaleString()}\n`;
-    responseText += `Item ID: ${inst.itemId}\n`;
-
-    if (inst.error) {
-      responseText += `⚠️ Error: ${inst.error}\n`;
-      responseText += `To fix: Say "Disconnect ${inst.itemId}"\n\n`;
-    } else {
-      responseText += `Accounts (${inst.accounts.length}):\n`;
-      inst.accounts.forEach((acc) => {
-        responseText += `  - ${acc.name} (${acc.subtype || acc.type}): $${
-          acc.balances.current?.toFixed(2) || "N/A"
-        }\n`;
-      });
-      responseText += "\n";
-    }
-  });
-
-  responseText += `**Total Accounts:** ${totalAccounts}`;
-
-  // Generate context-aware capability hints
-  const allAccountTypes = accountDetails.flatMap((inst) =>
-    inst.accounts.map((acc) => acc.type)
-  );
-  const capabilityHints = getAccountCapabilityHints(allAccountTypes);
-  responseText += formatHintsForChatGPT(capabilityHints);
-
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: responseText.trim(),
-      },
-    ],
-    structuredContent: {
-      institutions: accountDetails,
-      totalAccounts,
-    },
-    _meta: {
-      "openai/outputTemplate": "ui://widget/connected-institutions.html",
-      "openai/widgetAccessible": true,
-      "openai/resultCanProduceWidget": true,
-    },
-  };
-}
-
-/**
  * Get Account Balances Tool Handler
  * Shows current balances from database (fast, no API calls)
  */
@@ -192,6 +103,11 @@ To get started, say: "Connect my account"
     };
   }
 
+  // Fetch connection details for status and institution names
+  const { getUserConnections } = await import("../../services/account-service.js");
+  const connections = await getUserConnections(userId);
+  const connectionMap = new Map(connections.map(c => [c.itemId, c]));
+
   // Calculate totals by account type
   const accountsByType = accounts.reduce((acc, account) => {
     const type = account.type;
@@ -205,27 +121,59 @@ To get started, say: "Connect my account"
     return acc;
   }, {} as Record<string, { accounts: any[]; total: number }>);
 
-  // Build response text
+  // Build response text grouped by institution
   let responseText = `✓ **Account Balances** (${accounts.length} account${accounts.length > 1 ? "s" : ""})\n\n`;
 
-  // Group by type
-  Object.entries(accountsByType).forEach(([type, data]) => {
-    responseText += `**${type.charAt(0).toUpperCase() + type.slice(1)} Accounts:**\n`;
-    data.accounts.forEach((account) => {
-      const balance = account.current_balance !== null
-        ? `$${Number(account.current_balance).toFixed(2)}`
-        : "N/A";
-      const available = account.available_balance !== null
-        ? ` (Available: $${Number(account.available_balance).toFixed(2)})`
-        : "";
-      responseText += `  • ${account.name}${account.subtype ? ` (${account.subtype})` : ""}: ${balance}${available}\n`;
+  // Group accounts by item_id (institution)
+  const accountsByInstitution = accounts.reduce((acc, account) => {
+    const itemId = account.item_id;
+    if (!acc[itemId]) {
+      acc[itemId] = [];
+    }
+    acc[itemId].push(account);
+    return acc;
+  }, {} as Record<string, typeof accounts>);
 
-      // Show credit limit if applicable
-      if (account.limit_amount !== null) {
-        responseText += `    Credit Limit: $${Number(account.limit_amount).toFixed(2)}\n`;
-      }
-    });
-    responseText += `  **Total:** $${data.total.toFixed(2)}\n\n`;
+  // Display each institution
+  Object.entries(accountsByInstitution).forEach(([itemId, institutionAccounts]) => {
+    const connection = connectionMap.get(itemId);
+    const institutionName = connection?.institutionName || "Unknown Institution";
+    const status = connection?.status || "unknown";
+
+    // Status indicator
+    const statusEmoji = status === 'active' ? '✓' : status === 'error' ? '⚠️' : '•';
+    const statusText = status === 'active' ? '' : ` (${status})`;
+
+    responseText += `${statusEmoji} **${institutionName}**${statusText}\n`;
+    responseText += `Item ID: ${itemId}\n`;
+
+    // Show error message if connection has errors
+    if (status === 'error' && connection?.errorMessage) {
+      responseText += `⚠️ Error: ${connection.errorMessage}\n`;
+      responseText += `To fix: Say "Update account link for ${itemId}"\n\n`;
+    } else {
+      institutionAccounts.forEach((account) => {
+        const balance = account.current_balance !== null
+          ? `$${Number(account.current_balance).toFixed(2)}`
+          : "N/A";
+        const available = account.available_balance !== null
+          ? ` (Available: $${Number(account.available_balance).toFixed(2)})`
+          : "";
+        responseText += `  • ${account.name}${account.subtype ? ` (${account.subtype})` : ""}: ${balance}${available}\n`;
+
+        // Show credit limit if applicable
+        if (account.limit_amount !== null) {
+          responseText += `    Credit Limit: $${Number(account.limit_amount).toFixed(2)}\n`;
+        }
+      });
+      responseText += '\n';
+    }
+  });
+
+  // Summary by account type
+  responseText += `**Summary by Account Type:**\n`;
+  Object.entries(accountsByType).forEach(([type, data]) => {
+    responseText += `  ${type.charAt(0).toUpperCase() + type.slice(1)}: $${data.total.toFixed(2)}\n`;
   });
 
   // Calculate net worth (assets - liabilities)
@@ -250,42 +198,24 @@ To get started, say: "Connect my account"
 
   // Transform data for widget compatibility
   // Widget expects institutions array grouped by item_id
-  const institutionMap = new Map<string, {
-    itemId: string;
-    institutionName: string;
-    env: string;
-    connectedAt: Date;
-    accounts: Array<{
-      name: string;
-      type: string;
-      subtype?: string;
-      balances: { current?: number };
-    }>;
-  }>();
-
-  accounts.forEach(account => {
-    if (!institutionMap.has(account.item_id)) {
-      institutionMap.set(account.item_id, {
-        itemId: account.item_id,
-        institutionName: "Connected Institution", // Placeholder - institution name not stored in accounts table
-        env: "production", // Could be enriched from connection data
-        connectedAt: new Date(account.created_at),
-        accounts: []
-      });
-    }
-
-    const institution = institutionMap.get(account.item_id)!;
-    institution.accounts.push({
-      name: account.name,
-      type: account.type,
-      subtype: account.subtype || undefined,
-      balances: {
-        current: account.current_balance !== null ? Number(account.current_balance) : undefined
-      }
-    });
+  const institutions = Object.entries(accountsByInstitution).map(([itemId, institutionAccounts]) => {
+    const connection = connectionMap.get(itemId);
+    return {
+      itemId,
+      institutionName: connection?.institutionName || "Unknown Institution",
+      status: connection?.status || "unknown",
+      errorMessage: connection?.errorMessage || undefined,
+      connectedAt: connection?.connectedAt || new Date(institutionAccounts[0].created_at),
+      accounts: institutionAccounts.map(account => ({
+        name: account.name,
+        type: account.type,
+        subtype: account.subtype || undefined,
+        balances: {
+          current: account.current_balance !== null ? Number(account.current_balance) : undefined
+        }
+      }))
+    };
   });
-
-  const institutions = Array.from(institutionMap.values());
 
   return {
     content: [

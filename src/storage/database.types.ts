@@ -245,22 +245,34 @@ export type Database = {
         Row: {
           access_token_encrypted: string
           connected_at: string | null
+          error_code: string | null
+          error_message: string | null
+          institution_name: string | null
           item_id: string
           plaid_env: string
+          status: string
           user_id: string
         }
         Insert: {
           access_token_encrypted: string
           connected_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          institution_name?: string | null
           item_id: string
           plaid_env?: string
+          status?: string
           user_id: string
         }
         Update: {
           access_token_encrypted?: string
           connected_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          institution_name?: string | null
           item_id?: string
           plaid_env?: string
+          status?: string
           user_id?: string
         }
         Relationships: []

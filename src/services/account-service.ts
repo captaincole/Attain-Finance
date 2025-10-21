@@ -105,8 +105,20 @@ export async function completeAccountConnection(
   // Get environment from config
   const environment = (process.env.PLAID_ENV || "sandbox") as "sandbox" | "development" | "production";
 
+  // Fetch institution name from Plaid
+  let institutionName: string | undefined;
+  try {
+    const itemResponse = await plaidClient.itemGet({
+      access_token: accessToken,
+    });
+    institutionName = itemResponse.data.item.institution_name || undefined;
+  } catch (error: any) {
+    console.warn("[ACCOUNT-SERVICE] Failed to fetch institution name:", error.message);
+    // Continue without institution name
+  }
+
   // Store connection
-  await upsertAccountConnection(session.userId, accessToken, itemId, environment);
+  await upsertAccountConnection(session.userId, accessToken, itemId, environment, institutionName);
 
   // Fetch and store account balances immediately
   try {
@@ -259,4 +271,51 @@ export async function disconnectAccount(
  */
 export async function getUserConnections(userId: string): Promise<AccountConnection[]> {
   return findAccountConnectionsByUserId(userId);
+}
+
+/**
+ * Initiate account update flow (Plaid update mode)
+ * Returns a Plaid Link URL for the user to re-authenticate their connection
+ */
+export async function initiateAccountUpdate(
+  userId: string,
+  itemId: string,
+  baseUrl: string,
+  plaidClient: PlaidApi
+): Promise<{ linkUrl: string }> {
+  console.log(`[ACCOUNT-SERVICE] Initiating update for item ${itemId}`);
+
+  // Verify user owns this connection
+  const connections = await findAccountConnectionsByUserId(userId);
+  const connection = connections.find((c) => c.itemId === itemId);
+
+  if (!connection) {
+    throw new Error(`Connection with item ID "${itemId}" not found`);
+  }
+
+  if (connection.userId !== userId) {
+    throw new Error("Unauthorized: connection belongs to different user");
+  }
+
+  // Generate Plaid Link token for update mode
+  // Note: Must include access_token to enable update mode
+  const response = await plaidClient.linkTokenCreate({
+    user: {
+      client_user_id: userId,
+    },
+    client_name: "Personal Finance MCP",
+    access_token: connection.accessToken,
+    country_codes: [CountryCode.Us],
+    language: "en",
+  });
+
+  const linkToken = response.data.link_token;
+
+  // Build Link URL (simpler than new connections - no session needed)
+  const encodedLinkToken = encodeURIComponent(linkToken);
+  const linkUrl = `${baseUrl}/plaid/link?token=${encodedLinkToken}`;
+
+  console.log("[ACCOUNT-SERVICE] Generated update mode Link URL for item:", itemId);
+
+  return { linkUrl };
 }
