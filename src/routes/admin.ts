@@ -103,7 +103,7 @@ router.delete("/user/:userId/data", async (req: Request, res: Response) => {
  * GET /admin/health
  * Simple health check for admin endpoints
  */
-router.get("/health", (req: Request, res: Response) => {
+router.get("/health", (_req: Request, res: Response) => {
   const isProduction = process.env.PLAID_ENV === "production";
 
   res.json({

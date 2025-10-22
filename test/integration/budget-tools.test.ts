@@ -5,7 +5,6 @@
 
 import { describe, it, before, after, beforeEach } from "node:test";
 import assert from "node:assert";
-import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import { getBudgetsHandler } from "../../src/tools/budgets/get-budgets.js";
 import { upsertBudgetHandler } from "../../src/tools/budgets/upsert-budget.js";
@@ -17,12 +16,10 @@ import {
 
 describe("Budget Tool Integration Tests", () => {
   const supabase = createTestSupabaseClient();
-  let mockPlaidClient: any;
   const testUserId = "test-user-budget";
 
   before(() => {
     setSupabaseMock(supabase);
-    mockPlaidClient = new MockPlaidClient();
   });
 
   beforeEach(async () => {
@@ -37,8 +34,7 @@ describe("Budget Tool Integration Tests", () => {
   it("should return error when no accounts connected", async () => {
     const result = await getBudgetsHandler(
       testUserId,
-      { showTransactions: false },
-      mockPlaidClient
+      { showTransactions: false }
     );
 
     // Verify response structure
@@ -62,8 +58,7 @@ describe("Budget Tool Integration Tests", () => {
 
     const result = await getBudgetsHandler(
       testUserId,
-      { showTransactions: false },
-      mockPlaidClient
+      { showTransactions: false }
     );
 
     // Verify response structure
@@ -171,8 +166,7 @@ describe("Budget Tool Integration Tests", () => {
     // Then get budgets
     const result = await getBudgetsHandler(
       testUserId,
-      { showTransactions: false },
-      mockPlaidClient
+      { showTransactions: false }
     );
 
     // Verify response structure

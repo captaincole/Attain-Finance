@@ -4,7 +4,6 @@ import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import crypto from "crypto";
 import { clerkMiddleware } from "@clerk/express";
 import {
   mcpAuthClerk,
@@ -63,7 +62,7 @@ app.get("/favicon.ico", (_req: Request, res: Response) => {
 const { server } = createServer(plaidClient);
 
 // Minimal logging middleware for MCP requests
-app.post("/mcp", (req, res, next) => {
+app.post("/mcp", (req, _res, next) => {
   if (req.body && req.body.method) {
     console.log(`[MCP] ${req.body.method}`);
   }

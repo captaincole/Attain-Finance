@@ -470,7 +470,7 @@ describe("Budget Labeling Integration Tests", () => {
 ```typescript
 // Pre-labeled query (using budget_ids column)
 const startPreLabeled = Date.now();
-const budgetsPreLabeled = await getBudgetsHandler(testUserId, {}, mockPlaidClient);
+const budgetsPreLabeled = await getBudgetsHandler(testUserId, {});
 const timePreLabeled = Date.now() - startPreLabeled;
 
 console.log(`Pre-labeled query time: ${timePreLabeled}ms`);

@@ -113,7 +113,12 @@ describe("MCP Widget Metadata Configuration", () => {
     });
 
     // Tools that SHOULD have widget metadata
-    const widgetTools = ["get-account-balances", "get-budgets", "upsert-budget"];
+    const widgetTools = [
+      "get-account-balances",
+      "get-budgets",
+      "create-budget",
+      "update-budget-rules",
+    ];
 
     // Find tools that are NOT widget tools
     const otherTools = result.tools.filter(

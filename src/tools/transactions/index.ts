@@ -3,7 +3,6 @@
  * All transaction-related MCP tools
  */
 
-import { z } from "zod";
 import { PlaidApi } from "plaid";
 import { refreshTransactionsHandler } from "./refresh-transactions.js";
 

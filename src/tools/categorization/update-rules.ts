@@ -1,7 +1,6 @@
 import { saveCustomRules, getCustomRules } from "../../storage/categorization/rules.js";
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
 import { recategorizeAllTransactions } from "../../services/recategorization-service.js";
-import { PlaidApi } from "plaid";
 
 export interface UpdateCategorizationArgs {
   rules: string;
@@ -14,9 +13,7 @@ export interface UpdateCategorizationArgs {
  */
 export async function updateCategorizationRulesHandler(
   userId: string,
-  baseUrl: string,
-  args: UpdateCategorizationArgs,
-  plaidClient: PlaidApi
+  args: UpdateCategorizationArgs
 ) {
   const { rules } = args;
 

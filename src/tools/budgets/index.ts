@@ -57,7 +57,7 @@ export function getBudgetTools(): ToolDefinition[] {
         }
 
         console.log("[GET-BUDGETS] Calling getBudgetsHandler for user:", userId);
-        return getBudgetsHandler(userId, args, plaidClient!);
+        return getBudgetsHandler(userId, args);
       },
     },
     {

@@ -1,4 +1,3 @@
-import { PlaidApi } from "plaid";
 import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
@@ -47,8 +46,7 @@ function convertTransactionsToCSV(transactions: any[]): string {
 export async function getPlaidTransactionsHandler(
   userId: string,
   baseUrl: string,
-  args: GetTransactionsArgs,
-  plaidClient: PlaidApi
+  args: GetTransactionsArgs
 ) {
   // Check if user has connections
   const connections = await findAccountConnectionsByUserId(userId);

@@ -4,7 +4,7 @@
  * Supports pagination, cursor management, and categorization
  */
 
-import { PlaidApi, Transaction as PlaidTransaction } from "plaid";
+import { PlaidApi } from "plaid";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { AccountSyncStateRepository } from "../storage/repositories/account-sync-state.js";
 import { upsertTransactions } from "../storage/repositories/transactions.js";
@@ -33,7 +33,7 @@ export class TransactionSyncService {
 
   constructor(
     private plaidClient: PlaidApi,
-    private supabase: SupabaseClient,
+    supabase: SupabaseClient,
     claudeClient?: ClaudeClient
   ) {
     this.syncStateRepo = new AccountSyncStateRepository(supabase);

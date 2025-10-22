@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { PlaidApi } from "plaid";
 import { getBudgets, getBudgetById, Budget } from "../../storage/budgets/budgets.js";
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByBudgetId } from "../../storage/repositories/transactions.js";
@@ -124,8 +123,7 @@ function getBudgetDateRange(
  */
 export async function getBudgetsHandler(
   userId: string,
-  args: GetBudgetsArgs,
-  plaidClient: PlaidApi
+  args: GetBudgetsArgs
 ) {
   try {
     console.log("[GET-BUDGETS-HANDLER] Starting, userId:", userId, "args:", args);

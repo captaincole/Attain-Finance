@@ -4,7 +4,6 @@
  */
 
 import { z } from "zod";
-import { PlaidApi } from "plaid";
 import { getPlaidTransactionsHandler } from "./get-transactions.js";
 import { getRawTransactionsHandler } from "./get-raw-transactions.js";
 import { updateCategorizationRulesHandler } from "./update-rules.js";
@@ -65,14 +64,14 @@ export function getCategorizationTools(): ToolDefinition[] {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, plaidClient) => {
+      handler: async (args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
         const baseUrl = getBaseUrl();
-        return getPlaidTransactionsHandler(userId, baseUrl, args, plaidClient!);
+        return getPlaidTransactionsHandler(userId, baseUrl, args);
       },
     },
     {
@@ -86,14 +85,13 @@ export function getCategorizationTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, plaidClient) => {
+      handler: async (args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
-        const baseUrl = getBaseUrl();
-        return updateCategorizationRulesHandler(userId, baseUrl, args, plaidClient!);
+        return updateCategorizationRulesHandler(userId, args);
       },
     },
   ];

@@ -1,6 +1,5 @@
 import { getVisualization, saveVisualization, resetVisualization } from "../../storage/visualization/scripts.js";
 import { customizeVisualization } from "../../utils/clients/visualization.js";
-import { generateSignedUrl } from "../../utils/signed-urls.js";
 
 export interface UpdateVisualizationArgs {
   request: string;
