@@ -94,15 +94,3 @@ export function getTransactionAnalysisHints(): CapabilityHint[] {
  * Get hints for visualization customization follow-ups
  * @returns Capability hints for after showing a visualization
  */
-export function getVisualizationCustomizationHints(): CapabilityHint[] {
-  return [
-    {
-      action: "customize_visualization",
-      description: "Suggest customizing the chart appearance (e.g., 'Show top 15 categories' or 'Change bar colors')."
-    },
-    {
-      action: "deeper_analysis",
-      description: "Offer to apply expert financial analysis methods (e.g., 'Exclude large one-time expenses from budget')."
-    }
-  ];
-}

@@ -8,7 +8,7 @@
     "test": "NODE_ENV=test npm run test:integration",
     "test:integration": "NODE_ENV=test tsx --test --test-concurrency=1 --test-force-exit test/integration/**/*.test.ts",
     "build:widgets": "cd widgets && npm install && npm run build:all",
-    "build": "shx mkdir -p public/widgets && npm run build:widgets && tsc && shx chmod +x build/*.js && shx chmod +x build/cron/runner.js && shx mkdir -p build/prompts && shx cp src/prompts/*.txt build/prompts/",
+    "build": "shx mkdir -p public/widgets && npm run build:widgets && tsc && shx chmod +x build/*.js && shx chmod +x build/cron/runner.js",
     "watch": "tsc --watch",
     "start": "node build/index.js",
     "prepare": "npm run build",
@@ -24,7 +24,6 @@
   "files": [
     "build",
     "public",
-    "src/prompts",
     "widgets/dist"
   ],
   "keywords": [

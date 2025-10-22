@@ -375,24 +375,6 @@ export type Database = {
           },
         ]
       }
-      user_visualizations: {
-        Row: {
-          script_content: string
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          script_content: string
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          script_content?: string
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

@@ -7,7 +7,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { PlaidApi } from "plaid";
 import { getAccountTools } from "./accounts/index.js";
 import { getCategorizationTools } from "./categorization/index.js";
-import { getVisualizationTools } from "./visualization/index.js";
 import { getOpinionTools } from "./opinions/index.js";
 import { getBudgetTools } from "./budgets/index.js";
 import { getTransactionTools } from "./transactions/index.js";
@@ -19,7 +18,6 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
   const allTools = [
     ...getAccountTools(),
     ...getCategorizationTools(),
-    ...getVisualizationTools(),
     ...getOpinionTools(),
     ...getBudgetTools(),
     ...getTransactionTools(),
