@@ -77,11 +77,11 @@ export function getCategorizationTools(): ToolDefinition[] {
     },
     {
       name: "update-categorization-rules",
-      description: "Update your custom transaction categorization rules. After updating, your transaction data will be automatically re-categorized with the new rules. Use this to customize how transactions are grouped (e.g., 'Put Amazon Prime in Business category').",
+      description: "Update global transaction categorization rules that apply to ALL transactions (e.g., 'Categorize all Amazon Prime as Business expenses'). This updates the general category field for transactions but does NOT affect budget matching. To update which transactions match a specific budget, use 'update-budget-rules' instead. After updating, all transactions will be automatically re-categorized with the new rules in the background.",
       inputSchema: {
         rules: z
           .string()
-          .describe("Custom categorization instructions (e.g., 'Categorize all Amazon Prime as Business expenses')"),
+          .describe("Custom categorization instructions (e.g., 'Categorize all Amazon Prime as Business expenses', 'Put Starbucks in Personal Care instead of Food & Dining')"),
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],

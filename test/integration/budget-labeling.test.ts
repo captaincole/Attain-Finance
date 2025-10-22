@@ -2,7 +2,7 @@
  * Integration test for budget labeling during transaction sync
  * Tests that transactions are automatically labeled with matching budget IDs
  *
- * NOTE: Claude API is auto-mocked in test mode, no credits used
+ * NOTE: Uses MockClaudeClient via dependency injection, no API calls
  */
 
 import { describe, it, before, beforeEach, after } from "node:test";
@@ -18,12 +18,11 @@ import {
   createTestConnection,
   createTestTransactions,
 } from "../helpers/test-db.js";
-
-// Mock environment - mock API key for auto-mocking
-process.env.ANTHROPIC_API_KEY = "mock-api-key-for-testing";
+import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Budget Labeling Integration Tests", () => {
   const supabase = createTestSupabaseClient();
+  const mockClaudeClient = new MockClaudeClient();
   const testUserId = "test-user-budget-labeling";
 
   before(() => {
@@ -96,7 +95,7 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [coffeeBudget]);
+    await labelTransactionArrayForBudgets(transactionsForLabeling, [coffeeBudget], mockClaudeClient);
 
     // Verify Starbucks transaction has budget_ids array with coffee budget ID
     const updatedTransactions = await findTransactionsByUserId(testUserId);
@@ -201,11 +200,11 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [
-      coffeeBudget,
-      foodBudget,
-      groceryBudget,
-    ]);
+    await labelTransactionArrayForBudgets(
+      transactionsForLabeling,
+      [coffeeBudget, foodBudget, groceryBudget],
+      mockClaudeClient
+    );
 
     // Verify Starbucks has 2 budget IDs (coffee + food)
     const updatedTransactions = await findTransactionsByUserId(testUserId);
@@ -292,7 +291,7 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [groceryBudget]);
+    await labelTransactionArrayForBudgets(transactionsForLabeling, [groceryBudget], mockClaudeClient);
 
     // Verify gas transaction has empty budget_ids array
     const updatedTransactions = await findTransactionsByUserId(testUserId);
@@ -362,7 +361,7 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [coffeeBudget]);
+    await labelTransactionArrayForBudgets(transactionsForLabeling, [coffeeBudget], mockClaudeClient);
 
     // Query using pre-labeled data (fast query using budget_ids column)
     const startTime = Date.now();

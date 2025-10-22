@@ -125,13 +125,25 @@ function injectWidgetMetadata(server: McpServer) {
             }
           };
         }
-        if (tool.name === "upsert-budget") {
+        if (tool.name === "create-budget") {
           return {
             ...tool,
             _meta: {
               "openai/outputTemplate": "ui://widget/budget-list.html",
               "openai/toolInvocation/invoking": "Creating budget...",
               "openai/toolInvocation/invoked": "Budget created",
+              "openai/widgetAccessible": true,
+              "openai/resultCanProduceWidget": true
+            }
+          };
+        }
+        if (tool.name === "update-budget-rules") {
+          return {
+            ...tool,
+            _meta: {
+              "openai/outputTemplate": "ui://widget/budget-list.html",
+              "openai/toolInvocation/invoking": "Updating budget...",
+              "openai/toolInvocation/invoked": "Budget updated",
               "openai/widgetAccessible": true,
               "openai/resultCanProduceWidget": true
             }

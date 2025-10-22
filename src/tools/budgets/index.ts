@@ -5,7 +5,8 @@
 
 import { z } from "zod";
 import { PlaidApi } from "plaid";
-import { upsertBudgetHandler } from "./upsert-budget.js";
+import { createBudgetHandler } from "./create-budget.js";
+import { updateBudgetRulesHandler } from "./update-budget-rules.js";
 import { getBudgetsHandler } from "./get-budgets.js";
 import { deleteBudgetHandler } from "./delete-budget.js";
 
@@ -60,14 +61,10 @@ export function getBudgetTools(): ToolDefinition[] {
       },
     },
     {
-      name: "upsert-budget",
+      name: "create-budget",
       description:
-        "Create a new budget or update an existing one after calling get-budgets first. Two budget types: ROLLING (last N days, continuously rolling) or FIXED (calendar-based with custom start date). For rolling budgets: provide time_period='rolling' and custom_period_days. For fixed budgets: provide time_period (weekly/biweekly/monthly/quarterly/yearly) and fixed_period_start_date in YYYY-MM-DD format.",
+        "Create a new budget after calling get-budgets first. Two budget types: ROLLING (last N days, continuously rolling) or FIXED (calendar-based with custom start date). For rolling budgets: provide time_period='rolling' and custom_period_days. For fixed budgets: provide time_period (weekly/biweekly/monthly/quarterly/yearly) and fixed_period_start_date in YYYY-MM-DD format.",
       inputSchema: {
-        id: z
-          .string()
-          .optional()
-          .describe("Optional: Budget ID to update. If omitted or doesn't exist, creates new budget."),
         title: z
           .string()
           .describe("Display name for the budget (e.g., 'Coffee Shop Budget')"),
@@ -108,7 +105,62 @@ export function getBudgetTools(): ToolDefinition[] {
           throw new Error("User authentication required");
         }
 
-        return upsertBudgetHandler(userId, args);
+        return createBudgetHandler(userId, args);
+      },
+    },
+    {
+      name: "update-budget-rules",
+      description:
+        "Update an existing budget's configuration (title, filter rules, amount, or time period). Call get-budgets first to get the budget ID. All parameters except 'id' are optional - only provide the fields you want to change. After updating, transactions will be re-matched against the new rules.",
+      inputSchema: {
+        id: z
+          .string()
+          .describe("Budget ID to update (required - get from get-budgets tool)"),
+        title: z
+          .string()
+          .optional()
+          .describe("Optional: Update display name for the budget"),
+        filter_prompt: z
+          .string()
+          .optional()
+          .describe("Optional: Update natural language filter criteria"),
+        budget_amount: z
+          .number()
+          .positive()
+          .optional()
+          .describe("Optional: Update dollar amount limit"),
+        time_period: z
+          .enum(["rolling", "weekly", "biweekly", "monthly", "quarterly", "yearly"])
+          .optional()
+          .describe("Optional: Update budget type"),
+        custom_period_days: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe("Optional: Update number of days for rolling budgets"),
+        fixed_period_start_date: z
+          .string()
+          .optional()
+          .describe("Optional: Update anchor date for fixed budgets (YYYY-MM-DD)"),
+      },
+      options: {
+        securitySchemes: [{ type: "oauth2" }],
+        _meta: {
+          "openai/outputTemplate": "ui://widget/budget-list.html",
+          "openai/toolInvocation/invoking": "Updating budget...",
+          "openai/toolInvocation/invoked": "Budget updated",
+          "openai/widgetAccessible": true,
+          "openai/resultCanProduceWidget": true,
+        },
+      },
+      handler: async (args, { authInfo }) => {
+        const userId = authInfo?.extra?.userId as string | undefined;
+        if (!userId) {
+          throw new Error("User authentication required");
+        }
+
+        return updateBudgetRulesHandler(userId, args);
       },
     },
     {

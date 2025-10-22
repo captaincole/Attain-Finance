@@ -11,6 +11,7 @@ import { Budget } from "../storage/budgets/budgets.js";
 import {
   filterTransactionsForBudget,
   TransactionForBudgetFilter,
+  ClaudeClient,
 } from "./clients/claude.js";
 
 /**
@@ -33,7 +34,8 @@ export interface TransactionForBudgetLabeling {
  */
 export async function labelTransactionArrayForBudgets(
   transactions: TransactionForBudgetLabeling[],
-  budgets: Budget[]
+  budgets: Budget[],
+  claudeClient?: ClaudeClient
 ): Promise<void> {
   console.log(
     `[BUDGET-LABELING] Labeling ${transactions.length} transactions for ${budgets.length} budgets`
@@ -75,7 +77,8 @@ export async function labelTransactionArrayForBudgets(
       // Call Claude API to filter
       const filterResults = await filterTransactionsForBudget(
         txsForFilter,
-        budget.filter_prompt
+        budget.filter_prompt,
+        claudeClient
       );
 
       // Add budget ID to matching transactions
@@ -122,7 +125,8 @@ export async function labelTransactionArrayForBudgets(
  */
 export async function labelTransactionsForBudgets(
   userId: string,
-  budgets: Budget[]
+  budgets: Budget[],
+  claudeClient?: ClaudeClient
 ): Promise<number> {
   console.log(`[BUDGET-LABELING] Starting for user ${userId} with ${budgets.length} budgets`);
 
@@ -171,7 +175,8 @@ export async function labelTransactionsForBudgets(
       // Call existing Claude API filter function
       const filterResults = await filterTransactionsForBudget(
         txsForFilter,
-        budget.filter_prompt
+        budget.filter_prompt,
+        claudeClient
       );
 
       // Add budget ID to matching transactions
@@ -213,7 +218,8 @@ export async function labelTransactionsForBudgets(
  */
 export async function labelTransactionsForSingleBudget(
   userId: string,
-  budget: Budget
+  budget: Budget,
+  claudeClient?: ClaudeClient
 ): Promise<number> {
   console.log(`[BUDGET-LABELING] Labeling transactions for single budget: ${budget.title}`);
 
@@ -239,7 +245,8 @@ export async function labelTransactionsForSingleBudget(
   // Call Claude API to filter
   const filterResults = await filterTransactionsForBudget(
     txsForFilter,
-    budget.filter_prompt
+    budget.filter_prompt,
+    claudeClient
   );
 
   // Build set of matching transaction IDs

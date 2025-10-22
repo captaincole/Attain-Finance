@@ -48,6 +48,21 @@ export interface CategorizedTransaction {
 }
 
 /**
+ * Interface for Claude client (allows dependency injection for testing)
+ */
+export interface ClaudeClient {
+  categorizeTransactions(
+    transactions: TransactionForCategorization[],
+    customRules?: string
+  ): CategorizedTransaction[] | Promise<CategorizedTransaction[]>;
+
+  filterTransactionsForBudget(
+    transactions: TransactionForBudgetFilter[],
+    filterPrompt: string
+  ): BudgetFilterResult[] | Promise<BudgetFilterResult[]>;
+}
+
+/**
  * Default categorization prompt template
  */
 const CATEGORIZATION_PROMPT = `You are analyzing bank transaction data to categorize spending into meaningful categories.
@@ -225,61 +240,21 @@ async function categorizeBatch(
 }
 
 /**
- * Mock categorization for test mode
- * Uses simple keyword-based rules to avoid API calls during testing
- */
-function mockCategorizationForTests(
-  transactions: TransactionForCategorization[]
-): CategorizedTransaction[] {
-  console.log(`[CATEGORIZATION] Test mode - using mock categorization for ${transactions.length} transactions`);
-
-  return transactions.map((tx) => {
-    const desc = tx.description.toLowerCase();
-    let category = "Other";
-
-    // Simple keyword-based categorization
-    if (desc.includes("coffee") || desc.includes("starbucks")) {
-      category = "Food & Dining";
-    } else if (desc.includes("grocery") || desc.includes("whole foods") || desc.includes("safeway")) {
-      category = "Groceries";
-    } else if (desc.includes("gas") || desc.includes("shell") || desc.includes("chevron")) {
-      category = "Transportation";
-    } else if (desc.includes("rent") || desc.includes("mortgage")) {
-      category = "Housing";
-    } else if (desc.includes("utility") || desc.includes("electric") || desc.includes("water")) {
-      category = "Utilities";
-    }
-
-    return {
-      date: tx.date,
-      description: tx.description,
-      amount: tx.amount,
-      custom_category: category,
-    };
-  });
-}
-
-/**
- * Detect if we're running in test mode
- */
-function isTestMode(): boolean {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  return !apiKey || apiKey === "mock-api-key-for-testing" || process.env.NODE_ENV === "test";
-}
-
-/**
  * Categorize transactions using Claude API with automatic batching
  * @param transactions - Array of transactions to categorize (any size)
  * @param customRules - User's custom categorization rules (optional)
+ * @param claudeClient - Optional Claude client for dependency injection (testing)
  * @returns Array of categorized transactions
  */
 export async function categorizeTransactions(
   transactions: TransactionForCategorization[],
-  customRules?: string
+  customRules?: string,
+  claudeClient?: ClaudeClient
 ): Promise<CategorizedTransaction[]> {
-  // Use mock categorization in test mode to avoid API calls
-  if (isTestMode()) {
-    return mockCategorizationForTests(transactions);
+  // If a custom client is provided (e.g., MockClaudeClient), use it
+  if (claudeClient) {
+    const result = claudeClient.categorizeTransactions(transactions, customRules);
+    return Promise.resolve(result);
   }
 
   const BATCH_SIZE = 50; // Conservative batch size to stay under token limits
@@ -391,42 +366,6 @@ Return ONLY a valid JSON array with one object per transaction:
 7. Preserve the transaction_id exactly as provided
 `;
 
-/**
- * Mock budget filter for test mode
- * Uses simple keyword matching to avoid API calls during testing
- */
-function mockBudgetFilterForTests(
-  transactions: TransactionForBudgetFilter[],
-  filterPrompt: string
-): BudgetFilterResult[] {
-  console.log(`[BUDGET_FILTER] Test mode - using mock filter for ${transactions.length} transactions`);
-
-  const promptLower = filterPrompt.toLowerCase();
-
-  return transactions.map((tx) => {
-    const descLower = tx.description.toLowerCase();
-    let matches = false;
-    let reason = "Does not match budget criteria";
-
-    // Extract keywords from filter prompt (words longer than 3 chars)
-    const keywords = promptLower.match(/\b[a-z]{4,}\b/g) || [];
-
-    // Check if transaction description contains any keyword from filter
-    for (const keyword of keywords) {
-      if (descLower.includes(keyword)) {
-        matches = true;
-        reason = `Matches keyword from filter: "${keyword}"`;
-        break;
-      }
-    }
-
-    return {
-      transaction_id: tx.id,
-      matches,
-      reason,
-    };
-  });
-}
 
 /**
  * Filter a single batch of transactions using Claude API
@@ -435,11 +374,6 @@ async function filterBatch(
   transactions: TransactionForBudgetFilter[],
   filterPrompt: string
 ): Promise<BudgetFilterResult[]> {
-  // Use mock filter in test mode to avoid API calls
-  if (isTestMode()) {
-    return mockBudgetFilterForTests(transactions, filterPrompt);
-  }
-
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
@@ -540,8 +474,15 @@ async function filterBatch(
  */
 export async function filterTransactionsForBudget(
   transactions: TransactionForBudgetFilter[],
-  filterPrompt: string
+  filterPrompt: string,
+  claudeClient?: ClaudeClient
 ): Promise<BudgetFilterResult[]> {
+  // If a custom client is provided (e.g., MockClaudeClient), use it
+  if (claudeClient) {
+    const result = claudeClient.filterTransactionsForBudget(transactions, filterPrompt);
+    return Promise.resolve(result);
+  }
+
   const BATCH_SIZE = 50; // Reduced batch size to avoid serverless timeouts
 
   // If small dataset, process in single batch

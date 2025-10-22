@@ -15,9 +15,11 @@ import {
   cleanupTestUser,
   createTestConnection,
 } from "../helpers/test-db.js";
+import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Cron Job Infrastructure Tests", () => {
   const supabase = createTestSupabaseClient();
+  const mockClaudeClient = new MockClaudeClient();
   const testUserId = "test-user-cron";
   let originalEnv: string | undefined;
 
@@ -28,10 +30,12 @@ describe("Cron Job Infrastructure Tests", () => {
 
   beforeEach(async () => {
     await cleanupTestUser(supabase, testUserId);
+    await cleanupTestUser(supabase, `${testUserId}_sandbox`);
   });
 
   after(async () => {
     await cleanupTestUser(supabase, testUserId);
+    await cleanupTestUser(supabase, `${testUserId}_sandbox`);
     process.env.PLAID_ENV = originalEnv;
     resetSupabase();
   });
@@ -51,7 +55,7 @@ describe("Cron Job Infrastructure Tests", () => {
     }) as any;
 
     try {
-      await syncTransactionsJob.run();
+      await syncTransactionsJob.run(mockClaudeClient);
       assert.fail("Should have exited with error");
     } catch (error: any) {
       // Verify process.exit was called with code 1
@@ -84,7 +88,7 @@ describe("Cron Job Infrastructure Tests", () => {
     // Note: This will call the sync service, but we're just testing that the job runs
     // The actual sync may fail due to invalid access tokens, but that's expected in tests
     try {
-      await syncTransactionsJob.run();
+      await syncTransactionsJob.run(mockClaudeClient);
       // Job completed (may have logged errors for sync failures, but infrastructure worked)
     } catch (error: any) {
       // If the job threw an error, it's likely due to Plaid API failures (expected in tests)
@@ -126,7 +130,7 @@ describe("Cron Job Infrastructure Tests", () => {
     process.env.PLAID_ENV = "production";
 
     try {
-      await syncTransactionsJob.run();
+      await syncTransactionsJob.run(mockClaudeClient);
     } catch (error: any) {
       console.log(
         "[TEST] Production job threw error (expected for test data):",
@@ -138,7 +142,7 @@ describe("Cron Job Infrastructure Tests", () => {
     process.env.PLAID_ENV = "sandbox";
 
     try {
-      await syncTransactionsSandboxJob.run();
+      await syncTransactionsSandboxJob.run(mockClaudeClient);
     } catch (error: any) {
       console.log("[TEST] Sandbox job threw error (expected for test data):", error.message);
     }

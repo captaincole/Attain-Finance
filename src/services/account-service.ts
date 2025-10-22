@@ -24,6 +24,7 @@ import {
 } from "../storage/repositories/accounts.js";
 import { TransactionSyncService } from "./transaction-sync.js";
 import { getSupabase } from "../storage/supabase.js";
+import { ClaudeClient } from "../utils/clients/claude.js";
 
 /**
  * Initiate account connection flow
@@ -82,7 +83,8 @@ export async function initiateAccountConnection(
 export async function completeAccountConnection(
   sessionId: string,
   publicToken: string,
-  plaidClient: PlaidApi
+  plaidClient: PlaidApi,
+  claudeClient?: ClaudeClient
 ): Promise<{ userId: string; itemId: string }> {
   // Verify session exists and is valid
   const session = await findAccountSessionById(sessionId);
@@ -157,7 +159,7 @@ export async function completeAccountConnection(
   setImmediate(async () => {
     try {
       console.log(`[ACCOUNT-SERVICE] Initiating background transaction sync for item ${itemId}`);
-      const syncService = new TransactionSyncService(plaidClient, getSupabase());
+      const syncService = new TransactionSyncService(plaidClient, getSupabase(), claudeClient);
       await syncService.initiateSyncForConnection(itemId, session.userId, accessToken);
       console.log(`[ACCOUNT-SERVICE] ✓ Background transaction sync completed for item ${itemId}`);
     } catch (error: any) {

@@ -62,9 +62,85 @@ gh pr create             # Create pull request
 **Important Notes:**
 - Integration tests use **real local Supabase database**, not mocks
 - Tests create/cleanup data in local database automatically
-- Claude API calls are mocked (no credits used)
-- Plaid API calls are mocked (no real connections)
+- **Claude API calls are mocked via dependency injection** (no credits used)
+- **Plaid API calls are mocked via dependency injection** (no real connections)
 - All tests should pass with 0 API calls to external services
+
+**Test Organization:**
+```
+test/
+├── helpers/              # Test utilities and setup
+│   └── test-db.ts        # Supabase client, cleanup, test data creation
+├── mocks/                # Mock implementations
+│   ├── plaid-mock.ts     # MockPlaidClient (implements PlaidApi)
+│   └── claude-mock.ts    # MockClaudeClient (implements ClaudeClient)
+└── integration/          # Integration test suites
+    ├── plaid-tools.test.ts           # Plaid connection flow
+    ├── oauth-transaction-sync.test.ts # OAuth → background sync
+    ├── budget-tools.test.ts           # Budget CRUD operations
+    ├── budget-labeling.test.ts        # Transaction labeling
+    ├── account-balances.test.ts       # Account balance tool
+    ├── async-recategorization.test.ts # Background recategorization
+    ├── cron-jobs.test.ts              # Cron infrastructure
+    └── mcp-*.test.ts                  # MCP protocol tests
+```
+
+**Mock Client Pattern (Dependency Injection):**
+
+All external API clients (Plaid, Claude) use **dependency injection** for testing:
+
+```typescript
+// Production code accepts optional client parameter
+export async function categorizeTransactions(
+  transactions: TransactionForCategorization[],
+  customRules?: string,
+  claudeClient?: ClaudeClient  // ← Optional mock injection
+): Promise<CategorizedTransaction[]> {
+  if (claudeClient) {
+    return await claudeClient.categorizeTransactions(transactions, customRules);
+  }
+  // Real API call...
+}
+
+// Tests pass MockClaudeClient
+import { MockClaudeClient } from "../mocks/claude-mock.js";
+const mockClaudeClient = new MockClaudeClient();
+await categorizeTransactions(transactions, rules, mockClaudeClient);
+```
+
+**Why This Pattern:**
+- ✅ Consistent with Plaid mocking approach
+- ✅ No environment variable checks in production code
+- ✅ Explicit and testable
+- ✅ Zero API calls in tests (fast and free)
+
+**Mock Implementations:**
+- `MockPlaidClient` - Returns deterministic sandbox data (checking/savings accounts, sample transactions)
+- `MockClaudeClient` - Uses keyword matching for categorization ("coffee" → "Food & Dining")
+
+**Test Helper Functions (`test/helpers/test-db.ts`):**
+```typescript
+// Create real Supabase client for testing
+const supabase = createTestSupabaseClient();
+
+// Clean up all test data for a user (respects foreign keys)
+await cleanupTestUser(supabase, testUserId);
+
+// Create test Plaid connection (uses upsert to avoid duplicate key errors)
+await createTestConnection(supabase, {
+  itemId: "test-item-123",
+  userId: testUserId,
+  institutionName: "Test Bank",
+});
+
+// Create test transactions
+await createTestTransactions(supabase, [
+  { transaction_id: "tx_1", user_id: testUserId, ... },
+]);
+
+// Setup common test data (connection + 3 sample transactions)
+const { connection, transactions } = await setupCommonTestData(supabase, testUserId);
+```
 
 **Stopping Supabase:**
 ```bash

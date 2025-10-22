@@ -5,7 +5,11 @@
  */
 
 import { findTransactionsByUserId, updateTransactionCategories } from "../storage/repositories/transactions.js";
-import { categorizeTransactions, TransactionForCategorization } from "../utils/clients/claude.js";
+import {
+  categorizeTransactions,
+  TransactionForCategorization,
+  ClaudeClient,
+} from "../utils/clients/claude.js";
 
 /**
  * Recategorize all transactions for a user with new rules
@@ -13,7 +17,8 @@ import { categorizeTransactions, TransactionForCategorization } from "../utils/c
  */
 export async function recategorizeAllTransactions(
   userId: string,
-  rules: string
+  rules: string,
+  claudeClient?: ClaudeClient
 ): Promise<void> {
   console.log(`[RECATEGORIZATION-SERVICE] Starting recategorization for user ${userId}`);
 
@@ -41,7 +46,7 @@ export async function recategorizeAllTransactions(
 
     // Call Claude API with new rules
     console.log(`[RECATEGORIZATION-SERVICE] Calling categorization API for ${txsForCategorization.length} transactions`);
-    const categorized = await categorizeTransactions(txsForCategorization, rules);
+    const categorized = await categorizeTransactions(txsForCategorization, rules, claudeClient);
 
     // Prepare updates
     const updates = categorized.map((tx, index) => ({

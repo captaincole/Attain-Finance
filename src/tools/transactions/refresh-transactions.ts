@@ -16,7 +16,11 @@ import {
   updateTransactionCategories,
   Transaction,
 } from "../../storage/repositories/transactions.js";
-import { categorizeTransactions, TransactionForCategorization } from "../../utils/clients/claude.js";
+import {
+  categorizeTransactions,
+  TransactionForCategorization,
+  ClaudeClient,
+} from "../../utils/clients/claude.js";
 import { getCustomRules } from "../../storage/categorization/rules.js";
 import { getBudgets } from "../../storage/budgets/budgets.js";
 import { labelTransactionsForBudgets } from "../../utils/budget-labeling.js";
@@ -28,7 +32,8 @@ import { upsertAccounts, PlaidAccountData } from "../../storage/repositories/acc
  */
 export async function refreshTransactionsHandler(
   userId: string,
-  plaidClient: PlaidApi
+  plaidClient: PlaidApi,
+  claudeClient?: ClaudeClient
 ) {
   console.log(`[REFRESH] Starting transaction refresh for user ${userId}`);
 
@@ -191,7 +196,8 @@ export async function refreshTransactionsHandler(
     try {
       const categorized = await categorizeTransactions(
         txsForCategorization,
-        customRules || undefined
+        customRules || undefined,
+        claudeClient
       );
 
       // Update categories in database
@@ -217,7 +223,7 @@ export async function refreshTransactionsHandler(
 
   if (budgets.length > 0) {
     try {
-      budgetLabelCount = await labelTransactionsForBudgets(userId, budgets);
+      budgetLabelCount = await labelTransactionsForBudgets(userId, budgets, claudeClient);
       console.log(`[REFRESH] Labeled ${budgetLabelCount} transactions for budgets`);
     } catch (error: any) {
       console.error("[REFRESH] Budget labeling error:", error.message);

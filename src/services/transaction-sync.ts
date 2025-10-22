@@ -12,6 +12,7 @@ import { getAccountsByItemId } from "../storage/repositories/accounts.js";
 import {
   categorizeTransactions,
   TransactionForCategorization,
+  ClaudeClient,
 } from "../utils/clients/claude.js";
 import {
   labelTransactionArrayForBudgets,
@@ -28,12 +29,15 @@ interface TransactionSyncOptions {
 
 export class TransactionSyncService {
   private syncStateRepo: AccountSyncStateRepository;
+  private claudeClient?: ClaudeClient;
 
   constructor(
     private plaidClient: PlaidApi,
-    private supabase: SupabaseClient
+    private supabase: SupabaseClient,
+    claudeClient?: ClaudeClient
   ) {
     this.syncStateRepo = new AccountSyncStateRepository(supabase);
+    this.claudeClient = claudeClient;
   }
 
   /**
@@ -123,7 +127,7 @@ export class TransactionSyncService {
             `[TRANSACTION-SYNC] Account ${accountId}: Categorizing ${added.length} new transactions`
           );
 
-          const result = await categorizeTransactions(forCategorization);
+          const result = await categorizeTransactions(forCategorization, undefined, this.claudeClient);
           categorizedAdded.push(...result);
         }
 
@@ -240,7 +244,8 @@ export class TransactionSyncService {
           if (budgets.length > 0) {
             await labelTransactionArrayForBudgets(
               allSyncedTransactions,
-              budgets
+              budgets,
+              this.claudeClient
             );
           } else {
             console.log(

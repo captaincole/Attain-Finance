@@ -2,8 +2,7 @@
  * Integration test for async recategorization service
  * Tests that custom categorization rules are saved and service handles edge cases
  *
- * NOTE: These tests don't call the actual Claude API to avoid using credits.
- * The categorization logic itself is tested separately in unit tests.
+ * NOTE: Uses MockClaudeClient via dependency injection, no API calls
  */
 
 import { describe, it, before, beforeEach, after } from "node:test";
@@ -18,12 +17,11 @@ import {
   createTestConnection,
   createTestTransactions,
 } from "../helpers/test-db.js";
-
-// Mock environment - invalid API key to prevent real API calls
-process.env.ANTHROPIC_API_KEY = "mock-invalid-key-for-testing";
+import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Async Recategorization Integration Tests", () => {
   const supabase = createTestSupabaseClient();
+  const mockClaudeClient = new MockClaudeClient();
   const testUserId = "test-user-recategorization";
 
   before(() => {
@@ -56,7 +54,7 @@ describe("Async Recategorization Integration Tests", () => {
 
     // Run recategorization - should complete quickly without errors
     const startTime = Date.now();
-    await recategorizeAllTransactions(testUserId, customRules);
+    await recategorizeAllTransactions(testUserId, customRules, mockClaudeClient);
     const duration = Date.now() - startTime;
 
     // Should return immediately (no API calls)
@@ -91,7 +89,7 @@ describe("Async Recategorization Integration Tests", () => {
     // Run recategorization with invalid API key - should not throw
     let errorThrown = false;
     try {
-      await recategorizeAllTransactions(testUserId, "test rules");
+      await recategorizeAllTransactions(testUserId, "test rules", mockClaudeClient);
     } catch (error) {
       errorThrown = true;
     }
@@ -119,7 +117,7 @@ describe("Async Recategorization Integration Tests", () => {
     // Measure response time
     const startTime = Date.now();
     // Start the recategorization (will fail due to invalid API key, but that's expected)
-    const promise = recategorizeAllTransactions(testUserId, "test rules");
+    const promise = recategorizeAllTransactions(testUserId, "test rules", mockClaudeClient);
 
     // We're not testing that it returns immediately here - we're testing that it runs
     // The fire-and-forget pattern is demonstrated in the update-rules handler,

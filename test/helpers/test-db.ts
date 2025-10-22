@@ -94,12 +94,13 @@ function encryptTestAccessToken(accessToken: string): string {
 
 /**
  * Create a test Plaid connection
+ * Uses upsert to avoid duplicate key errors from previous test runs
  */
 export async function createTestConnection(
   supabase: SupabaseClient,
   connection: TestConnection
 ): Promise<void> {
-  const { error } = await supabase.from("plaid_connections").insert({
+  const { error } = await supabase.from("plaid_connections").upsert({
     item_id: connection.itemId,
     user_id: connection.userId,
     access_token_encrypted: encryptTestAccessToken(`test-access-token-${connection.itemId}`),

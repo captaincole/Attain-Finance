@@ -8,6 +8,7 @@ import assert from "node:assert";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
+import { MockClaudeClient } from "../mocks/claude-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import { completeAccountConnection } from "../../src/services/account-service.js";
 import { getAccountsByItemId } from "../../src/storage/repositories/accounts.js";
@@ -25,23 +26,9 @@ if (!process.env.ENCRYPTION_KEY) {
   throw new Error("Missing ENCRYPTION_KEY in .env.test");
 }
 
-// Mock categorization function to avoid real API calls
-const originalCategorize = await import("../../src/utils/clients/claude.js");
-const mockCategorize = {
-  ...originalCategorize,
-  categorizeTransactions: async (transactions: any[]) => {
-    // Return simple mock categorization
-    return transactions.map((tx) => ({
-      date: tx.date,
-      description: tx.description,
-      amount: tx.amount,
-      custom_category: "Food & Dining", // Simple mock category
-    }));
-  },
-};
-
 describe("OAuth Transaction Sync Integration Test", () => {
   let mockPlaidClient: any;
+  let mockClaudeClient: MockClaudeClient;
   let supabase: any;
   let syncStateRepo: AccountSyncStateRepository;
   const testUserId = "test-user-oauth-sync";
@@ -57,6 +44,9 @@ describe("OAuth Transaction Sync Integration Test", () => {
 
     // Mock Plaid client (still using mock to avoid API calls)
     mockPlaidClient = new MockPlaidClient();
+
+    // Mock Claude client (avoid API calls)
+    mockClaudeClient = new MockClaudeClient();
 
     // Initialize sync state repository with real Supabase
     syncStateRepo = new AccountSyncStateRepository(supabase);
@@ -103,7 +93,8 @@ describe("OAuth Transaction Sync Integration Test", () => {
     const { userId, itemId } = await completeAccountConnection(
       testSessionId,
       "test-public-token",
-      mockPlaidClient
+      mockPlaidClient,
+      mockClaudeClient
     );
 
     // Verify user and item returned
@@ -233,7 +224,8 @@ describe("OAuth Transaction Sync Integration Test", () => {
     const result = await completeAccountConnection(
       "error-session",
       "test-public-token",
-      failingPlaidClient
+      failingPlaidClient,
+      mockClaudeClient
     );
 
     assert(result.userId, "Should still return user ID despite sync error");
