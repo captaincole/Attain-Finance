@@ -7,6 +7,7 @@ import { Request, Response } from "express";
 import { PlaidApi } from "plaid";
 import { completeAccountConnection } from "../../services/account-service.js";
 import { getAccountsByItemId } from "../../storage/repositories/accounts.js";
+import { logRouteEvent, serializeError } from "../../utils/logger.js";
 
 /**
  * POST /plaid/callback
@@ -19,13 +20,13 @@ export async function plaidCallbackHandler(
 ) {
   const { public_token, session } = req.body;
 
-  console.log("[PLAID-CALLBACK] Received:", {
+  logRouteEvent("plaid-callback", "request-received", {
     hasPublicToken: !!public_token,
     session,
   });
 
   if (!public_token || !session) {
-    console.error("[PLAID-CALLBACK] Missing required fields");
+    logRouteEvent("plaid-callback", "missing-fields", undefined, "error");
     return res.status(400).json({ error: "Missing public_token or session" });
   }
 
@@ -37,7 +38,7 @@ export async function plaidCallbackHandler(
       plaidClient
     );
 
-    console.log(`[PLAID-CALLBACK] ✓ Bank connected for user ${userId}: ${itemId}`);
+    logRouteEvent("plaid-callback", "connection-success", { userId, itemId });
 
     // Fetch the accounts that were just stored
     const accounts = await getAccountsByItemId(userId, itemId);
@@ -56,7 +57,7 @@ export async function plaidCallbackHandler(
       message: "Account connected successfully! Return to ChatGPT and say 'Show me my account balances' to view your accounts.",
     });
   } catch (error: any) {
-    console.error("[PLAID-CALLBACK] Error:", error.message);
+    logRouteEvent("plaid-callback", "error", { error: serializeError(error) }, "error");
 
     res.status(500).json({
       error: "Failed to connect bank account",

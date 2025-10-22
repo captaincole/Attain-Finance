@@ -12,6 +12,7 @@ import { TransactionSyncService } from "../../services/transaction-sync.js";
 import { UserBatchSyncService } from "../services/user-batch-sync.service.js";
 import { CronLogger } from "../utils/cron-logger.js";
 import { ClaudeClient } from "../../utils/clients/claude.js";
+import { logEvent } from "../../utils/logger.js";
 
 export interface CronJob {
   name: string;
@@ -26,11 +27,14 @@ export const syncTransactionsSandboxJob: CronJob = {
   async run(claudeClient?: ClaudeClient): Promise<void> {
     // Validate PLAID_ENV is set to sandbox
     if (process.env.PLAID_ENV === "production") {
-      console.error(
-        `[SYNC-TRANSACTIONS-SANDBOX] ERROR: This job cannot run with PLAID_ENV=production`
-      );
-      console.error(
-        `[SYNC-TRANSACTIONS-SANDBOX] Use sync-transactions for production`
+      logEvent(
+        "CRON:sync-transactions-sandbox",
+        "invalid-environment",
+        {
+          plaidEnv: process.env.PLAID_ENV,
+          message: "This job cannot run with PLAID_ENV=production. Use sync-transactions for production.",
+        },
+        "error"
       );
       process.exit(1);
     }

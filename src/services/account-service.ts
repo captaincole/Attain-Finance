@@ -25,6 +25,7 @@ import {
 import { TransactionSyncService } from "./transaction-sync.js";
 import { getSupabase } from "../storage/supabase.js";
 import { ClaudeClient } from "../utils/clients/claude.js";
+import { logServiceEvent, serializeError } from "../utils/logger.js";
 
 /**
  * Initiate account connection flow
@@ -71,7 +72,10 @@ export async function initiateAccountConnection(
   const encodedSessionId = encodeURIComponent(sessionId);
   const linkUrl = `${baseUrl}/plaid/link?token=${encodedLinkToken}&session=${encodedSessionId}`;
 
-  console.log("[ACCOUNT-SERVICE] Generated Link URL with session:", sessionId);
+  logServiceEvent("account-service", "link-session-generated", {
+    userId,
+    sessionId,
+  });
 
   return { linkUrl, sessionId };
 }
@@ -115,7 +119,7 @@ export async function completeAccountConnection(
     });
     institutionName = itemResponse.data.item.institution_name || undefined;
   } catch (error: any) {
-    console.warn("[ACCOUNT-SERVICE] Failed to fetch institution name:", error.message);
+    logServiceEvent("account-service", "institution-name-fetch-failed", { error: serializeError(error) }, "warn");
     // Continue without institution name
   }
 
@@ -145,9 +149,18 @@ export async function completeAccountConnection(
     );
 
     await upsertAccounts(session.userId, itemId, plaidAccounts);
-    console.log(`[ACCOUNT-SERVICE] Stored ${plaidAccounts.length} accounts for item ${itemId}`);
+    logServiceEvent("account-service", "accounts-stored", {
+      userId: session.userId,
+      itemId,
+      accountCount: plaidAccounts.length,
+    });
   } catch (error: any) {
-    console.error("[ACCOUNT-SERVICE] Failed to fetch/store account balances:", error.message);
+    logServiceEvent(
+      "account-service",
+      "accounts-store-error",
+      { userId: session.userId, itemId, error: serializeError(error) },
+      "error"
+    );
     // Don't fail the entire connection if balance fetch fails
   }
 
@@ -158,17 +171,31 @@ export async function completeAccountConnection(
   // This runs after response is sent to avoid blocking OAuth callback
   setImmediate(async () => {
     try {
-      console.log(`[ACCOUNT-SERVICE] Initiating background transaction sync for item ${itemId}`);
+      logServiceEvent("account-service", "background-sync-start", {
+        userId: session.userId,
+        itemId,
+      });
       const syncService = new TransactionSyncService(plaidClient, getSupabase(), claudeClient);
       await syncService.initiateSyncForConnection(itemId, session.userId, accessToken);
-      console.log(`[ACCOUNT-SERVICE] ✓ Background transaction sync completed for item ${itemId}`);
+      logServiceEvent("account-service", "background-sync-complete", {
+        userId: session.userId,
+        itemId,
+      });
     } catch (error: any) {
-      console.error(`[ACCOUNT-SERVICE] ✗ Background transaction sync failed for item ${itemId}:`, error.message);
+      logServiceEvent(
+        "account-service",
+        "background-sync-error",
+        { userId: session.userId, itemId, error: serializeError(error) },
+        "error"
+      );
       // Error is logged but does not affect OAuth callback response
     }
   });
 
-  console.log("[ACCOUNT-SERVICE] Connection completed for user:", session.userId);
+  logServiceEvent("account-service", "connection-completed", {
+    userId: session.userId,
+    itemId,
+  });
 
   return { userId: session.userId, itemId };
 }
@@ -258,14 +285,18 @@ export async function disconnectAccount(
       access_token: connection.accessToken,
     });
   } catch (error: any) {
-    console.warn("[ACCOUNT-SERVICE] Plaid itemRemove error:", error.message);
+    logServiceEvent(
+      "account-service",
+      "plaid-item-remove-error",
+      { itemId, error: serializeError(error) },
+      "warn"
+    );
     // Continue to delete from database even if Plaid API fails
   }
 
   // Delete from database
   await deleteAccountConnectionByItemId(itemId);
-
-  console.log("[ACCOUNT-SERVICE] Account disconnected:", itemId);
+  logServiceEvent("account-service", "account-disconnected", { userId, itemId });
 }
 
 /**
@@ -285,7 +316,7 @@ export async function initiateAccountUpdate(
   baseUrl: string,
   plaidClient: PlaidApi
 ): Promise<{ linkUrl: string }> {
-  console.log(`[ACCOUNT-SERVICE] Initiating update for item ${itemId}`);
+  logServiceEvent("account-service", "update-init", { userId, itemId });
 
   // Verify user owns this connection
   const connections = await findAccountConnectionsByUserId(userId);
@@ -317,7 +348,7 @@ export async function initiateAccountUpdate(
   const encodedLinkToken = encodeURIComponent(linkToken);
   const linkUrl = `${baseUrl}/plaid/link?token=${encodedLinkToken}`;
 
-  console.log("[ACCOUNT-SERVICE] Generated update mode Link URL for item:", itemId);
+  logServiceEvent("account-service", "update-link-generated", { userId, itemId });
 
   return { linkUrl };
 }

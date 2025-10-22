@@ -9,6 +9,7 @@ import { createBudgetHandler } from "./create-budget.js";
 import { updateBudgetRulesHandler } from "./update-budget-rules.js";
 import { getBudgetsHandler } from "./get-budgets.js";
 import { deleteBudgetHandler } from "./delete-budget.js";
+import { logToolEvent } from "../../utils/logger.js";
 
 export interface ToolDefinition {
   name: string;
@@ -46,17 +47,18 @@ export function getBudgetTools(): ToolDefinition[] {
         },
       },
       handler: async (args, { authInfo }, plaidClient) => {
-        console.log("[GET-BUDGETS] Handler called with args:", args);
-        console.log("[GET-BUDGETS] authInfo present:", !!authInfo);
-        console.log("[GET-BUDGETS] plaidClient present:", !!plaidClient);
-
+        logToolEvent("get-budgets", "called", {
+          hasAuthInfo: !!authInfo,
+          args,
+          hasPlaidClient: !!plaidClient,
+        });
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
-          console.error("[GET-BUDGETS] No userId found in authInfo");
+          logToolEvent("get-budgets", "missing-user-id", undefined, "error");
           throw new Error("User authentication required");
         }
 
-        console.log("[GET-BUDGETS] Calling getBudgetsHandler for user:", userId);
+        logToolEvent("get-budgets", "handler-invoke", { userId });
         return getBudgetsHandler(userId, args);
       },
     },

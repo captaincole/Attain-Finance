@@ -1,6 +1,7 @@
 import { saveCustomRules, getCustomRules } from "../../storage/categorization/rules.js";
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
 import { recategorizeAllTransactions } from "../../services/recategorization-service.js";
+import { logToolEvent, serializeError } from "../../utils/logger.js";
 
 export interface UpdateCategorizationArgs {
   rules: string;
@@ -42,7 +43,7 @@ ${(await getCustomRules(userId)) || "No custom rules set (using defaults)"}
   try {
     // Save the new rules
     await saveCustomRules(userId, rules.trim());
-    console.log(`[UPDATE-RULES] Saved new rules for user ${userId}`);
+    logToolEvent("update-categorization-rules", "rules-saved", { userId });
 
     // Check if there are transactions to recategorize
     const allTransactions = await findTransactionsByUserId(userId);
@@ -68,7 +69,10 @@ You don't have any transactions yet. Run "Refresh transactions" to sync data fro
     }
 
     // Trigger async recategorization in background (fire-and-forget)
-    console.log(`[UPDATE-RULES] Triggering background recategorization for ${allTransactions.length} transactions`);
+    logToolEvent("update-categorization-rules", "recategorization-start", {
+      userId,
+      transactionCount: allTransactions.length,
+    });
     setImmediate(() => {
       recategorizeAllTransactions(userId, rules.trim());
     });
@@ -93,7 +97,12 @@ You don't have any transactions yet. Run "Refresh transactions" to sync data fro
       ],
     };
   } catch (error: any) {
-    console.error("[UPDATE-RULES] Error:", error);
+    logToolEvent(
+      "update-categorization-rules",
+      "error",
+      { userId, error: serializeError(error) },
+      "error"
+    );
     return {
       content: [
         {

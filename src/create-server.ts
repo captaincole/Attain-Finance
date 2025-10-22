@@ -15,6 +15,7 @@ import {
 import { PlaidApi } from "plaid";
 import { registerAllTools } from "./tools/index.js";
 import { CONFIG, getBaseUrl } from "./utils/config.js";
+import { logServiceEvent } from "./utils/logger.js";
 
 export const createServer = (plaidClient: PlaidApi) => {
   // Create server instance with explicit capabilities
@@ -87,7 +88,7 @@ function registerWidgetResources(server: McpServer) {
 
   // List all available resources
   server.server.setRequestHandler(ListResourcesRequestSchema, async (request: ListResourcesRequest) => {
-    console.log("[RESOURCES/LIST] Request:", JSON.stringify(request.params, null, 2));
+    logServiceEvent("widgets", "resources-list-request", { params: request.params });
 
     const resources: any[] = [
       {
@@ -107,7 +108,10 @@ function registerWidgetResources(server: McpServer) {
     ];
 
     const result = { resources };
-    console.log("[RESOURCES/LIST] Response:", JSON.stringify({ resourceCount: resources.length, uris: resources.map(r => r.uri) }, null, 2));
+    logServiceEvent("widgets", "resources-list-response", {
+      resourceCount: resources.length,
+      uris: resources.map((r) => r.uri),
+    });
 
     return result;
   });
@@ -115,7 +119,7 @@ function registerWidgetResources(server: McpServer) {
   // Read a specific resource
   server.server.setRequestHandler(ReadResourceRequestSchema, async (request: ReadResourceRequest) => {
     const uri = request.params.uri;
-    console.log("[RESOURCES/READ] Request:", JSON.stringify(request.params, null, 2));
+    logServiceEvent("widgets", "resources-read-request", { uri });
 
     // Handle Connected Institutions widget
     if (uri === connectedInstitutionsUri) {
@@ -129,7 +133,11 @@ function registerWidgetResources(server: McpServer) {
           }
         ]
       };
-      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/html+skybridge", hasText: true, _meta: connectedInstitutionsMeta }, null, 2));
+      logServiceEvent("widgets", "resources-read-response", {
+        uri,
+        mimeType: "text/html+skybridge",
+        hasText: true,
+      });
       return result;
     }
 
@@ -145,7 +153,11 @@ function registerWidgetResources(server: McpServer) {
           }
         ]
       };
-      console.log("[RESOURCES/READ] Response:", JSON.stringify({ uri, mimeType: "text/html+skybridge", hasText: true, _meta: budgetListMeta }, null, 2));
+      logServiceEvent("widgets", "resources-read-response", {
+        uri,
+        mimeType: "text/html+skybridge",
+        hasText: true,
+      });
       return result;
     }
 
@@ -154,7 +166,7 @@ function registerWidgetResources(server: McpServer) {
 
   // List resource templates
   server.server.setRequestHandler(ListResourceTemplatesRequestSchema, async (request: ListResourceTemplatesRequest) => {
-    console.log("[RESOURCES/TEMPLATES] Request:", JSON.stringify(request.params, null, 2));
+    logServiceEvent("widgets", "resource-templates-request", { params: request.params });
 
     const result = {
       resourceTemplates: [
@@ -175,7 +187,10 @@ function registerWidgetResources(server: McpServer) {
       ]
     };
 
-    console.log("[RESOURCES/TEMPLATES] Response:", JSON.stringify({ templateCount: result.resourceTemplates.length, uris: result.resourceTemplates.map(t => t.uriTemplate) }, null, 2));
+    logServiceEvent("widgets", "resource-templates-response", {
+      templateCount: result.resourceTemplates.length,
+      uris: result.resourceTemplates.map((t) => t.uriTemplate),
+    });
 
     return result;
   });

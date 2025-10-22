@@ -1,6 +1,7 @@
 import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
+import { logToolEvent } from "../../utils/logger.js";
 
 interface GetTransactionsArgs {
   start_date?: string;
@@ -80,7 +81,12 @@ Please connect your account first by saying:
   // Fetch transactions from DATABASE (not Plaid)
   const transactions = await findTransactionsByUserId(userId, startDate, endDate);
 
-  console.log(`[GET-TRANSACTIONS] Retrieved ${transactions.length} transactions from database`);
+  logToolEvent("get-transactions", "transactions-loaded", {
+    userId,
+    count: transactions.length,
+    startDate,
+    endDate,
+  });
 
   if (transactions.length === 0) {
     let responseText = `📊 **No Transactions Found**\n\n`;

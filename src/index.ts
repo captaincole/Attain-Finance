@@ -19,6 +19,7 @@ import { getVisualization } from "./storage/visualization/scripts.js";
 import { createPlaidRouter } from "./routes/plaid/index.js";
 import { createPlaidClient } from "./utils/clients/plaid.js";
 import adminRouter from "./routes/admin.js";
+import { logEvent, logRouteEvent, serializeError } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,7 +65,7 @@ const { server } = createServer(plaidClient);
 // Minimal logging middleware for MCP requests
 app.post("/mcp", (req, _res, next) => {
   if (req.body && req.body.method) {
-    console.log(`[MCP] ${req.body.method}`);
+    logEvent("SERVER:MCP", "request", { method: req.body.method });
   }
   next();
 }, mcpAuthClerk, streamableHttpHandler(server));
@@ -152,7 +153,7 @@ app.get("/api/data/transactions", (req: Request, res: Response) => {
   fileStream.pipe(res);
 
   fileStream.on("error", (error) => {
-    console.error("Error streaming file:", error);
+    logRouteEvent("transactions-download", "stream-error", { error: serializeError(error) }, "error");
     if (!res.headersSent) {
       res.status(500).json({ error: "Error streaming file" });
     }
@@ -217,7 +218,7 @@ app.get("/api/visualization/:userId", async (req: Request, res: Response) => {
     // Send script content
     res.send(scriptContent);
   } catch (error: any) {
-    console.error("Error fetching visualization:", error);
+    logRouteEvent("visualization-download", "error", { userId, error: serializeError(error) }, "error");
     res.status(500).json({ error: error.message });
   }
 });
@@ -229,17 +230,17 @@ export default app;
 // Start server (skip in test mode)
 if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => {
-    console.log(`MCP Server with Clerk Auth listening on port ${PORT}`);
+    logEvent("SERVER", "listening", { port: PORT });
   });
 
   // Handle server shutdown
   process.on("SIGINT", async () => {
-    console.log("Shutting down server...");
+    logEvent("SERVER", "shutdown-start");
     try {
       await server.close();
-      console.log("Server shutdown complete");
+      logEvent("SERVER", "shutdown-complete");
     } catch (error) {
-      console.error("Error closing server:", error);
+      logEvent("SERVER", "shutdown-error", { error: serializeError(error) }, "error");
     }
     process.exit(0);
   });

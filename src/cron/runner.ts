@@ -15,6 +15,7 @@
 import dotenv from "dotenv";
 import { syncTransactionsJob } from "./jobs/sync-transactions.js";
 import { syncTransactionsSandboxJob } from "./jobs/sync-transactions-sandbox.js";
+import { logEvent, serializeError } from "../utils/logger.js";
 
 // Load environment variables
 dotenv.config();
@@ -33,14 +34,13 @@ const jobs = {
  * List all available jobs
  */
 function listJobs(): void {
-  console.log("\n📋 Available Cron Jobs:\n");
+  logEvent("CRON:runner", "list-start");
 
   Object.entries(jobs).forEach(([name, job]) => {
-    console.log(`   ${name}`);
-    console.log(`   └─ ${job.description}\n`);
+    logEvent("CRON:runner", "list-entry", { name, description: job.description });
   });
 
-  console.log("Usage: npm run cron <job-name>\n");
+  logEvent("CRON:runner", "list-usage", { usage: "npm run cron <job-name>" });
 }
 
 /**
@@ -50,7 +50,7 @@ async function runJob(jobName: string): Promise<void> {
   const job = jobs[jobName as keyof typeof jobs];
 
   if (!job) {
-    console.error(`\n❌ Error: Unknown job "${jobName}"\n`);
+    logEvent("CRON:runner", "unknown-job", { jobName }, "error");
     listJobs();
     process.exit(1);
   }
@@ -58,8 +58,12 @@ async function runJob(jobName: string): Promise<void> {
   try {
     await job.run();
   } catch (error: any) {
-    console.error(`\n❌ Fatal error in job "${jobName}":`, error.message);
-    console.error(error.stack);
+    logEvent(
+      "CRON:runner",
+      "job-fatal-error",
+      { jobName, error: serializeError(error) },
+      "error"
+    );
     process.exit(1);
   }
 }
@@ -71,7 +75,7 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.error("\n❌ Error: No job specified\n");
+    logEvent("CRON:runner", "no-job-specified", undefined, "error");
     listJobs();
     process.exit(1);
   }
@@ -88,6 +92,6 @@ async function main(): Promise<void> {
 
 // Run the CLI
 main().catch((error) => {
-  console.error("Unhandled error:", error);
+  logEvent("CRON:runner", "unhandled-error", { error: serializeError(error) }, "error");
   process.exit(1);
 });

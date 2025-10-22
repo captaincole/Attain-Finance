@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getBudgets, getBudgetById, Budget } from "../../storage/budgets/budgets.js";
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByBudgetId } from "../../storage/repositories/transactions.js";
+import { logToolEvent } from "../../utils/logger.js";
 
 // Input schema for get-budgets tool
 export const GetBudgetsArgsSchema = z.object({
@@ -126,11 +127,14 @@ export async function getBudgetsHandler(
   args: GetBudgetsArgs
 ) {
   try {
-    console.log("[GET-BUDGETS-HANDLER] Starting, userId:", userId, "args:", args);
+    logToolEvent("get-budgets", "handler.start", { userId, args });
 
     // Check if user has connected accounts
     const connections = await findAccountConnectionsByUserId(userId);
-    console.log("[GET-BUDGETS-HANDLER] Found", connections.length, "connections");
+    logToolEvent("get-budgets", "handler.connections-loaded", {
+      userId,
+      connectionCount: connections.length,
+    });
 
     if (connections.length === 0) {
       return {

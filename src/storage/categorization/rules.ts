@@ -1,5 +1,6 @@
 import { getSupabase } from "../supabase.js";
 import { Tables } from "../database.types.js";
+import { logServiceEvent, serializeError } from "../../utils/logger.js";
 
 /**
  * Database type for categorization_prompts table
@@ -23,7 +24,7 @@ export async function getCustomRules(userId: string): Promise<string | null> {
     if (error.code === "PGRST116") {
       return null;
     }
-    console.error("Error fetching categorization rules:", error);
+    logServiceEvent("categorization-rules", "fetch-error", { userId, error: serializeError(error) }, "error");
     throw new Error(`Failed to fetch categorization rules: ${error.message}`);
   }
 
@@ -53,11 +54,11 @@ export async function saveCustomRules(
     );
 
   if (error) {
-    console.error("Error saving categorization rules:", error);
+    logServiceEvent("categorization-rules", "save-error", { userId, error: serializeError(error) }, "error");
     throw new Error(`Failed to save categorization rules: ${error.message}`);
   }
 
-  console.log(`✓ Saved categorization rules for user ${userId}`);
+  logServiceEvent("categorization-rules", "saved", { userId });
 }
 
 /**
@@ -71,9 +72,9 @@ export async function deleteCustomRules(userId: string): Promise<void> {
     .eq("user_id", userId);
 
   if (error) {
-    console.error("Error deleting categorization rules:", error);
+    logServiceEvent("categorization-rules", "delete-error", { userId, error: serializeError(error) }, "error");
     throw new Error(`Failed to delete categorization rules: ${error.message}`);
   }
 
-  console.log(`✓ Deleted categorization rules for user ${userId}`);
+  logServiceEvent("categorization-rules", "deleted", { userId });
 }

@@ -19,6 +19,7 @@ import {
   TransactionForBudgetLabeling,
 } from "../utils/budget-labeling.js";
 import { getBudgets } from "../storage/budgets/budgets.js";
+import { logServiceEvent, serializeError } from "../utils/logger.js";
 
 interface TransactionSyncOptions {
   accountId: string;
@@ -49,16 +50,21 @@ export class TransactionSyncService {
   ): Promise<void> {
     const { accountId, accessToken, userId, itemId } = options;
 
-    console.log(`[TRANSACTION-SYNC] Starting sync for account ${accountId}`);
+    logServiceEvent("transaction-sync", "account-sync-start", {
+      accountId,
+      userId,
+      itemId,
+    });
 
     try {
       // Get current cursor from database FIRST (before updating status)
       const syncState = await this.syncStateRepo.getSyncState(accountId);
       let cursor = syncState?.transaction_cursor || undefined;
 
-      console.log(
-        `[TRANSACTION-SYNC] Account ${accountId}: Starting sync with cursor: ${cursor ? cursor.substring(0, 30) + "..." : "none (full history)"}`
-      );
+      logServiceEvent("transaction-sync", "cursor-start", {
+        accountId,
+        cursorPreview: cursor ? `${cursor.substring(0, 30)}...` : null,
+      });
 
       // Mark sync as in progress (preserve existing cursor)
       await this.syncStateRepo.updateSyncProgress(
@@ -80,9 +86,11 @@ export class TransactionSyncService {
       // Paginate through all transactions
       while (hasMore) {
         pageCount++;
-        console.log(
-          `[TRANSACTION-SYNC] Account ${accountId}: Fetching page ${pageCount}${cursor ? ` (cursor: ${cursor.substring(0, 20)}...)` : " (initial)"}`
-        );
+        logServiceEvent("transaction-sync", "page-fetch", {
+          accountId,
+          page: pageCount,
+          cursorPreview: cursor ? `${cursor.substring(0, 20)}...` : null,
+        });
 
         // Call Plaid /transactions/sync
         const response = await this.plaidClient.transactionsSync({
@@ -98,9 +106,13 @@ export class TransactionSyncService {
         const { added, modified, removed, next_cursor, has_more } =
           response.data;
 
-        console.log(
-          `[TRANSACTION-SYNC] Account ${accountId}: Page ${pageCount} - ${added.length} added, ${modified.length} modified, ${removed.length} removed`
-        );
+        logServiceEvent("transaction-sync", "page-summary", {
+          accountId,
+          page: pageCount,
+          added: added.length,
+          modified: modified.length,
+          removed: removed.length,
+        });
 
         // Get account info for enrichment (if we have any transactions)
         let account: any = null;
@@ -123,9 +135,11 @@ export class TransactionSyncService {
               pending: tx.pending ? "true" : "false",
             }));
 
-          console.log(
-            `[TRANSACTION-SYNC] Account ${accountId}: Categorizing ${added.length} new transactions`
-          );
+          logServiceEvent("transaction-sync", "categorize-added", {
+            accountId,
+            page: pageCount,
+            addedCount: added.length,
+          });
 
           const result = await categorizeTransactions(forCategorization, undefined, this.claudeClient);
           categorizedAdded.push(...result);
@@ -203,9 +217,11 @@ export class TransactionSyncService {
 
         // Handle removed transactions (delete from database)
         if (removed.length > 0) {
-          console.log(
-            `[TRANSACTION-SYNC] Account ${accountId}: Removing ${removed.length} deleted transactions`
-          );
+          logServiceEvent("transaction-sync", "remove-transactions", {
+            accountId,
+            page: pageCount,
+            removedCount: removed.length,
+          });
           // TODO: Implement transaction deletion
           // For now, we'll skip this as it's rare and can be handled later
         }
@@ -229,15 +245,22 @@ export class TransactionSyncService {
       // Mark sync as complete
       await this.syncStateRepo.markSyncComplete(accountId, cursor || "");
 
-      console.log(
-        `[TRANSACTION-SYNC] ✓ Sync complete for account ${accountId}: ${totalAdded} added, ${totalModified} modified, ${totalRemoved} removed (${pageCount} pages)`
-      );
+      logServiceEvent("transaction-sync", "account-sync-complete", {
+        accountId,
+        userId,
+        itemId,
+        added: totalAdded,
+        modified: totalModified,
+        removed: totalRemoved,
+        pages: pageCount,
+      });
 
       // Label synced transactions for budgets
       if (allSyncedTransactions.length > 0) {
-        console.log(
-          `[TRANSACTION-SYNC] Labeling ${allSyncedTransactions.length} transactions for budgets`
-        );
+        logServiceEvent("transaction-sync", "budget-labeling-start", {
+          userId,
+          transactionCount: allSyncedTransactions.length,
+        });
 
         try {
           const budgets = await getBudgets(userId);
@@ -248,22 +271,27 @@ export class TransactionSyncService {
               this.claudeClient
             );
           } else {
-            console.log(
-              `[TRANSACTION-SYNC] No budgets defined, skipping budget labeling`
-            );
+            logServiceEvent("transaction-sync", "budget-labeling-skip", {
+              userId,
+              reason: "no-budgets",
+            });
           }
         } catch (error: any) {
-          console.error(
-            `[TRANSACTION-SYNC] Budget labeling error (non-fatal):`,
-            error.message
+          logServiceEvent(
+            "transaction-sync",
+            "budget-labeling-error",
+            { userId, error: serializeError(error) },
+            "warn"
           );
           // Don't throw - budget labeling failure shouldn't fail the entire sync
         }
       }
     } catch (error: any) {
-      console.error(
-        `[TRANSACTION-SYNC] ✗ Sync failed for account ${accountId}:`,
-        error.message
+      logServiceEvent(
+        "transaction-sync",
+        "account-sync-error",
+        { accountId, userId, itemId, error: serializeError(error) },
+        "error"
       );
 
       // Mark sync as failed
@@ -282,25 +310,28 @@ export class TransactionSyncService {
     userId: string,
     accessToken: string
   ): Promise<void> {
-    console.log(
-      `[TRANSACTION-SYNC] Initiating sync for connection ${itemId}`
-    );
+    logServiceEvent("transaction-sync", "connection-sync-start", {
+      itemId,
+      userId,
+    });
 
     try {
       // Get all accounts for this connection
       const accounts = await getAccountsByItemId(userId, itemId);
 
-      console.log(
-        `[TRANSACTION-SYNC] Found ${accounts.length} accounts to sync`
-      );
+      logServiceEvent("transaction-sync", "connection-accounts-found", {
+        itemId,
+        accountCount: accounts.length,
+      });
 
       // Create sync state records for each account
       for (const account of accounts) {
         try {
           await this.syncStateRepo.createSyncState(account.account_id);
-          console.log(
-            `[TRANSACTION-SYNC] Created sync state for account ${account.account_id}`
-          );
+          logServiceEvent("transaction-sync", "sync-state-created", {
+            itemId,
+            accountId: account.account_id,
+          });
         } catch (error: any) {
           // Ignore duplicate key errors (sync state already exists)
           if (!error.message.includes("duplicate")) {
@@ -321,20 +352,25 @@ export class TransactionSyncService {
           });
         } catch (error: any) {
           // Log error but continue syncing other accounts
-          console.error(
-            `[TRANSACTION-SYNC] Failed to sync account ${account.account_id}, continuing with others:`,
-            error.message
+          logServiceEvent(
+            "transaction-sync",
+            "account-sync-warning",
+            { accountId: account.account_id, itemId, error: serializeError(error) },
+            "warn"
           );
         }
       }
 
-      console.log(
-        `[TRANSACTION-SYNC] ✓ Connection sync complete for ${itemId}`
-      );
+      logServiceEvent("transaction-sync", "connection-sync-complete", {
+        itemId,
+        userId,
+      });
     } catch (error: any) {
-      console.error(
-        `[TRANSACTION-SYNC] ✗ Connection sync failed for ${itemId}:`,
-        error.message
+      logServiceEvent(
+        "transaction-sync",
+        "connection-sync-error",
+        { itemId, userId, error: serializeError(error) },
+        "error"
       );
       throw error;
     }

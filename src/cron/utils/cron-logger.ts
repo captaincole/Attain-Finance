@@ -1,3 +1,5 @@
+import { logEvent, serializeError } from "../../utils/logger.js";
+
 /**
  * Structured logging for cron jobs
  * Provides consistent log formatting and error tracking
@@ -30,36 +32,44 @@ export class CronLogger {
    * Log job start with banner
    */
   logStart(): void {
-    console.log("\n╔════════════════════════════════════════════════════╗");
-    console.log(`║   ${this.jobName.toUpperCase().padEnd(46)} ║`);
-    console.log(`║   ${new Date().toISOString().padEnd(46)} ║`);
-    console.log("╚════════════════════════════════════════════════════╝\n");
+    logEvent(`CRON:${this.jobName}`, "start", {
+      timestamp: new Date().toISOString(),
+    });
   }
 
   /**
    * Log informational message
    */
   info(message: string): void {
-    console.log(`[${this.jobName.toUpperCase()}] ${message}`);
+    logEvent(`CRON:${this.jobName}`, "info", { message });
   }
 
   /**
    * Log warning
    */
   warn(message: string): void {
-    console.warn(`[${this.jobName.toUpperCase()}] ⚠️  ${message}`);
+    logEvent(`CRON:${this.jobName}`, "warn", { message }, "warn");
   }
 
   /**
    * Log error and track in stats
    */
   error(context: string, error: Error | string): void {
-    const errorMessage = error instanceof Error ? error.message : error;
-    console.error(`[${this.jobName.toUpperCase()}] ✗ ${context}: ${errorMessage}`);
+    const serialized = serializeError(error);
+    const message =
+      typeof serialized.message === "string"
+        ? serialized.message
+        : JSON.stringify(serialized);
+    logEvent(
+      `CRON:${this.jobName}`,
+      "error",
+      { context, error: serialized },
+      "error"
+    );
 
     this.stats.errors.push({
       context,
-      error: errorMessage,
+      error: message,
     });
   }
 
@@ -67,7 +77,7 @@ export class CronLogger {
    * Log success
    */
   success(message: string): void {
-    console.log(`[${this.jobName.toUpperCase()}] ✓ ${message}`);
+    logEvent(`CRON:${this.jobName}`, "success", { message });
   }
 
   /**
@@ -104,25 +114,13 @@ export class CronLogger {
    */
   logSummary(): void {
     const duration = ((Date.now() - this.startTime) / 1000).toFixed(2);
-
-    console.log("\n╔════════════════════════════════════════════════════╗");
-    console.log("║   SUMMARY                                         ║");
-    console.log("╚════════════════════════════════════════════════════╝");
-    console.log(`\n📊 Results:`);
-    console.log(`   Total items:        ${this.stats.totalItems}`);
-    console.log(`   Successful items:   ${this.stats.successfulItems}`);
-    console.log(`   Failed items:       ${this.stats.failedItems}`);
-    console.log(`\n⏱️  Duration: ${duration}s`);
-
-    if (this.stats.errors.length > 0) {
-      console.log(`\n❌ Errors (${this.stats.errors.length}):`);
-      this.stats.errors.forEach((err, idx) => {
-        console.log(`   ${idx + 1}. ${err.context}`);
-        console.log(`      ${err.error}`);
-      });
-    }
-
-    console.log("\n" + "═".repeat(52) + "\n");
+    logEvent(`CRON:${this.jobName}`, "summary", {
+      totalItems: this.stats.totalItems,
+      successfulItems: this.stats.successfulItems,
+      failedItems: this.stats.failedItems,
+      durationSeconds: Number(duration),
+      errors: this.stats.errors,
+    });
   }
 
   /**

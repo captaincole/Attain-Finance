@@ -9,6 +9,7 @@ import {
   deleteAllUserData,
   getUserDataSummary,
 } from "../storage/repositories/user-data-cleanup.js";
+import { logRouteEvent, serializeError } from "../utils/logger.js";
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get("/user/:userId/data-summary", async (req: Request, res: Response) => 
           : "User has no data",
     });
   } catch (error: any) {
-    console.error("[ADMIN] Error fetching user data summary:", error.message);
+    logRouteEvent("admin-data-summary", "error", { userId, error: serializeError(error) }, "error");
     res.status(500).json({
       error: "Failed to fetch user data summary",
       details: error.message,
@@ -55,11 +56,11 @@ router.delete("/user/:userId/data", async (req: Request, res: Response) => {
   const { userId } = req.params;
   const { confirm } = req.query;
 
-  console.log(`[ADMIN] Delete request for user ${userId}`);
+  logRouteEvent("admin-data-delete", "request", { userId });
 
   // Safety check 1: Only allow in sandbox/development
   if (process.env.PLAID_ENV === "production") {
-    console.error("[ADMIN] Attempted deletion in production - BLOCKED");
+    logRouteEvent("admin-data-delete", "blocked-production", { userId }, "warn");
     return res.status(403).json({
       error: "User data deletion is disabled in production",
       hint: "This endpoint only works when PLAID_ENV=sandbox or PLAID_ENV=development",
@@ -79,10 +80,14 @@ router.delete("/user/:userId/data", async (req: Request, res: Response) => {
     // First get a summary to show what will be deleted
     const beforeSummary = await getUserDataSummary(userId);
 
-    console.log("[ADMIN] User data before deletion:", beforeSummary);
-
     // Perform deletion
     const deletionSummary = await deleteAllUserData(userId);
+
+    logRouteEvent("admin-data-delete", "completed", {
+      userId,
+      beforeSummary,
+      deletedSummary: deletionSummary,
+    });
 
     res.json({
       success: true,
@@ -91,7 +96,7 @@ router.delete("/user/:userId/data", async (req: Request, res: Response) => {
       deleted: deletionSummary,
     });
   } catch (error: any) {
-    console.error("[ADMIN] Error deleting user data:", error.message);
+    logRouteEvent("admin-data-delete", "error", { userId, error: serializeError(error) }, "error");
     res.status(500).json({
       error: "Failed to delete user data",
       details: error.message,

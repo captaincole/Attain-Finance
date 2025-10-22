@@ -10,6 +10,7 @@ import {
   TransactionForCategorization,
   ClaudeClient,
 } from "../utils/clients/claude.js";
+import { logServiceEvent, serializeError } from "../utils/logger.js";
 
 /**
  * Recategorize all transactions for a user with new rules
@@ -20,18 +21,21 @@ export async function recategorizeAllTransactions(
   rules: string,
   claudeClient?: ClaudeClient
 ): Promise<void> {
-  console.log(`[RECATEGORIZATION-SERVICE] Starting recategorization for user ${userId}`);
+  logServiceEvent("recategorization", "start", { userId });
 
   try {
     // Fetch all transactions for user
     const allTransactions = await findTransactionsByUserId(userId);
 
     if (allTransactions.length === 0) {
-      console.log(`[RECATEGORIZATION-SERVICE] No transactions to recategorize for user ${userId}`);
+      logServiceEvent("recategorization", "no-transactions", { userId });
       return;
     }
 
-    console.log(`[RECATEGORIZATION-SERVICE] Found ${allTransactions.length} transactions to recategorize`);
+    logServiceEvent("recategorization", "transactions-found", {
+      userId,
+      count: allTransactions.length,
+    });
 
     // Prepare transactions for categorization
     const txsForCategorization: TransactionForCategorization[] =
@@ -45,7 +49,10 @@ export async function recategorizeAllTransactions(
       }));
 
     // Call Claude API with new rules
-    console.log(`[RECATEGORIZATION-SERVICE] Calling categorization API for ${txsForCategorization.length} transactions`);
+    logServiceEvent("recategorization", "categorization-request", {
+      userId,
+      count: txsForCategorization.length,
+    });
     const categorized = await categorizeTransactions(txsForCategorization, rules, claudeClient);
 
     // Prepare updates
@@ -54,20 +61,25 @@ export async function recategorizeAllTransactions(
       customCategory: tx.custom_category,
     }));
 
-    console.log(`[RECATEGORIZATION-SERVICE] Updating ${updates.length} transactions in database`);
+    logServiceEvent("recategorization", "database-update", {
+      userId,
+      count: updates.length,
+    });
 
     // Update all transactions in database
     await updateTransactionCategories(updates);
 
-    console.log(
-      `[RECATEGORIZATION-SERVICE] ✓ Recategorization complete for user ${userId}: ${updates.length} transactions updated`
-    );
+    logServiceEvent("recategorization", "complete", {
+      userId,
+      count: updates.length,
+    });
   } catch (error: any) {
     // Fail silently - just log the error
-    console.error(
-      `[RECATEGORIZATION-SERVICE] ✗ Recategorization failed for user ${userId}:`,
-      error.message
+    logServiceEvent(
+      "recategorization",
+      "error",
+      { userId, error: serializeError(error) },
+      "error"
     );
-    console.error(`[RECATEGORIZATION-SERVICE] Error details:`, error);
   }
 }
