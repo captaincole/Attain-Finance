@@ -8,7 +8,7 @@ import { getPlaidTransactionsHandler } from "./get-transactions.js";
 import { getRawTransactionsHandler } from "./get-raw-transactions.js";
 import { updateCategorizationRulesHandler } from "./update-rules.js";
 import { getBaseUrl } from "../../utils/config.js";
-import type { ToolDefinition } from "../accounts/index.js";
+import type { ToolDefinition } from "../types.js";
 
 export function getCategorizationTools(): ToolDefinition[] {
   return [
@@ -29,7 +29,7 @@ export function getCategorizationTools(): ToolDefinition[] {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, plaidClient) => {
+      handler: async (args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -64,7 +64,7 @@ export function getCategorizationTools(): ToolDefinition[] {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }) => {
+      handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -85,7 +85,7 @@ export function getCategorizationTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }) => {
+      handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");

@@ -10,12 +10,14 @@ import { getCategorizationTools } from "./categorization/index.js";
 import { getOpinionTools } from "./opinions/index.js";
 import { getBudgetTools } from "./budgets/index.js";
 import { getTransactionTools } from "./transactions/index.js";
+import type { ToolDefinition } from "./types.js";
+import { logEvent, serializeError } from "../utils/logger.js";
 
 /**
  * Register all MCP tools with the server
  */
 export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
-  const allTools = [
+  const allTools: ToolDefinition[] = [
     ...getAccountTools(),
     ...getCategorizationTools(),
     ...getOpinionTools(),
@@ -31,25 +33,34 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
       inputSchema,
       options,
       async (args: any, context: any) => {
-        console.log(`[TOOL/${name.toUpperCase()}] Called with args:`, JSON.stringify(args, null, 2));
-        console.log(`[TOOL/${name.toUpperCase()}] Context authInfo:`, context.authInfo ? "Present" : "Missing");
+        logEvent(`TOOL:${name}`, "invoked", {
+          args,
+          hasAuthInfo: Boolean(context?.authInfo),
+        });
 
         try {
           // Pass plaidClient only to tools that need it
-          const result = await handler(args, context, plaidClient);
+          const result = await handler(args, context, { plaidClient });
 
           // Log response metadata (but not full content to avoid spam)
           if (result._meta) {
-            console.log(`[TOOL/${name.toUpperCase()}] Response _meta:`, JSON.stringify(result._meta, null, 2));
+            logEvent(`TOOL:${name}`, "response-meta", { _meta: result._meta });
           }
           if (result.structuredContent) {
-            console.log(`[TOOL/${name.toUpperCase()}] Has structuredContent:`, Object.keys(result.structuredContent));
+            logEvent(`TOOL:${name}`, "response-structured-content", {
+              keys: Object.keys(result.structuredContent),
+            });
           }
 
           return result;
         } catch (error: any) {
           // Handle validation errors gracefully
-          console.error(`[TOOL/${name.toUpperCase()}] Error:`, error.message);
+          logEvent(
+            `TOOL:${name}`,
+            "error",
+            { error: serializeError(error) },
+            "error"
+          );
 
           // Return user-friendly error message
           return {
@@ -81,7 +92,7 @@ function injectWidgetMetadata(server: McpServer) {
     const originalToolsHandler = serverInternal._requestHandlers.get("tools/list");
 
     serverInternal._requestHandlers.set("tools/list", async (request: any) => {
-      console.log("[TOOLS/LIST] Request:", JSON.stringify(request.params, null, 2));
+      logEvent("TOOLS", "list-request", { params: request.params });
 
       const result = await originalToolsHandler(request);
 
@@ -156,11 +167,11 @@ function injectWidgetMetadata(server: McpServer) {
         _meta: t._meta
       }));
 
-      console.log("[TOOLS/LIST] Response:", JSON.stringify({
+      logEvent("TOOLS", "list-response", {
         toolCount: result.tools.length,
         toolNames: result.tools.map((t: any) => t.name),
-        toolsWithMeta: toolsWithMeta
-      }, null, 2));
+        toolsWithMeta
+      });
 
       return result;
     });

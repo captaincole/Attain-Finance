@@ -1,5 +1,12 @@
 type LogLevel = "info" | "warn" | "error";
 
+export interface SerializedError {
+  message: string;
+  stack?: string;
+  name?: string;
+  [key: string]: unknown;
+}
+
 interface LogOptions {
   level?: LogLevel;
   data?: Record<string, unknown>;
@@ -54,7 +61,7 @@ export function logEvent(scope: string, event: string, data?: Record<string, unk
   log(scope, event, { level, data });
 }
 
-export function serializeError(error: unknown): Record<string, unknown> {
+export function serializeError(error: unknown): SerializedError {
   if (error instanceof Error) {
     return {
       message: error.message,

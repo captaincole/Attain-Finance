@@ -4,7 +4,6 @@
  */
 
 import { z } from "zod";
-import { PlaidApi } from "plaid";
 import {
   connectAccountHandler,
   disconnectAccountHandler,
@@ -12,14 +11,7 @@ import {
 } from "./handlers.js";
 import { updateAccountLinkHandler } from "./update-account-link.js";
 import { getBaseUrl } from "../../utils/config.js";
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: any;
-  options: any;
-  handler: (args: any, context: any, plaidClient?: PlaidApi) => Promise<any>;
-}
+import type { ToolDefinition } from "../types.js";
 
 export function getAccountTools(): ToolDefinition[] {
   return [
@@ -31,7 +23,7 @@ export function getAccountTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (_args, { authInfo }, plaidClient) => {
+      handler: async (_args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -57,7 +49,7 @@ export function getAccountTools(): ToolDefinition[] {
           "openai/resultCanProduceWidget": true,
         },
       },
-      handler: async (_args, { authInfo }) => {
+      handler: async (_args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -80,7 +72,7 @@ export function getAccountTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, plaidClient) => {
+      handler: async (args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -104,7 +96,7 @@ export function getAccountTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, plaidClient) => {
+      handler: async (args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");

@@ -3,16 +3,8 @@
  * All transaction-related MCP tools
  */
 
-import { PlaidApi } from "plaid";
 import { refreshTransactionsHandler } from "./refresh-transactions.js";
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: any;
-  options: any;
-  handler: (args: any, context: any, plaidClient?: PlaidApi) => Promise<any>;
-}
+import type { ToolDefinition } from "../types.js";
 
 export function getTransactionTools(): ToolDefinition[] {
   return [
@@ -30,7 +22,7 @@ export function getTransactionTools(): ToolDefinition[] {
           "openai/toolInvocation/invoked": "Transactions synced successfully",
         },
       },
-      handler: async (_args, { authInfo }, plaidClient) => {
+      handler: async (_args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");

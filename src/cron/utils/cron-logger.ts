@@ -1,4 +1,5 @@
 import { logEvent, serializeError } from "../../utils/logger.js";
+import type { SerializedError } from "../../utils/logger.js";
 
 /**
  * Structured logging for cron jobs
@@ -55,7 +56,7 @@ export class CronLogger {
    * Log error and track in stats
    */
   error(context: string, error: Error | string): void {
-    const serialized = serializeError(error);
+    const serialized: SerializedError = serializeError(error);
     const message =
       typeof serialized.message === "string"
         ? serialized.message

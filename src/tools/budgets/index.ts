@@ -4,20 +4,12 @@
  */
 
 import { z } from "zod";
-import { PlaidApi } from "plaid";
 import { createBudgetHandler } from "./create-budget.js";
 import { updateBudgetRulesHandler } from "./update-budget-rules.js";
 import { getBudgetsHandler } from "./get-budgets.js";
 import { deleteBudgetHandler } from "./delete-budget.js";
 import { logToolEvent } from "../../utils/logger.js";
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  inputSchema: any;
-  options: any;
-  handler: (args: any, context: any, plaidClient?: PlaidApi) => Promise<any>;
-}
+import type { ToolDefinition } from "../types.js";
 
 export function getBudgetTools(): ToolDefinition[] {
   return [
@@ -46,7 +38,7 @@ export function getBudgetTools(): ToolDefinition[] {
           "openai/resultCanProduceWidget": true,
         },
       },
-      handler: async (args, { authInfo }, plaidClient) => {
+      handler: async (args, { authInfo }, { plaidClient }) => {
         logToolEvent("get-budgets", "called", {
           hasAuthInfo: !!authInfo,
           args,
@@ -101,7 +93,7 @@ export function getBudgetTools(): ToolDefinition[] {
           "openai/resultCanProduceWidget": true,
         },
       },
-      handler: async (args, { authInfo }) => {
+      handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -156,7 +148,7 @@ export function getBudgetTools(): ToolDefinition[] {
           "openai/resultCanProduceWidget": true,
         },
       },
-      handler: async (args, { authInfo }) => {
+      handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
@@ -175,7 +167,7 @@ export function getBudgetTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }) => {
+      handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");

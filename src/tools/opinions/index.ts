@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { getOpinionById } from "../../storage/opinions/opinions.js";
-import type { ToolDefinition } from "../accounts/index.js";
+import type { ToolDefinition } from "../types.js";
 
 export function getOpinionTools(): ToolDefinition[] {
   return [
@@ -21,7 +21,7 @@ export function getOpinionTools(): ToolDefinition[] {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }) => {
+      handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
