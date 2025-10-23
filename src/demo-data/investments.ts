@@ -9,6 +9,10 @@ export const DEMO_SECURITY_IDS = {
   goog: "demo_security_equity_goog",
 } as const;
 
+export function isDemoInvestmentUser(_userId: string): boolean {
+  return true;
+}
+
 export function buildDemoInvestmentSeedData(userId: string): DemoInvestmentSeedData {
   const slug = sanitizeUserId(userId);
   const accountId = `demo_investment_account_${slug}`;

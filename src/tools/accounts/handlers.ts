@@ -8,9 +8,10 @@ import { PlaidApi } from "plaid";
 import {
   initiateAccountConnection,
   disconnectAccount,
-  getUserConnections,
 } from "../../services/account-service.js";
 import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
+import { getDemoInvestmentSnapshot } from "../../storage/demo/investments.js";
+import { isDemoInvestmentUser } from "../../demo-data/investments.js";
 
 /**
  * Connect Account Tool Handler
@@ -84,7 +85,55 @@ Please check your environment variables and try again.
  * Shows current balances from database (fast, no API calls)
  */
 export async function getAccountBalancesHandler(userId: string) {
-  const accounts = await getAccountsByUserId(userId);
+  const realAccounts = await getAccountsByUserId(userId);
+  let accounts = [...realAccounts];
+
+  let demoConnection: any | null = null;
+
+  if (isDemoInvestmentUser(userId)) {
+    try {
+      const demoSnapshot = await getDemoInvestmentSnapshot(userId);
+
+      if (demoSnapshot.accounts.length > 0) {
+        const now = new Date().toISOString();
+        const demoItemId = `demo_investments_${userId}`;
+
+        const demoAccounts = demoSnapshot.accounts.map((account) => ({
+          id: `demo-${account.account_id}`,
+          user_id: userId,
+          item_id: demoItemId,
+          account_id: account.account_id,
+          name: account.name,
+          official_name: account.name,
+          type: account.type || "investment",
+          subtype: account.subtype || "brokerage",
+          current_balance: account.balances_current ?? 0,
+          available_balance: account.balances_available ?? null,
+          limit_amount: null,
+          currency_code: account.currency_code || "USD",
+          last_synced_at: account.last_synced_at || now,
+          created_at: account.created_at || now,
+          updated_at: account.updated_at || now,
+        }));
+
+        accounts = [...accounts, ...demoAccounts];
+
+        demoConnection = {
+          userId,
+          accessToken: "",
+          itemId: demoItemId,
+          connectedAt: new Date(demoAccounts[0].last_synced_at),
+          environment: "sandbox" as const,
+          institutionName: "Demo Investments",
+          status: "active",
+          errorCode: null,
+          errorMessage: null,
+        };
+      }
+    } catch (error) {
+      console.warn("[ACCOUNTS] Failed to load demo investment snapshot", error);
+    }
+  }
 
   if (accounts.length === 0) {
     return {
@@ -106,7 +155,11 @@ To get started, say: "Connect my account"
   // Fetch connection details for status and institution names
   const { getUserConnections } = await import("../../services/account-service.js");
   const connections = await getUserConnections(userId);
-  const connectionMap = new Map(connections.map(c => [c.itemId, c]));
+  const augmentedConnections = demoConnection
+    ? [...connections, demoConnection]
+    : connections;
+
+  const connectionMap = new Map(augmentedConnections.map(c => [c.itemId, c]));
 
   // Calculate totals by account type
   const accountsByType = accounts.reduce((acc, account) => {
