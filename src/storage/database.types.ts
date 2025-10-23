@@ -208,6 +208,33 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_credit_scores: {
+        Row: {
+          created_at: string | null
+          provider: string | null
+          score: number
+          score_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          provider?: string | null
+          score: number
+          score_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          provider?: string | null
+          score?: number
+          score_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       demo_investment_accounts: {
         Row: {
           account_id: string
@@ -354,6 +381,131 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      demo_liability_accounts: {
+        Row: {
+          account_id: string
+          balances_available: number | null
+          balances_current: number | null
+          created_at: string | null
+          currency_code: string | null
+          last_synced_at: string | null
+          limit_amount: number | null
+          mask: string | null
+          name: string
+          subtype: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          balances_available?: number | null
+          balances_current?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          last_synced_at?: string | null
+          limit_amount?: number | null
+          mask?: string | null
+          name: string
+          subtype?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          balances_available?: number | null
+          balances_current?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          last_synced_at?: string | null
+          limit_amount?: number | null
+          mask?: string | null
+          name?: string
+          subtype?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      demo_liability_details: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          details: Json | null
+          escrow_balance: number | null
+          id: string
+          interest_rate: number | null
+          interest_rate_type: string | null
+          last_payment_amount: number | null
+          last_payment_date: string | null
+          lender_name: string | null
+          liability_type: string
+          minimum_payment_amount: number | null
+          next_payment_due_date: string | null
+          original_principal_amount: number | null
+          outstanding_principal_amount: number | null
+          past_due_amount: number | null
+          payoff_date: string | null
+          term_description: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          details?: Json | null
+          escrow_balance?: number | null
+          id?: string
+          interest_rate?: number | null
+          interest_rate_type?: string | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          lender_name?: string | null
+          liability_type: string
+          minimum_payment_amount?: number | null
+          next_payment_due_date?: string | null
+          original_principal_amount?: number | null
+          outstanding_principal_amount?: number | null
+          past_due_amount?: number | null
+          payoff_date?: string | null
+          term_description?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          details?: Json | null
+          escrow_balance?: number | null
+          id?: string
+          interest_rate?: number | null
+          interest_rate_type?: string | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          lender_name?: string | null
+          liability_type?: string
+          minimum_payment_amount?: number | null
+          next_payment_due_date?: string | null
+          original_principal_amount?: number | null
+          outstanding_principal_amount?: number | null
+          past_due_amount?: number | null
+          payoff_date?: string | null
+          term_description?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_liability_details_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "demo_liability_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
       }
       opinions: {
         Row: {

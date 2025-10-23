@@ -11,6 +11,7 @@ import {
 } from "../../services/account-service.js";
 import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
 import { getDemoInvestmentSnapshot } from "../../storage/demo/investments.js";
+import { getDemoLiabilitySnapshot } from "../../storage/demo/liabilities.js";
 import { isDemoInvestmentUser } from "../../demo-data/investments.js";
 
 /**
@@ -88,7 +89,7 @@ export async function getAccountBalancesHandler(userId: string) {
   const realAccounts = await getAccountsByUserId(userId);
   let accounts = [...realAccounts];
 
-  let demoConnection: any | null = null;
+  const syntheticConnections: any[] = [];
 
   if (isDemoInvestmentUser(userId)) {
     try {
@@ -118,7 +119,7 @@ export async function getAccountBalancesHandler(userId: string) {
 
         accounts = [...accounts, ...demoAccounts];
 
-        demoConnection = {
+        syntheticConnections.push({
           userId,
           accessToken: "",
           itemId: demoItemId,
@@ -128,10 +129,53 @@ export async function getAccountBalancesHandler(userId: string) {
           status: "active",
           errorCode: null,
           errorMessage: null,
-        };
+        });
       }
     } catch (error) {
       console.warn("[ACCOUNTS] Failed to load demo investment snapshot", error);
+    }
+
+    try {
+      const liabilitySnapshot = await getDemoLiabilitySnapshot(userId);
+
+      if (liabilitySnapshot.accounts.length > 0) {
+        const now = new Date().toISOString();
+        const liabilityItemId = `demo_liabilities_${userId}`;
+
+        const liabilityAccounts = liabilitySnapshot.accounts.map((account) => ({
+          id: `demo-liability-${account.account_id}`,
+          user_id: userId,
+          item_id: liabilityItemId,
+          account_id: account.account_id,
+          name: account.name,
+          official_name: account.name,
+          type: account.type || "loan",
+          subtype: account.subtype || undefined,
+          current_balance: account.balances_current ?? 0,
+          available_balance: account.balances_available ?? null,
+          limit_amount: account.limit_amount ?? null,
+          currency_code: account.currency_code || "USD",
+          last_synced_at: account.last_synced_at || now,
+          created_at: account.created_at || now,
+          updated_at: account.updated_at || now,
+        }));
+
+        accounts = [...accounts, ...liabilityAccounts];
+
+        syntheticConnections.push({
+          userId,
+          accessToken: "",
+          itemId: liabilityItemId,
+          connectedAt: new Date(liabilityAccounts[0].last_synced_at),
+          environment: "sandbox" as const,
+          institutionName: "Demo Liabilities",
+          status: "active",
+          errorCode: null,
+          errorMessage: null,
+        });
+      }
+    } catch (error) {
+      console.warn("[ACCOUNTS] Failed to load demo liability snapshot", error);
     }
   }
 
@@ -155,9 +199,7 @@ To get started, say: "Connect my account"
   // Fetch connection details for status and institution names
   const { getUserConnections } = await import("../../services/account-service.js");
   const connections = await getUserConnections(userId);
-  const augmentedConnections = demoConnection
-    ? [...connections, demoConnection]
-    : connections;
+  const augmentedConnections = [...connections, ...syntheticConnections];
 
   const connectionMap = new Map(augmentedConnections.map(c => [c.itemId, c]));
 
