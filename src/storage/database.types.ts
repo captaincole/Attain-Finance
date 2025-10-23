@@ -235,6 +235,95 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_banking_accounts: {
+        Row: {
+          account_id: string
+          balances_current: number
+          created_at: string | null
+          currency_code: string | null
+          institution_name: string
+          last_synced_at: string | null
+          mask: string | null
+          name: string
+          subtype: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          balances_current: number
+          created_at?: string | null
+          currency_code?: string | null
+          institution_name: string
+          last_synced_at?: string | null
+          mask?: string | null
+          name: string
+          subtype?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          balances_current?: number
+          created_at?: string | null
+          currency_code?: string | null
+          institution_name?: string
+          last_synced_at?: string | null
+          mask?: string | null
+          name?: string
+          subtype?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      demo_banking_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          category: string | null
+          created_at: string | null
+          date: string
+          description: string
+          direction: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          category?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          direction: string
+          id: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          category?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          direction?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_banking_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "demo_banking_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       demo_investment_accounts: {
         Row: {
           account_id: string

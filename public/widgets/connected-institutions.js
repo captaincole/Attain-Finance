@@ -23680,10 +23680,12 @@ function ConnectedInstitutionsWidget() {
     );
   })(), institution.errorMessage ? /* @__PURE__ */ import_react.default.createElement("div", { style: { color: "#d32f2f", fontSize: "0.85rem", padding: "0.5rem 0" } }, "\u26A0\uFE0F ", institution.errorMessage) : /* @__PURE__ */ import_react.default.createElement("table", { style: { width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" } }, /* @__PURE__ */ import_react.default.createElement("tbody", null, institution.accounts.map((account, index) => {
     const isLiabilityGroup = institution.groupType === "demo-liabilities";
+    const isBankGroup = institution.groupType === "demo-banking";
     const balanceValue = account.balances.current ?? 0;
     const displayBalance = isLiabilityGroup ? `-${formatCurrency(Math.abs(balanceValue))}` : formatCurrency(balanceValue);
     const typeLabel = titleCase(account.subtype) || titleCase(account.type) || "Account";
     const liabilityMeta = account.liabilityMeta;
+    const bankMeta = institution.meta;
     return /* @__PURE__ */ import_react.default.createElement(
       "tr",
       {
@@ -23692,7 +23694,7 @@ function ConnectedInstitutionsWidget() {
           borderBottom: index < institution.accounts.length - 1 ? "1px solid #f0f0f0" : "none"
         }
       },
-      /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0.2rem 0.4rem 0", textAlign: "left", verticalAlign: "top" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontWeight: 600, color: "#1a1f36" } }, account.name), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#6b7280", fontWeight: 500 } }, typeLabel), isLiabilityGroup && liabilityMeta && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#374151", marginTop: "0.25rem" } }, "Min payment ", formatCurrency(liabilityMeta.minimumPaymentAmount), liabilityMeta.nextPaymentDueDate && /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, " ", "\u2022 Due ", formatDate(liabilityMeta.nextPaymentDueDate)))),
+      /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0.2rem 0.4rem 0", textAlign: "left", verticalAlign: "top" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontWeight: 600, color: "#1a1f36" } }, account.name), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#6b7280", fontWeight: 500 } }, typeLabel), isLiabilityGroup && liabilityMeta && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#374151", marginTop: "0.25rem" } }, "Min payment ", formatCurrency(liabilityMeta.minimumPaymentAmount), liabilityMeta.nextPaymentDueDate && /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, " ", "\u2022 Due ", formatDate(liabilityMeta.nextPaymentDueDate))), isBankGroup && bankMeta?.lastDeposit && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#256029", marginTop: "0.25rem", fontWeight: 500 } }, "Last deposit ", formatCurrency(bankMeta.lastDeposit.amount), " on ", formatDate(bankMeta.lastDeposit.date), bankMeta.lastDeposit.description ? ` \u2022 ${bankMeta.lastDeposit.description}` : ""), isBankGroup && bankMeta?.recentPayment && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#8b0000", marginTop: "0.2rem" } }, "Recent payment ", formatCurrency(Math.abs(bankMeta.recentPayment.amount)), " on ", formatDate(bankMeta.recentPayment.date), bankMeta.recentPayment.description ? ` \u2022 ${bankMeta.recentPayment.description}` : "")),
       /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "right", fontWeight: 600, color: isLiabilityGroup ? "#d32f2f" : "#1a1f36" } }, displayBalance)
     );
   }))))))));

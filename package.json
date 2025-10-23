@@ -20,6 +20,8 @@
     "demo:reset": "tsx scripts/reset-demo-investments.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
     "demo:seed-liabilities": "tsx scripts/seed-demo-liabilities.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
     "demo:reset-liabilities": "tsx scripts/reset-demo-liabilities.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
+    "demo:seed-banking": "tsx scripts/seed-demo-banking.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
+    "demo:reset-banking": "tsx scripts/reset-demo-banking.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
     "cron": "node build/cron/runner.js",
     "cron:list": "npm run cron -- --list",
     "cron:sync-transactions": "npm run cron -- sync-transactions",

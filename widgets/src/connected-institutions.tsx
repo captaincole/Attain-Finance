@@ -2,6 +2,12 @@ import React, { useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 
 // Types matching our tool output
+interface DemoTransactionMeta {
+  amount: number;
+  date: string;
+  description: string;
+}
+
 interface Account {
   name: string;
   type: string;
@@ -23,8 +29,12 @@ interface Institution {
   status: string;
   environment: string;
   connectedAt?: string;
-  groupType?: "demo-investments" | "demo-liabilities" | "plaid";
+  groupType?: "demo-investments" | "demo-liabilities" | "demo-banking" | "plaid";
   totals?: Record<string, number> | null;
+  meta?: {
+    lastDeposit?: DemoTransactionMeta | null;
+    recentPayment?: DemoTransactionMeta | null;
+  } | null;
   accounts: Account[];
   errorMessage?: string;
 }
@@ -40,6 +50,13 @@ interface SummaryData {
     totalBalance: number;
     totalMinimumPayment: number;
     totalPastDue: number;
+  } | null;
+  demoBanking?: {
+    availableBalance: number;
+    inflow30Days: number;
+    outflow30Days: number;
+    lastDeposit?: DemoTransactionMeta | null;
+    recentPayment?: DemoTransactionMeta | null;
   } | null;
 }
 
@@ -270,12 +287,14 @@ function ConnectedInstitutionsWidget() {
                     <tbody>
                       {institution.accounts.map((account, index) => {
                         const isLiabilityGroup = institution.groupType === "demo-liabilities";
+                        const isBankGroup = institution.groupType === "demo-banking";
                         const balanceValue = account.balances.current ?? 0;
                         const displayBalance = isLiabilityGroup
                           ? `-${formatCurrency(Math.abs(balanceValue))}`
                           : formatCurrency(balanceValue);
                         const typeLabel = titleCase(account.subtype) || titleCase(account.type) || "Account";
                         const liabilityMeta = account.liabilityMeta;
+                        const bankMeta = institution.meta;
                         return (
                           <tr
                             key={index}
@@ -296,6 +315,18 @@ function ConnectedInstitutionsWidget() {
                                       {' '}• Due {formatDate(liabilityMeta.nextPaymentDueDate)}
                                     </>
                                   )}
+                                </div>
+                              )}
+                              {isBankGroup && bankMeta?.lastDeposit && (
+                                <div style={{ fontSize: '0.75rem', color: '#256029', marginTop: '0.25rem', fontWeight: 500 }}>
+                                  Last deposit {formatCurrency(bankMeta.lastDeposit.amount)} on {formatDate(bankMeta.lastDeposit.date)}
+                                  {bankMeta.lastDeposit.description ? ` • ${bankMeta.lastDeposit.description}` : ''}
+                                </div>
+                              )}
+                              {isBankGroup && bankMeta?.recentPayment && (
+                                <div style={{ fontSize: '0.75rem', color: '#8b0000', marginTop: '0.2rem' }}>
+                                  Recent payment {formatCurrency(Math.abs(bankMeta.recentPayment.amount))} on {formatDate(bankMeta.recentPayment.date)}
+                                  {bankMeta.recentPayment.description ? ` • ${bankMeta.recentPayment.description}` : ''}
                                 </div>
                               )}
                             </td>

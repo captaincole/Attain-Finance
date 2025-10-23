@@ -13,6 +13,8 @@ import {
 import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
 import { getDemoInvestmentSnapshot } from "../../storage/demo/investments.js";
 import { getDemoLiabilitySnapshot } from "../../storage/demo/liabilities.js";
+import { getDemoBankSnapshot } from "../../storage/demo/banking.js";
+import type { DemoBankSnapshot } from "../../storage/demo/banking.js";
 import type { DemoInvestmentSnapshot } from "../../storage/demo/investments.js";
 import type {
   DemoLiabilitySnapshot,
@@ -98,6 +100,7 @@ export async function getAccountBalancesHandler(userId: string) {
   const syntheticConnections: any[] = [];
   let investmentSnapshot: DemoInvestmentSnapshot | null = null;
   let liabilitySnapshot: DemoLiabilitySnapshot | null = null;
+  let bankSnapshot: DemoBankSnapshot | null = null;
   let liabilityDetailMap = new Map<string, DemoLiabilityDetail>();
 
   if (isDemoInvestmentUser(userId)) {
@@ -189,6 +192,52 @@ export async function getAccountBalancesHandler(userId: string) {
         status: "active",
         errorCode: null,
         errorMessage: null,
+      });
+    }
+
+    try {
+      bankSnapshot = await getDemoBankSnapshot(userId);
+    } catch (error) {
+      console.warn("[ACCOUNTS] Failed to load demo bank snapshot", error);
+    }
+
+    if (bankSnapshot) {
+      const now = new Date().toISOString();
+      const bankItemId = `demo_banking_${userId}`;
+
+      const bankAccounts = [
+        {
+          id: `demo-bank-${bankSnapshot.account.account_id}`,
+          user_id: userId,
+          item_id: bankItemId,
+          account_id: bankSnapshot.account.account_id,
+          name: bankSnapshot.account.name,
+          official_name: bankSnapshot.account.institution_name,
+          type: bankSnapshot.account.type,
+          subtype: bankSnapshot.account.subtype,
+          current_balance: bankSnapshot.account.balances_current,
+          available_balance: bankSnapshot.account.balances_current,
+          limit_amount: null,
+          currency_code: bankSnapshot.account.currency_code || "USD",
+          last_synced_at: bankSnapshot.account.last_synced_at || now,
+          created_at: bankSnapshot.account.created_at || now,
+          updated_at: bankSnapshot.account.updated_at || now,
+        },
+      ];
+
+      accounts = [...accounts, ...bankAccounts];
+
+      syntheticConnections.push({
+        userId,
+        accessToken: "",
+        itemId: bankItemId,
+        connectedAt: new Date(bankAccounts[0].last_synced_at),
+        environment: "sandbox" as const,
+        institutionName: bankSnapshot.account.institution_name,
+        status: "active",
+        errorCode: null,
+        errorMessage: null,
+        groupType: "demo-banking",
       });
     }
   }
@@ -313,7 +362,9 @@ To get started, say: "Connect my account"
       ? "demo-investments"
       : itemId.startsWith("demo_liabilities_")
         ? "demo-liabilities"
-        : "plaid";
+        : itemId.startsWith("demo_banking_")
+          ? "demo-banking"
+          : "plaid";
 
     const institutionName = connection?.institutionName
       || (groupType === "demo-investments"
@@ -331,6 +382,7 @@ To get started, say: "Connect my account"
       : fallbackDate.toISOString();
 
     let totals: any;
+    let meta: any;
     if (groupType === "demo-investments" && investmentSnapshot) {
       totals = {
         totalValue: investmentSnapshot.totals.totalValue,
@@ -342,6 +394,16 @@ To get started, say: "Connect my account"
         totalBalance: liabilitySnapshot.totals.totalBalance,
         totalMinimumPayment: liabilitySnapshot.totals.totalMinimumPayment,
         totalPastDue: liabilitySnapshot.totals.totalPastDue,
+      };
+    } else if (groupType === "demo-banking" && bankSnapshot) {
+      totals = {
+        availableBalance: bankSnapshot.account.balances_current,
+        inflow30Days: bankSnapshot.monthlySummary.inflow,
+        outflow30Days: bankSnapshot.monthlySummary.outflow,
+      };
+      meta = {
+        lastDeposit: bankSnapshot.lastDeposit,
+        recentPayment: bankSnapshot.recentPayments[0] || null,
       };
     }
 
@@ -357,6 +419,7 @@ To get started, say: "Connect my account"
       connectedAt: connectedAtIso,
       groupType,
       totals,
+      meta,
       accounts: institutionAccounts.map((account) => {
         const detail = liabilityDetailMap.get(account.account_id);
         return {
@@ -410,10 +473,20 @@ To get started, say: "Connect my account"
               totalPastDue: liabilitySnapshot.totals.totalPastDue,
             }
           : null,
+        demoBanking: bankSnapshot
+          ? {
+              availableBalance: bankSnapshot.account.balances_current,
+              inflow30Days: bankSnapshot.monthlySummary.inflow,
+              outflow30Days: bankSnapshot.monthlySummary.outflow,
+              lastDeposit: bankSnapshot.lastDeposit,
+              recentPayment: bankSnapshot.recentPayments[0] || null,
+            }
+          : null,
       },
       demoData: {
         investments: investmentSnapshot,
         liabilities: liabilitySnapshot,
+        banking: bankSnapshot,
       },
     },
   };

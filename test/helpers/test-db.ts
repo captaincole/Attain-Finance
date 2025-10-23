@@ -75,6 +75,14 @@ export async function cleanupTestUser(
     .from("demo_credit_scores")
     .delete()
     .eq("user_id", userId);
+  await supabase
+    .from("demo_banking_transactions")
+    .delete()
+    .eq("user_id", userId);
+  await supabase
+    .from("demo_banking_accounts")
+    .delete()
+    .eq("user_id", userId);
   await supabase.from("demo_investment_holdings").delete().eq("user_id", userId);
   await supabase.from("demo_investment_accounts").delete().eq("user_id", userId);
   await supabase
