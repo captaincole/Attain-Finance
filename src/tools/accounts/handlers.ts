@@ -8,6 +8,7 @@ import { PlaidApi } from "plaid";
 import {
   initiateAccountConnection,
   disconnectAccount,
+  getUserConnections,
 } from "../../services/account-service.js";
 import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
 import { getDemoInvestmentSnapshot } from "../../storage/demo/investments.js";
@@ -150,7 +151,7 @@ export async function getAccountBalancesHandler(userId: string) {
           name: account.name,
           official_name: account.name,
           type: account.type || "loan",
-          subtype: account.subtype || undefined,
+          subtype: account.subtype || null,
           current_balance: account.balances_current ?? 0,
           available_balance: account.balances_available ?? null,
           limit_amount: account.limit_amount ?? null,
@@ -201,7 +202,7 @@ To get started, say: "Connect my account"
   const connections = await getUserConnections(userId);
   const augmentedConnections = [...connections, ...syntheticConnections];
 
-  const connectionMap = new Map(augmentedConnections.map(c => [c.itemId, c]));
+  const connectionMap = new Map(augmentedConnections.map((c) => [c.itemId, c]));
 
   // Calculate totals by account type
   const accountsByType = accounts.reduce((acc, account) => {
