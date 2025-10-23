@@ -23554,6 +23554,51 @@ var require_client = __commonJS({
 // src/connected-institutions.tsx
 var import_react = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
+function formatCurrency(value) {
+  if (value === void 0 || value === null || Number.isNaN(value)) {
+    return "\u2014";
+  }
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2
+  }).format(value);
+}
+function formatDate(value) {
+  if (!value) {
+    return "\u2014";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleDateString();
+}
+function titleCase(value) {
+  if (!value) {
+    return void 0;
+  }
+  return value.split(/[_\s]+/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ");
+}
+function SummaryChip({ label, value }) {
+  return /* @__PURE__ */ import_react.default.createElement(
+    "div",
+    {
+      style: {
+        background: "#f5f7fb",
+        borderRadius: "0.5rem",
+        padding: "0.45rem 0.75rem",
+        fontSize: "0.78rem",
+        display: "flex",
+        flexDirection: "column",
+        minWidth: "6.5rem",
+        gap: "0.2rem"
+      }
+    },
+    /* @__PURE__ */ import_react.default.createElement("span", { style: { color: "#5f6b7c", fontWeight: 500 } }, label),
+    /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600, color: "#1a1f36" } }, value)
+  );
+}
 function useToolOutput() {
   return (0, import_react.useSyncExternalStore)(
     (onChange) => {
@@ -23585,7 +23630,72 @@ function ConnectedInstitutionsWidget() {
   }
   const institutions = toolOutput.institutions || [];
   const totalAccounts = toolOutput.totalAccounts || 0;
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "2px solid #e0e0e0" } }, /* @__PURE__ */ import_react.default.createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: "600" } }, "Connected Accounts"), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", color: "#666" } }, totalAccounts, " total")), institutions.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No institutions connected"), /* @__PURE__ */ import_react.default.createElement("p", { style: { fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" } }, 'Use "Connect my bank account" to get started')) : /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-list" }, institutions.map((institution, instIndex) => /* @__PURE__ */ import_react.default.createElement("div", { key: institution.itemId }, instIndex > 0 && /* @__PURE__ */ import_react.default.createElement("div", { style: { height: "1px", background: "#e0e0e0", margin: "0.75rem 0" } }), /* @__PURE__ */ import_react.default.createElement("div", { className: "institution-section" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", fontWeight: "600", color: "#666", marginBottom: "0.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ import_react.default.createElement("span", null, institution.institutionName), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontSize: "0.75rem", fontWeight: "normal" } }, institution.env)), institution.error ? /* @__PURE__ */ import_react.default.createElement("div", { style: { color: "#d32f2f", fontSize: "0.85rem", padding: "0.5rem 0" } }, "\u26A0\uFE0F ", institution.error) : /* @__PURE__ */ import_react.default.createElement("table", { style: { width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" } }, /* @__PURE__ */ import_react.default.createElement("tbody", null, institution.accounts.map((account, index) => /* @__PURE__ */ import_react.default.createElement("tr", { key: index, style: { borderBottom: index < institution.accounts.length - 1 ? "1px solid #f0f0f0" : "none" } }, /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "left" } }, account.name), /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "right", fontWeight: "500" } }, "$", account.balances.current?.toFixed(2) || "N/A"))))))))));
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "2px solid #e0e0e0" } }, /* @__PURE__ */ import_react.default.createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: "600" } }, "Connected Accounts"), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", color: "#666" } }, totalAccounts, " total")), institutions.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No institutions connected"), /* @__PURE__ */ import_react.default.createElement("p", { style: { fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" } }, 'Use "Connect my bank account" to get started')) : /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-list" }, institutions.map((institution, instIndex) => /* @__PURE__ */ import_react.default.createElement("div", { key: institution.itemId }, instIndex > 0 && /* @__PURE__ */ import_react.default.createElement("div", { style: { height: "1px", background: "#e0e0e0", margin: "0.75rem 0" } }), /* @__PURE__ */ import_react.default.createElement("div", { className: "institution-section" }, (() => {
+    const isDemoInvestments = institution.groupType === "demo-investments";
+    const isDemoLiabilities = institution.groupType === "demo-liabilities";
+    const environmentLabel = isDemoInvestments || isDemoLiabilities ? "Demo" : titleCase(institution.environment) || "Unknown";
+    const connectedLabel = institution.connectedAt ? `Last synced ${formatDate(institution.connectedAt)}` : void 0;
+    return /* @__PURE__ */ import_react.default.createElement(
+      "div",
+      {
+        style: {
+          fontSize: "0.85rem",
+          fontWeight: 600,
+          color: "#333",
+          marginBottom: "0.5rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }
+      },
+      /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.15rem" } }, /* @__PURE__ */ import_react.default.createElement("span", null, institution.institutionName), connectedLabel && /* @__PURE__ */ import_react.default.createElement("span", { style: { fontSize: "0.75rem", color: "#6b7280", fontWeight: 500 } }, connectedLabel)),
+      /* @__PURE__ */ import_react.default.createElement(
+        "span",
+        {
+          style: {
+            fontSize: "0.7rem",
+            fontWeight: 600,
+            color: isDemoLiabilities ? "#d32f2f" : isDemoInvestments ? "#1a73e8" : "#5f6b7c",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em"
+          }
+        },
+        environmentLabel
+      )
+    );
+  })(), institution.totals && (() => {
+    const totals = institution.totals;
+    return /* @__PURE__ */ import_react.default.createElement(
+      "div",
+      {
+        style: {
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "0.5rem",
+          marginBottom: "0.6rem"
+        }
+      },
+      institution.groupType === "demo-investments" && /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, "totalValue" in totals && /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Total value", value: formatCurrency(totals.totalValue) }), "totalCash" in totals && /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Cash", value: formatCurrency(totals.totalCash) }), "totalInvested" in totals && /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Invested", value: formatCurrency(totals.totalInvested) })),
+      institution.groupType === "demo-liabilities" && /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, "totalBalance" in totals && /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Balance owed", value: formatCurrency(totals.totalBalance) }), "totalMinimumPayment" in totals && /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Min payments", value: formatCurrency(totals.totalMinimumPayment) }), "totalPastDue" in totals && /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Past due", value: formatCurrency(totals.totalPastDue) }))
+    );
+  })(), institution.errorMessage ? /* @__PURE__ */ import_react.default.createElement("div", { style: { color: "#d32f2f", fontSize: "0.85rem", padding: "0.5rem 0" } }, "\u26A0\uFE0F ", institution.errorMessage) : /* @__PURE__ */ import_react.default.createElement("table", { style: { width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" } }, /* @__PURE__ */ import_react.default.createElement("tbody", null, institution.accounts.map((account, index) => {
+    const isLiabilityGroup = institution.groupType === "demo-liabilities";
+    const balanceValue = account.balances.current ?? 0;
+    const displayBalance = isLiabilityGroup ? `-${formatCurrency(Math.abs(balanceValue))}` : formatCurrency(balanceValue);
+    const typeLabel = titleCase(account.subtype) || titleCase(account.type) || "Account";
+    const liabilityMeta = account.liabilityMeta;
+    return /* @__PURE__ */ import_react.default.createElement(
+      "tr",
+      {
+        key: index,
+        style: {
+          borderBottom: index < institution.accounts.length - 1 ? "1px solid #f0f0f0" : "none"
+        }
+      },
+      /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0.2rem 0.4rem 0", textAlign: "left", verticalAlign: "top" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontWeight: 600, color: "#1a1f36" } }, account.name), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#6b7280", fontWeight: 500 } }, typeLabel), isLiabilityGroup && liabilityMeta && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#374151", marginTop: "0.25rem" } }, "Min payment ", formatCurrency(liabilityMeta.minimumPaymentAmount), liabilityMeta.nextPaymentDueDate && /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, " ", "\u2022 Due ", formatDate(liabilityMeta.nextPaymentDueDate)))),
+      /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "right", fontWeight: 600, color: isLiabilityGroup ? "#d32f2f" : "#1a1f36" } }, displayBalance)
+    );
+  }))))))));
 }
 var root = document.getElementById("connected-institutions-root");
 if (root) {
