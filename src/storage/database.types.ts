@@ -208,6 +208,153 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_investment_accounts: {
+        Row: {
+          account_id: string
+          balances_available: number | null
+          balances_current: number | null
+          created_at: string | null
+          currency_code: string | null
+          last_synced_at: string | null
+          mask: string | null
+          name: string
+          subtype: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          balances_available?: number | null
+          balances_current?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          last_synced_at?: string | null
+          mask?: string | null
+          name: string
+          subtype?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          balances_available?: number | null
+          balances_current?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          last_synced_at?: string | null
+          mask?: string | null
+          name?: string
+          subtype?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      demo_investment_holdings: {
+        Row: {
+          account_id: string
+          cost_basis: number | null
+          created_at: string | null
+          currency_code: string | null
+          id: string
+          institution_price: number | null
+          institution_price_as_of: string | null
+          institution_value: number | null
+          quantity: number
+          security_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          cost_basis?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          id?: string
+          institution_price?: number | null
+          institution_price_as_of?: string | null
+          institution_value?: number | null
+          quantity: number
+          security_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          cost_basis?: number | null
+          created_at?: string | null
+          currency_code?: string | null
+          id?: string
+          institution_price?: number | null
+          institution_price_as_of?: string | null
+          institution_value?: number | null
+          quantity?: number
+          security_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_investment_holdings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "demo_investment_accounts"
+            referencedColumns: ["account_id"]
+          },
+          {
+            foreignKeyName: "demo_investment_holdings_security_id_fkey"
+            columns: ["security_id"]
+            isOneToOne: false
+            referencedRelation: "demo_investment_securities"
+            referencedColumns: ["security_id"]
+          },
+        ]
+      }
+      demo_investment_securities: {
+        Row: {
+          close_price: number | null
+          close_price_as_of: string | null
+          created_at: string | null
+          currency_code: string | null
+          is_cash_equivalent: boolean | null
+          name: string
+          security_id: string
+          subtype: string | null
+          ticker_symbol: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          close_price?: number | null
+          close_price_as_of?: string | null
+          created_at?: string | null
+          currency_code?: string | null
+          is_cash_equivalent?: boolean | null
+          name: string
+          security_id: string
+          subtype?: string | null
+          ticker_symbol?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          close_price?: number | null
+          close_price_as_of?: string | null
+          created_at?: string | null
+          currency_code?: string | null
+          is_cash_equivalent?: boolean | null
+          name?: string
+          security_id?: string
+          subtype?: string | null
+          ticker_symbol?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       opinions: {
         Row: {
           author: string

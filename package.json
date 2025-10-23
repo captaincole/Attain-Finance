@@ -16,6 +16,8 @@
     "sandbox:create": "tsx scripts/create-sandbox-user.ts",
     "sandbox:validate": "tsx scripts/validate-config.ts",
     "reset-user": "tsx scripts/reset-user.ts",
+    "demo:seed": "tsx scripts/seed-demo-investments.ts",
+    "demo:reset": "tsx scripts/reset-demo-investments.ts",
     "cron": "node build/cron/runner.js",
     "cron:list": "npm run cron -- --list",
     "cron:sync-transactions": "npm run cron -- sync-transactions",
