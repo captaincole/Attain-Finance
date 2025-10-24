@@ -3,7 +3,7 @@ import path from "path";
 import { Router } from "express";
 import { fileURLToPath } from "url";
 import { verifySignedToken } from "../../utils/signed-urls.js";
-import { userTransactionData } from "../../tools/categorization/get-transactions.js";
+import { demoTransactionCsvCache } from "../../tools/demo/transactions.js";
 import { logRouteEvent, serializeError } from "../../utils/logger.js";
 
 const router = Router();
@@ -35,7 +35,7 @@ router.get("/transactions", (req, res) => {
   }
 
   const userId = payload.userId;
-  const csvData = userTransactionData.get(userId);
+  const csvData = demoTransactionCsvCache.get(userId);
 
   if (csvData) {
     res.setHeader("Content-Type", "text/csv");
@@ -45,7 +45,7 @@ router.get("/transactions", (req, res) => {
     );
 
     res.send(csvData);
-    userTransactionData.delete(userId);
+    demoTransactionCsvCache.delete(userId);
     return;
   }
 

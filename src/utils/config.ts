@@ -40,7 +40,12 @@ export const CONFIG = {
       uri: "ui://widget/budget-list.html",
       name: "Budget List Widget",
       description: "Interactive budget cards showing spending progress with color-coded status bars",
-    }
+    },
+    spendingSummary: {
+      uri: "ui://widget/spending-summary.html",
+      name: "Spending Summary Widget",
+      description: "Horizontal category bars summarizing recent credit card spending",
+    },
   }
 };
 

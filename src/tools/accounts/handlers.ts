@@ -14,12 +14,14 @@ import { getAccountsByUserId } from "../../storage/repositories/accounts.js";
 import { getDemoInvestmentSnapshot } from "../../storage/demo/investments.js";
 import { getDemoLiabilitySnapshot } from "../../storage/demo/liabilities.js";
 import { getDemoBankSnapshot } from "../../storage/demo/banking.js";
+import { getDemoTransactions } from "../../storage/demo/transactions.js";
 import type { DemoBankSnapshot } from "../../storage/demo/banking.js";
 import type { DemoInvestmentSnapshot } from "../../storage/demo/investments.js";
 import type {
   DemoLiabilitySnapshot,
   DemoLiabilityDetail,
 } from "../../storage/demo/liabilities.js";
+import type { DemoTransactionSnapshot } from "../../storage/demo/transactions.js";
 import { isDemoInvestmentUser } from "../../demo-data/investments.js";
 
 /**
@@ -101,6 +103,7 @@ export async function getAccountBalancesHandler(userId: string) {
   let investmentSnapshot: DemoInvestmentSnapshot | null = null;
   let liabilitySnapshot: DemoLiabilitySnapshot | null = null;
   let bankSnapshot: DemoBankSnapshot | null = null;
+  let transactionSnapshot: DemoTransactionSnapshot | null = null;
   let liabilityDetailMap = new Map<string, DemoLiabilityDetail>();
 
   if (isDemoInvestmentUser(userId)) {
@@ -238,6 +241,55 @@ export async function getAccountBalancesHandler(userId: string) {
         errorCode: null,
         errorMessage: null,
         groupType: "demo-banking",
+      });
+    }
+
+    try {
+      transactionSnapshot = await getDemoTransactions(userId, {
+        limit: 180,
+      });
+    } catch (error) {
+      console.warn("[ACCOUNTS] Failed to load demo transaction snapshot", error);
+    }
+
+    if (transactionSnapshot?.account) {
+      const now = new Date().toISOString();
+      const cardItemId = `demo_transactions_${userId}`;
+
+      const cardAccount = transactionSnapshot.account;
+
+      const creditAccount = {
+        id: `demo-cc-${cardAccount.account_id}`,
+        user_id: userId,
+        item_id: cardItemId,
+        account_id: cardAccount.account_id,
+        name: cardAccount.name,
+        official_name: cardAccount.institution_name,
+        type: cardAccount.type || "credit",
+        subtype: cardAccount.subtype || "credit card",
+        current_balance:
+          cardAccount.current_balance ?? transactionSnapshot.spendingTotal - transactionSnapshot.paymentsTotal,
+        available_balance: cardAccount.available_credit ?? null,
+        limit_amount: cardAccount.credit_limit ?? null,
+        currency_code: cardAccount.currency_code || "USD",
+        last_synced_at: cardAccount.last_synced_at || now,
+        created_at: cardAccount.created_at || now,
+        updated_at: cardAccount.updated_at || now,
+      };
+
+      accounts = [...accounts, creditAccount];
+
+      syntheticConnections.push({
+        userId,
+        accessToken: "",
+        itemId: cardItemId,
+        connectedAt: new Date(creditAccount.last_synced_at),
+        environment: "sandbox" as const,
+        institutionName: cardAccount.institution_name,
+        status: "active",
+        errorCode: null,
+        errorMessage: null,
+        groupType: "demo-transactions",
       });
     }
   }
@@ -381,7 +433,9 @@ To get started, say: "Connect my account"
         ? "demo-liabilities"
         : itemId.startsWith("demo_banking_")
           ? "demo-banking"
-          : "plaid";
+          : itemId.startsWith("demo_transactions_")
+            ? "demo-transactions"
+            : "plaid";
 
     const institutionName = connection?.institutionName
       || (groupType === "demo-investments"
@@ -421,6 +475,16 @@ To get started, say: "Connect my account"
       meta = {
         lastDeposit: bankSnapshot.lastDeposit,
         recentPayment: bankSnapshot.recentPayments[0] || null,
+      };
+    } else if (groupType === "demo-transactions" && transactionSnapshot) {
+      totals = {
+        spendingTotal: transactionSnapshot.spendingTotal,
+        paymentsTotal: transactionSnapshot.paymentsTotal,
+        incomeTotal: transactionSnapshot.incomeTotal,
+      };
+      meta = {
+        lastDeposit: transactionSnapshot.transactions.find((tx) => tx.direction === "credit") || null,
+        recentPayment: transactionSnapshot.transactions.find((tx) => tx.category?.toLowerCase().includes("payment")) || null,
       };
     }
 
@@ -499,6 +563,14 @@ To get started, say: "Connect my account"
               recentPayment: bankSnapshot.recentPayments[0] || null,
             }
           : null,
+        demoTransactions: transactionSnapshot
+          ? {
+              spendingTotal: transactionSnapshot.spendingTotal,
+              paymentsTotal: transactionSnapshot.paymentsTotal,
+              incomeTotal: transactionSnapshot.incomeTotal,
+              topCategories: transactionSnapshot.categoryTotals.slice(0, 3),
+            }
+          : null,
         balanceSheet: {
           assets: {
             cash: cashTotal,
@@ -517,6 +589,7 @@ To get started, say: "Connect my account"
         investments: investmentSnapshot,
         liabilities: liabilitySnapshot,
         banking: bankSnapshot,
+        transactions: transactionSnapshot,
       },
       balanceSheet: {
         assets: {

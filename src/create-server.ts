@@ -67,6 +67,16 @@ function registerWidgetResources(server: McpServer) {
     }
   };
 
+  const spendingSummaryUri = CONFIG.widgets.spendingSummary.uri;
+  const spendingSummaryMeta = {
+    "openai/widgetDescription": CONFIG.widgets.spendingSummary.description,
+    "openai/widgetPrefersBorder": true,
+    "openai/widgetCSP": {
+      connect_domains: [],
+      resource_domains: [CONFIG.baseUrl]
+    }
+  };
+
   // Generate Connected Institutions widget HTML
   function getConnectedInstitutionsHTML(): string {
     const baseUrl = getBaseUrl();
@@ -83,6 +93,14 @@ function registerWidgetResources(server: McpServer) {
     return `
 <div id="budget-list-root"></div>
 <script type="module" src="${baseUrl}/widgets/budget-list.js"></script>
+    `.trim();
+  }
+
+  function getSpendingSummaryHTML(): string {
+    const baseUrl = getBaseUrl();
+    return `
+<div id="spending-summary-root"></div>
+<script type="module" src="${baseUrl}/widgets/spending-summary.js"></script>
     `.trim();
   }
 
@@ -104,6 +122,13 @@ function registerWidgetResources(server: McpServer) {
         description: CONFIG.widgets.budgetList.description,
         mimeType: "text/html+skybridge",
         _meta: budgetListMeta
+      },
+      {
+        uri: spendingSummaryUri,
+        name: CONFIG.widgets.spendingSummary.name,
+        description: CONFIG.widgets.spendingSummary.description,
+        mimeType: "text/html+skybridge",
+        _meta: spendingSummaryMeta
       }
     ];
 
@@ -161,6 +186,25 @@ function registerWidgetResources(server: McpServer) {
       return result;
     }
 
+    if (uri === spendingSummaryUri) {
+      const result = {
+        contents: [
+          {
+            uri: spendingSummaryUri,
+            mimeType: "text/html+skybridge",
+            text: getSpendingSummaryHTML(),
+            _meta: spendingSummaryMeta
+          }
+        ]
+      };
+      logServiceEvent("widgets", "resources-read-response", {
+        uri,
+        mimeType: "text/html+skybridge",
+        hasText: true,
+      });
+      return result;
+    }
+
     throw new Error(`Unknown resource: ${uri}`);
   });
 
@@ -177,15 +221,22 @@ function registerWidgetResources(server: McpServer) {
           mimeType: "text/html+skybridge",
           _meta: connectedInstitutionsMeta
         },
-        {
-          uriTemplate: budgetListUri,
-          name: CONFIG.widgets.budgetList.name,
-          description: CONFIG.widgets.budgetList.description,
-          mimeType: "text/html+skybridge",
-          _meta: budgetListMeta
-        }
-      ]
-    };
+      {
+        uriTemplate: budgetListUri,
+        name: CONFIG.widgets.budgetList.name,
+        description: CONFIG.widgets.budgetList.description,
+        mimeType: "text/html+skybridge",
+        _meta: budgetListMeta
+      },
+      {
+        uriTemplate: spendingSummaryUri,
+        name: CONFIG.widgets.spendingSummary.name,
+        description: CONFIG.widgets.spendingSummary.description,
+        mimeType: "text/html+skybridge",
+        _meta: spendingSummaryMeta
+      }
+    ]
+  };
 
     logServiceEvent("widgets", "resource-templates-response", {
       templateCount: result.resourceTemplates.length,

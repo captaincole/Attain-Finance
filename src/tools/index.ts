@@ -148,6 +148,18 @@ function injectWidgetMetadata(server: McpServer) {
             }
           };
         }
+        if (tool.name === "get-transactions") {
+          return {
+            ...tool,
+            _meta: {
+              "openai/outputTemplate": "ui://widget/spending-summary.html",
+              "openai/toolInvocation/invoking": "Summarizing spending...",
+              "openai/toolInvocation/invoked": "Spending summary ready",
+              "openai/widgetAccessible": true,
+              "openai/resultCanProduceWidget": true
+            }
+          };
+        }
         if (tool.name === "update-budget-rules") {
           return {
             ...tool,

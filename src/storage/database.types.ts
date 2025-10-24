@@ -324,6 +324,119 @@ export type Database = {
           },
         ]
       }
+      demo_transaction_accounts: {
+        Row: {
+          account_id: string
+          available_credit: number | null
+          apr: number | null
+          created_at: string | null
+          credit_limit: number | null
+          currency_code: string | null
+          current_balance: number | null
+          institution_name: string
+          last_synced_at: string | null
+          mask: string | null
+          minimum_payment: number | null
+          name: string
+          statement_due_date: string | null
+          subtype: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          available_credit?: number | null
+          apr?: number | null
+          created_at?: string | null
+          credit_limit?: number | null
+          currency_code?: string | null
+          current_balance?: number | null
+          institution_name: string
+          last_synced_at?: string | null
+          mask?: string | null
+          minimum_payment?: number | null
+          name: string
+          statement_due_date?: string | null
+          subtype?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          available_credit?: number | null
+          apr?: number | null
+          created_at?: string | null
+          credit_limit?: number | null
+          currency_code?: string | null
+          current_balance?: number | null
+          institution_name?: string
+          last_synced_at?: string | null
+          mask?: string | null
+          minimum_payment?: number | null
+          name?: string
+          statement_due_date?: string | null
+          subtype?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      demo_transactions: {
+        Row: {
+          account_id: string
+          amount: number
+          category: string | null
+          created_at: string | null
+          date: string
+          description: string
+          direction: string
+          merchant_name: string | null
+          pending: boolean | null
+          posted_date: string | null
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          category?: string | null
+          created_at?: string | null
+          date: string
+          description: string
+          direction: string
+          merchant_name?: string | null
+          pending?: boolean | null
+          posted_date?: string | null
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          category?: string | null
+          created_at?: string | null
+          date?: string
+          description?: string
+          direction?: string
+          merchant_name?: string | null
+          pending?: boolean | null
+          posted_date?: string | null
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "demo_transaction_accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       demo_investment_accounts: {
         Row: {
           account_id: string
