@@ -341,6 +341,23 @@ To get started, say: "Connect my account"
     sum + Math.abs(accountsByType[type]?.total || 0), 0);
   const netWorth = assets - liabilities;
 
+  const cashTotal = accounts.reduce((sum, account) => {
+    if (account.type === "depository") {
+      return sum + Number(account.current_balance || 0);
+    }
+    return sum;
+  }, 0);
+
+  const investmentTotal = accounts.reduce((sum, account) => {
+    if (account.type === "investment") {
+      return sum + Number(account.current_balance || 0);
+    }
+    return sum;
+  }, 0);
+
+  const totalLiabilities = liabilities;
+  const minimumPayments = liabilitySnapshot?.totals.totalMinimumPayment || 0;
+
   responseText += `**Net Worth:** $${netWorth.toFixed(2)}\n`;
 
   // Add last synced info
@@ -482,11 +499,37 @@ To get started, say: "Connect my account"
               recentPayment: bankSnapshot.recentPayments[0] || null,
             }
           : null,
+        balanceSheet: {
+          assets: {
+            cash: cashTotal,
+            investments: investmentSnapshot?.totals.totalInvested ?? investmentTotal,
+            total: cashTotal + (investmentSnapshot?.totals.totalInvested ?? investmentTotal),
+          },
+          liabilities: {
+            debts: totalLiabilities,
+            minimumPayments,
+            total: totalLiabilities,
+          },
+          netWorth,
+        },
       },
       demoData: {
         investments: investmentSnapshot,
         liabilities: liabilitySnapshot,
         banking: bankSnapshot,
+      },
+      balanceSheet: {
+        assets: {
+          cash: cashTotal,
+          investments: investmentSnapshot?.totals.totalInvested ?? investmentTotal,
+          total: cashTotal + (investmentSnapshot?.totals.totalInvested ?? investmentTotal),
+        },
+        liabilities: {
+          debts: totalLiabilities,
+          minimumPayments,
+          total: totalLiabilities,
+        },
+        netWorth,
       },
     },
   };
