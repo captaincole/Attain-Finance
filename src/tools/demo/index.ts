@@ -8,6 +8,5 @@ export function getDemoTools(): ToolDefinition[] {
     getInvestmentsTool(),
     getDebtOverviewTool(),
     getCreditScoreTool(),
-    getDemoTransactionsTool(),
   ];
 }

@@ -70,13 +70,6 @@ export function getDemoTransactionsTool(): ToolDefinition {
     options: {
       readOnlyHint: true,
       securitySchemes: [{ type: "oauth2" }],
-      _meta: {
-        "openai/outputTemplate": "ui://widget/spending-summary.html",
-        "openai/toolInvocation/invoking": "Analyzing recent spending...",
-        "openai/toolInvocation/invoked": "Spending summary ready",
-        "openai/widgetAccessible": true,
-        "openai/resultCanProduceWidget": true,
-      },
     },
     handler: async (args: GetDemoTransactionsArgs, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;

@@ -1,43 +1,15 @@
-import React, { useSyncExternalStore } from "react";
+import React, { useMemo, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 
-interface DemoTransactionMeta {
-  amount: number;
-  date: string;
-  description: string;
-}
-
-interface BalanceSheetData {
-  assets: {
-    cash: number;
-    investments: number;
-    total: number;
-  };
-  liabilities: {
-    debts: number;
-    minimumPayments: number;
-    total: number;
-  };
-  netWorth: number;
-}
-
-interface CashflowData {
-  availableBalance: number;
-  inflow30Days: number;
-  outflow30Days: number;
-  lastDeposit?: DemoTransactionMeta | null;
-  recentPayment?: DemoTransactionMeta | null;
+interface Account {
+  name: string;
+  type: string;
+  subtype?: string | null;
+  current_balance?: number | null;
 }
 
 interface ConnectedInstitutionsOutput {
-  balanceSheet?: BalanceSheetData;
-  summary?: {
-    balanceSheet?: BalanceSheetData;
-    demoBanking?: CashflowData | null;
-  };
-  demoData?: {
-    banking?: CashflowData | null;
-  };
+  accounts?: Account[];
 }
 
 function formatCurrency(value?: number | null): string {
@@ -49,58 +21,6 @@ function formatCurrency(value?: number | null): string {
     currency: "USD",
     maximumFractionDigits: 2,
   }).format(value);
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) {
-    return "—";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleDateString();
-}
-
-function titleCase(value?: string | null): string | undefined {
-  if (!value) {
-    return undefined;
-  }
-  return value
-    .split(/[_\s]+/)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function SummaryChip({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  tone?: "default" | "positive" | "negative";
-}) {
-  const toneColor =
-    tone === "positive" ? "#256029" : tone === "negative" ? "#b71c1c" : "#1a1f36";
-
-  return (
-    <div
-      style={{
-        background: "#f5f7fb",
-        borderRadius: "0.5rem",
-        padding: "0.45rem 0.75rem",
-        fontSize: "0.78rem",
-        display: "flex",
-        flexDirection: "column",
-        minWidth: "6.5rem",
-        gap: "0.2rem",
-      }}
-    >
-      <span style={{ color: "#5f6b7c", fontWeight: 500 }}>{label}</span>
-      <span style={{ fontWeight: 600, color: toneColor }}>{value}</span>
-    </div>
-  );
 }
 
 // Hook to subscribe to window.openai.toolOutput changes
@@ -130,158 +50,94 @@ function useToolOutput(): ConnectedInstitutionsOutput | null {
 }
 
 function ConnectedInstitutionsWidget() {
-  // Subscribe to toolOutput changes
   const toolOutput = useToolOutput();
+  const accounts = toolOutput?.accounts ?? [];
 
-  // DEBUG: Log everything
-  console.log("=== Widget Render ===");
-  console.log("toolOutput:", toolOutput);
+  const groups = useMemo(() => {
+    const mapping: Record<string, { label: string; accounts: Account[] }> = {
+      cash: { label: "Cash & Checking", accounts: [] },
+      investments: { label: "Investments", accounts: [] },
+      credit: { label: "Credit", accounts: [] },
+      loans: { label: "Loans", accounts: [] },
+      other: { label: "Other", accounts: [] },
+    };
 
-  // While waiting for data, show a simple loading state
-  // ChatGPT already shows "Loading your connected institutions..." via _meta
-  if (toolOutput === null) {
+    accounts.forEach((account) => {
+      const type = account.type;
+      if (type === "depository") {
+        mapping.cash.accounts.push(account);
+      } else if (type === "investment") {
+        mapping.investments.accounts.push(account);
+      } else if (type === "credit") {
+        mapping.credit.accounts.push(account);
+      } else if (type === "loan") {
+        mapping.loans.accounts.push(account);
+      } else {
+        mapping.other.accounts.push(account);
+      }
+    });
+
+    return [mapping.cash, mapping.investments, mapping.credit, mapping.loans, mapping.other].filter(
+      (group) => group.accounts.length > 0
+    );
+  }, [accounts]);
+
+  if (!toolOutput) {
     return (
       <div className="institutions-widget">
-        <div className="loading-state" style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>
-          <p>Loading...</p>
-        </div>
+        <div style={{ padding: "1rem", textAlign: "center", color: "#6b7280" }}>Loading accounts…</div>
       </div>
     );
   }
 
-  const balanceSheet: BalanceSheetData | undefined =
-    toolOutput.balanceSheet || toolOutput.summary?.balanceSheet;
-  const cashflow: CashflowData | undefined =
-    toolOutput.summary?.demoBanking || toolOutput.demoData?.banking || undefined;
-
-  if (!balanceSheet) {
+  if (groups.length === 0) {
     return (
       <div className="institutions-widget">
         <div className="empty-state">
-          <p>Balance sheet data unavailable.</p>
+          <p>No accounts available in this demo.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="institutions-widget">
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.8rem",
-          paddingBottom: "0.4rem",
-          borderBottom: "2px solid #e0e0e0",
-        }}
-      >
-        <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600 }}>Balance Sheet Snapshot</h3>
-      </div>
+    <div className="institutions-widget" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      {groups.map((group) => (
+        <div key={group.label} style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+          <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" }}>
+            {group.label}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            {group.accounts.map((account, index) => {
+              const balance = account.current_balance ?? 0;
+              const isLiability = account.type === "credit" || account.type === "loan";
+              const displayBalance = isLiability
+                ? `-${formatCurrency(Math.abs(balance))}`
+                : formatCurrency(balance);
 
-      <div
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          flexWrap: "wrap",
-          marginBottom: "0.9rem",
-        }}
-      >
-        <SummaryChip label="Total Assets" value={formatCurrency(balanceSheet.assets.total)} />
-        <SummaryChip
-          label="Liabilities"
-          value={formatCurrency(balanceSheet.liabilities.total)}
-          tone="negative"
-        />
-        <SummaryChip
-          label="Net Worth"
-          value={formatCurrency(balanceSheet.netWorth)}
-          tone={balanceSheet.netWorth >= 0 ? "positive" : "negative"}
-        />
-      </div>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-          gap: "0.75rem",
-        }}
-      >
-        <div
-          style={{
-            background: "#fafbff",
-            borderRadius: "0.6rem",
-            padding: "0.75rem",
-            border: "1px solid #e0e7ff",
-          }}
-        >
-          <div style={{ fontSize: "0.78rem", color: "#5f6b7c", fontWeight: 600 }}>Assets</div>
-          <div style={{ marginTop: "0.45rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#1a1f36" }}>Cash & Checking</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(balanceSheet.assets.cash)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#1a1f36" }}>Investments</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(balanceSheet.assets.investments)}</span>
-            </div>
+              return (
+                <div
+                  key={`${account.name}-${index}`}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    fontSize: "0.85rem",
+                    color: "#1f2937",
+                    borderBottom: "1px solid #e2e8f0",
+                    paddingBottom: "0.25rem",
+                  }}
+                >
+                  <span>{account.name}</span>
+                  <span style={{ fontWeight: 600, color: isLiability ? "#b91c1c" : "#0f172a" }}>
+                    {displayBalance}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
-
-        <div
-          style={{
-            background: "#fff8f5",
-            borderRadius: "0.6rem",
-            padding: "0.75rem",
-            border: "1px solid #ffe3d6",
-          }}
-        >
-          <div style={{ fontSize: "0.78rem", color: "#b93815", fontWeight: 600 }}>Liabilities</div>
-          <div style={{ marginTop: "0.45rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#4b1f12" }}>Debt Outstanding</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(balanceSheet.liabilities.debts)}</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#4b1f12" }}>Min payments</span>
-              <span style={{ fontWeight: 600 }}>{formatCurrency(balanceSheet.liabilities.minimumPayments)}</span>
-            </div>
-          </div>
-        </div>
-
-        {cashflow && (
-          <div
-            style={{
-              background: "#f0f9ff",
-              borderRadius: "0.6rem",
-              padding: "0.75rem",
-              border: "1px solid #d0ebff",
-            }}
-          >
-            <div style={{ fontSize: "0.78rem", color: "#0b5394", fontWeight: 600 }}>Cashflow (30 days)</div>
-            <div style={{ marginTop: "0.45rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Inflows</span>
-                <span style={{ fontWeight: 600, color: "#256029" }}>{formatCurrency(cashflow.inflow30Days)}</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Outflows</span>
-                <span style={{ fontWeight: 600, color: "#b71c1c" }}>{formatCurrency(cashflow.outflow30Days)}</span>
-              </div>
-              {cashflow.lastDeposit && (
-                <div style={{ fontSize: "0.75rem", color: "#256029" }}>
-                  Last deposit {formatCurrency(cashflow.lastDeposit.amount)} on {formatDate(cashflow.lastDeposit.date)}
-                </div>
-              )}
-              {cashflow.recentPayment && (
-                <div style={{ fontSize: "0.75rem", color: "#b71c1c" }}>
-                  Latest payment {formatCurrency(Math.abs(cashflow.recentPayment.amount))} on {formatDate(cashflow.recentPayment.date)}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      ))}
     </div>
   );
 }

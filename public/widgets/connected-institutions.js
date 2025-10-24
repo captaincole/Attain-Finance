@@ -1111,7 +1111,7 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useCallback(callback, deps);
         }
-        function useMemo(create, deps) {
+        function useMemo2(create, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useMemo(create, deps);
         }
@@ -1883,7 +1883,7 @@ var require_react_development = __commonJS({
         exports.useImperativeHandle = useImperativeHandle;
         exports.useInsertionEffect = useInsertionEffect;
         exports.useLayoutEffect = useLayoutEffect;
-        exports.useMemo = useMemo;
+        exports.useMemo = useMemo2;
         exports.useReducer = useReducer;
         exports.useRef = useRef;
         exports.useState = useState;
@@ -23564,40 +23564,6 @@ function formatCurrency(value) {
     maximumFractionDigits: 2
   }).format(value);
 }
-function formatDate(value) {
-  if (!value) {
-    return "\u2014";
-  }
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleDateString();
-}
-function SummaryChip({
-  label,
-  value,
-  tone = "default"
-}) {
-  const toneColor = tone === "positive" ? "#256029" : tone === "negative" ? "#b71c1c" : "#1a1f36";
-  return /* @__PURE__ */ import_react.default.createElement(
-    "div",
-    {
-      style: {
-        background: "#f5f7fb",
-        borderRadius: "0.5rem",
-        padding: "0.45rem 0.75rem",
-        fontSize: "0.78rem",
-        display: "flex",
-        flexDirection: "column",
-        minWidth: "6.5rem",
-        gap: "0.2rem"
-      }
-    },
-    /* @__PURE__ */ import_react.default.createElement("span", { style: { color: "#5f6b7c", fontWeight: 500 } }, label),
-    /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600, color: toneColor } }, value)
-  );
-}
 function useToolOutput() {
   return (0, import_react.useSyncExternalStore)(
     (onChange) => {
@@ -23622,105 +23588,61 @@ function useToolOutput() {
 }
 function ConnectedInstitutionsWidget() {
   const toolOutput = useToolOutput();
-  console.log("=== Widget Render ===");
-  console.log("toolOutput:", toolOutput);
-  if (toolOutput === null) {
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "loading-state", style: { padding: "2rem", textAlign: "center", color: "#666" } }, /* @__PURE__ */ import_react.default.createElement("p", null, "Loading...")));
+  const accounts = toolOutput?.accounts ?? [];
+  const groups = (0, import_react.useMemo)(() => {
+    const mapping = {
+      cash: { label: "Cash & Checking", accounts: [] },
+      investments: { label: "Investments", accounts: [] },
+      credit: { label: "Credit", accounts: [] },
+      loans: { label: "Loans", accounts: [] },
+      other: { label: "Other", accounts: [] }
+    };
+    accounts.forEach((account) => {
+      const type = account.type;
+      if (type === "depository") {
+        mapping.cash.accounts.push(account);
+      } else if (type === "investment") {
+        mapping.investments.accounts.push(account);
+      } else if (type === "credit") {
+        mapping.credit.accounts.push(account);
+      } else if (type === "loan") {
+        mapping.loans.accounts.push(account);
+      } else {
+        mapping.other.accounts.push(account);
+      }
+    });
+    return [mapping.cash, mapping.investments, mapping.credit, mapping.loans, mapping.other].filter(
+      (group) => group.accounts.length > 0
+    );
+  }, [accounts]);
+  if (!toolOutput) {
+    return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { padding: "1rem", textAlign: "center", color: "#6b7280" } }, "Loading accounts\u2026"));
   }
-  const balanceSheet = toolOutput.balanceSheet || toolOutput.summary?.balanceSheet;
-  const cashflow = toolOutput.summary?.demoBanking || toolOutput.demoData?.banking || void 0;
-  if (!balanceSheet) {
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "Balance sheet data unavailable.")));
+  if (groups.length === 0) {
+    return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No accounts available in this demo.")));
   }
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement(
-    "div",
-    {
-      style: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "0.8rem",
-        paddingBottom: "0.4rem",
-        borderBottom: "2px solid #e0e0e0"
-      }
-    },
-    /* @__PURE__ */ import_react.default.createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: 600 } }, "Balance Sheet Snapshot")
-  ), /* @__PURE__ */ import_react.default.createElement(
-    "div",
-    {
-      style: {
-        display: "flex",
-        gap: "0.5rem",
-        flexWrap: "wrap",
-        marginBottom: "0.9rem"
-      }
-    },
-    /* @__PURE__ */ import_react.default.createElement(SummaryChip, { label: "Total Assets", value: formatCurrency(balanceSheet.assets.total) }),
-    /* @__PURE__ */ import_react.default.createElement(
-      SummaryChip,
-      {
-        label: "Liabilities",
-        value: formatCurrency(balanceSheet.liabilities.total),
-        tone: "negative"
-      }
-    ),
-    /* @__PURE__ */ import_react.default.createElement(
-      SummaryChip,
-      {
-        label: "Net Worth",
-        value: formatCurrency(balanceSheet.netWorth),
-        tone: balanceSheet.netWorth >= 0 ? "positive" : "negative"
-      }
-    )
-  ), /* @__PURE__ */ import_react.default.createElement(
-    "div",
-    {
-      style: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: "0.75rem"
-      }
-    },
-    /* @__PURE__ */ import_react.default.createElement(
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget", style: { display: "flex", flexDirection: "column", gap: "1rem" } }, groups.map((group) => /* @__PURE__ */ import_react.default.createElement("div", { key: group.label, style: { display: "flex", flexDirection: "column", gap: "0.45rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.8rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" } }, group.label), /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.35rem" } }, group.accounts.map((account, index) => {
+    const balance = account.current_balance ?? 0;
+    const isLiability = account.type === "credit" || account.type === "loan";
+    const displayBalance = isLiability ? `-${formatCurrency(Math.abs(balance))}` : formatCurrency(balance);
+    return /* @__PURE__ */ import_react.default.createElement(
       "div",
       {
+        key: `${account.name}-${index}`,
         style: {
-          background: "#fafbff",
-          borderRadius: "0.6rem",
-          padding: "0.75rem",
-          border: "1px solid #e0e7ff"
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          fontSize: "0.85rem",
+          color: "#1f2937",
+          borderBottom: "1px solid #e2e8f0",
+          paddingBottom: "0.25rem"
         }
       },
-      /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.78rem", color: "#5f6b7c", fontWeight: 600 } }, "Assets"),
-      /* @__PURE__ */ import_react.default.createElement("div", { style: { marginTop: "0.45rem", display: "flex", flexDirection: "column", gap: "0.35rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ import_react.default.createElement("span", { style: { color: "#1a1f36" } }, "Cash & Checking"), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600 } }, formatCurrency(balanceSheet.assets.cash))), /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ import_react.default.createElement("span", { style: { color: "#1a1f36" } }, "Investments"), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600 } }, formatCurrency(balanceSheet.assets.investments))))
-    ),
-    /* @__PURE__ */ import_react.default.createElement(
-      "div",
-      {
-        style: {
-          background: "#fff8f5",
-          borderRadius: "0.6rem",
-          padding: "0.75rem",
-          border: "1px solid #ffe3d6"
-        }
-      },
-      /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.78rem", color: "#b93815", fontWeight: 600 } }, "Liabilities"),
-      /* @__PURE__ */ import_react.default.createElement("div", { style: { marginTop: "0.45rem", display: "flex", flexDirection: "column", gap: "0.35rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ import_react.default.createElement("span", { style: { color: "#4b1f12" } }, "Debt Outstanding"), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600 } }, formatCurrency(balanceSheet.liabilities.debts))), /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ import_react.default.createElement("span", { style: { color: "#4b1f12" } }, "Min payments"), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600 } }, formatCurrency(balanceSheet.liabilities.minimumPayments))))
-    ),
-    cashflow && /* @__PURE__ */ import_react.default.createElement(
-      "div",
-      {
-        style: {
-          background: "#f0f9ff",
-          borderRadius: "0.6rem",
-          padding: "0.75rem",
-          border: "1px solid #d0ebff"
-        }
-      },
-      /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.78rem", color: "#0b5394", fontWeight: 600 } }, "Cashflow (30 days)"),
-      /* @__PURE__ */ import_react.default.createElement("div", { style: { marginTop: "0.45rem", display: "flex", flexDirection: "column", gap: "0.35rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ import_react.default.createElement("span", null, "Inflows"), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600, color: "#256029" } }, formatCurrency(cashflow.inflow30Days))), /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between" } }, /* @__PURE__ */ import_react.default.createElement("span", null, "Outflows"), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600, color: "#b71c1c" } }, formatCurrency(cashflow.outflow30Days))), cashflow.lastDeposit && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#256029" } }, "Last deposit ", formatCurrency(cashflow.lastDeposit.amount), " on ", formatDate(cashflow.lastDeposit.date)), cashflow.recentPayment && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#b71c1c" } }, "Latest payment ", formatCurrency(Math.abs(cashflow.recentPayment.amount)), " on ", formatDate(cashflow.recentPayment.date)))
-    )
-  ));
+      /* @__PURE__ */ import_react.default.createElement("span", null, account.name),
+      /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600, color: isLiability ? "#b91c1c" : "#0f172a" } }, displayBalance)
+    );
+  })))));
 }
 var root = document.getElementById("connected-institutions-root");
 if (root) {

@@ -4,10 +4,12 @@
  */
 
 import { refreshTransactionsHandler } from "./refresh-transactions.js";
+import { getDemoTransactionsTool } from "../demo/transactions.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getTransactionTools(): ToolDefinition[] {
   return [
+    getDemoTransactionsTool(),
     {
       name: "refresh-transactions",
       description:
