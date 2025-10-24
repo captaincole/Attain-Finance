@@ -5,7 +5,7 @@ function sanitizeUserId(userId: string): string {
 }
 
 export const DEMO_LIABILITY_ACCOUNT_IDS = {
-  mortgage: "demo_liability_mortgage",
+  autoLoan: "demo_liability_auto",
   studentLoan: "demo_liability_student",
 } as const;
 
@@ -14,18 +14,18 @@ export function buildDemoLiabilitySeedData(userId: string): DemoLiabilitySeedDat
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
 
-  const mortgageAccountId = `${DEMO_LIABILITY_ACCOUNT_IDS.mortgage}_${slug}`;
+  const autoLoanAccountId = `${DEMO_LIABILITY_ACCOUNT_IDS.autoLoan}_${slug}`;
   const studentAccountId = `${DEMO_LIABILITY_ACCOUNT_IDS.studentLoan}_${slug}`;
 
   const accounts: DemoLiabilitySeedData["accounts"] = [
     {
-      account_id: mortgageAccountId,
+      account_id: autoLoanAccountId,
       user_id: userId,
-      name: "Demo Mortgage",
-      mask: "8842",
+      name: "Demo Auto Loan",
+      mask: "2741",
       type: "loan",
-      subtype: "mortgage",
-      balances_current: 700000,
+      subtype: "auto",
+      balances_current: 38500,
       balances_available: null,
       limit_amount: null,
       currency_code: "USD",
@@ -49,33 +49,31 @@ export function buildDemoLiabilitySeedData(userId: string): DemoLiabilitySeedDat
   const details: DemoLiabilitySeedData["details"] = [
     {
       user_id: userId,
-      account_id: mortgageAccountId,
-      liability_type: "mortgage",
-      interest_rate: 4.125,
+      account_id: autoLoanAccountId,
+      liability_type: "auto",
+      interest_rate: 5.49,
       interest_rate_type: "fixed",
-      minimum_payment_amount: 3850,
-      next_payment_due_date: new Date(now.getFullYear(), now.getMonth(), 15).toISOString().slice(0, 10),
-      last_payment_amount: 3850,
-      last_payment_date: new Date(now.getFullYear(), now.getMonth() - 1, 15).toISOString().slice(0, 10),
-      payoff_date: new Date(now.getFullYear() + 25, now.getMonth(), 1).toISOString().slice(0, 10),
-      original_principal_amount: 820000,
-      outstanding_principal_amount: 700000,
-      escrow_balance: 8200,
+      minimum_payment_amount: 648,
+      next_payment_due_date: new Date(now.getFullYear(), now.getMonth(), 18).toISOString().slice(0, 10),
+      last_payment_amount: 648,
+      last_payment_date: new Date(now.getFullYear(), now.getMonth() - 1, 18).toISOString().slice(0, 10),
+      payoff_date: new Date(now.getFullYear() + 4, now.getMonth(), 1).toISOString().slice(0, 10),
+      original_principal_amount: 52000,
+      outstanding_principal_amount: 38500,
+      escrow_balance: null,
       past_due_amount: 0,
-      term_description: "30 year fixed",
-      lender_name: "Demo Home Lending",
+      term_description: "60-month auto loan",
+      lender_name: "Demo Auto Finance",
       details: {
-        property_address: {
-          street: "123 Demo Lane",
-          city: "Austin",
-          region: "TX",
-          postal_code: "78701",
-          country: "US",
+        vehicle: {
+          make: "Tesla",
+          model: "Model Y Long Range",
+          year: 2023,
+          vin_last4: "28F1",
         },
-        has_pmi: false,
         has_prepayment_penalty: false,
-        ytd_interest_paid: 14250,
-        ytd_principal_paid: 11800,
+        ytd_interest_paid: 1450,
+        ytd_principal_paid: 8200,
       },
     },
     {

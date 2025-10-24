@@ -6,6 +6,7 @@ interface Account {
   type: string;
   subtype?: string | null;
   current_balance?: number | null;
+  institution_name?: string | null;
 }
 
 interface ConnectedInstitutionsOutput {
@@ -101,43 +102,99 @@ function ConnectedInstitutionsWidget() {
   }
 
   return (
-    <div className="institutions-widget" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {groups.map((group) => (
-        <div key={group.label} style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
-          <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" }}>
-            {group.label}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-            {group.accounts.map((account, index) => {
-              const balance = account.current_balance ?? 0;
-              const isLiability = account.type === "credit" || account.type === "loan";
-              const displayBalance = isLiability
-                ? `-${formatCurrency(Math.abs(balance))}`
-                : formatCurrency(balance);
+    <div
+      className="institutions-widget"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.75rem",
+        padding: "0.25rem",
+      }}
+    >
+      {groups.map((group) => {
+        const groupTotal = group.accounts.reduce((sum, account) => {
+          const balance = account.current_balance ?? 0;
+          const isLiability = account.type === "credit" || account.type === "loan";
+          return sum + (isLiability ? -Math.abs(balance) : balance);
+        }, 0);
 
-              return (
-                <div
-                  key={`${account.name}-${index}`}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    fontSize: "0.85rem",
-                    color: "#1f2937",
-                    borderBottom: "1px solid #e2e8f0",
-                    paddingBottom: "0.25rem",
-                  }}
-                >
-                  <span>{account.name}</span>
-                  <span style={{ fontWeight: 600, color: isLiability ? "#b91c1c" : "#0f172a" }}>
-                    {displayBalance}
-                  </span>
-                </div>
-              );
-            })}
+        return (
+          <div
+            key={group.label}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.6rem",
+              background: "linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)",
+              border: "1px solid #e2e8f0",
+              borderRadius: "14px",
+              padding: "0.85rem 1rem",
+              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.08)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <div style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" }}>
+                {group.label}
+              </div>
+              <div style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>
+                {formatCurrency(groupTotal)}
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+              {group.accounts.map((account, index) => {
+                const balance = account.current_balance ?? 0;
+                const isLiability = account.type === "credit" || account.type === "loan";
+                const displayBalance = isLiability
+                  ? `-${formatCurrency(Math.abs(balance))}`
+                  : formatCurrency(balance);
+                const subtitleParts: string[] = [];
+                if (account.institution_name) {
+                  subtitleParts.push(account.institution_name);
+                }
+                if (account.subtype) {
+                  subtitleParts.push(account.subtype);
+                }
+                const subtitle = subtitleParts.join(" • ");
+
+                return (
+                  <div
+                    key={`${account.name}-${index}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      gap: "1rem",
+                      backgroundColor: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "10px",
+                      padding: "0.65rem 0.75rem",
+                      boxShadow: "inset 0 1px 0 rgba(148, 163, 184, 0.18)",
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>
+                      <span style={{ fontSize: "0.92rem", fontWeight: 600, color: "#0f172a" }}>
+                        {account.name}
+                      </span>
+                      {subtitle && (
+                        <span style={{ fontSize: "0.75rem", color: "#64748b" }}>{subtitle}</span>
+                      )}
+                    </div>
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        fontSize: "0.95rem",
+                        color: isLiability ? "#dc2626" : "#047857",
+                      }}
+                    >
+                      {displayBalance}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

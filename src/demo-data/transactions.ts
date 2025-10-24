@@ -49,12 +49,12 @@ export function buildDemoTransactionSeedData(userId: string): DemoTransactionSee
   const parsedRows = rows.map((row) => {
     const transactionDate = parseCsvDate(row["Transaction Date"]);
     const postedDate = row["Post Date"] ? parseCsvDate(row["Post Date"]) : transactionDate;
-    const amount = Number(row.Amount || "0");
+    const rawAmount = Number(row.Amount || "0");
     return {
       raw: row,
       transactionDate,
       postedDate,
-      amount,
+      amount: rawAmount,
     };
   });
 
@@ -70,15 +70,31 @@ export function buildDemoTransactionSeedData(userId: string): DemoTransactionSee
     (today.getTime() - maxDate.getTime()) / (1000 * 60 * 60 * 24)
   );
 
+  const paymentOverrides = [5200, 4800, 5250, 4750];
+  let paymentIndex = 0;
+
   const transactions = parsedRows.map((row, index) => {
     const shiftedDate = new Date(row.transactionDate);
     shiftedDate.setDate(shiftedDate.getDate() + offsetDays);
     const shiftedPostedDate = new Date(row.postedDate);
     shiftedPostedDate.setDate(shiftedPostedDate.getDate() + offsetDays);
 
-    const amount = Number.isFinite(row.amount) ? Number(row.amount) : 0;
+    let amount = Number.isFinite(row.amount) ? Number(row.amount) : 0;
+    let category = row.raw.Category || "General";
+    const description = row.raw.Description || "Transaction";
+
+    if (description.toLowerCase().includes("payment thank you")) {
+      const override =
+        paymentOverrides[
+          Math.min(paymentIndex, paymentOverrides.length - 1)
+        ];
+      paymentIndex += 1;
+      amount = override;
+      category = "Payments";
+    }
+
     const direction = amount < 0 ? "debit" : "credit";
-    const merchant = row.raw.Description?.substring(0, 120) || "Merchant";
+    const merchant = description.substring(0, 120) || "Merchant";
 
     return {
       transaction_id: `demo_tx_${slug}_${index}`,
@@ -86,9 +102,9 @@ export function buildDemoTransactionSeedData(userId: string): DemoTransactionSee
       account_id: accountId,
       date: formatDate(shiftedDate),
       posted_date: formatDate(shiftedPostedDate),
-      description: row.raw.Description || "Transaction",
+      description,
       merchant_name: merchant,
-      category: row.raw.Category || "General",
+      category,
       amount: Math.abs(amount),
       direction,
       pending: false,

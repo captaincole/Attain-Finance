@@ -523,6 +523,14 @@ To get started, say: "Connect my account"
     };
   });
 
+  const widgetAccounts = accounts.map((account) => {
+    const connection = connectionMap.get(account.item_id);
+    return {
+      ...account,
+      institution_name: connection?.institutionName || null,
+    };
+  });
+
   return {
     content: [
       {
@@ -534,7 +542,7 @@ To get started, say: "Connect my account"
       institutions,
       totalAccounts: accounts.length,
       // Keep original data for backwards compatibility
-      accounts,
+      accounts: widgetAccounts,
       summary: {
         totalAccounts: accounts.length,
         accountsByType,

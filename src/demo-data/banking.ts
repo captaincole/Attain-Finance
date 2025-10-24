@@ -13,52 +13,89 @@ function sanitizeUserId(userId: string): string {
   return userId.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 
+function daysAgo(days: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - days);
+  return d;
+}
+
+function formatDate(date: Date): string {
+  return date.toISOString().split("T")[0];
+}
+
 export function buildDemoBankSeedData(userId: string): DemoBankSeedData {
   const slug = sanitizeUserId(userId);
   const accountId = `demo_bank_checking_${slug}`;
 
   const recentActivity: DemoBankTransaction[] = [
     {
-      id: `${accountId}_tx_1`,
-      date: "2025-03-01",
+      id: `${accountId}_tx_payroll_primary`,
+      date: formatDate(daysAgo(3)),
       description: "Acme Corp Payroll",
-      amount: 4800,
+      amount: 7200,
       direction: "credit",
       category: "income",
     },
     {
-      id: `${accountId}_tx_2`,
-      date: "2025-02-26",
-      description: "Bank of America Credit Card Payment",
-      amount: -1250,
+      id: `${accountId}_tx_consulting`,
+      date: formatDate(daysAgo(16)),
+      description: "Mural Partners Retainer",
+      amount: 3200,
+      direction: "credit",
+      category: "income",
+    },
+    {
+      id: `${accountId}_tx_credit_card_payment_recent`,
+      date: formatDate(daysAgo(6)),
+      description: "Chase Sapphire Payment",
+      amount: -1850,
       direction: "debit",
       category: "payments",
     },
     {
-      id: `${accountId}_tx_3`,
-      date: "2025-02-20",
-      description: "Freelance Design Payout",
-      amount: 850,
-      direction: "credit",
-      category: "income",
-    },
-    {
-      id: `${accountId}_tx_4`,
-      date: "2025-02-18",
-      description: "Rent Transfer",
-      amount: -2200,
+      id: `${accountId}_tx_rent`,
+      date: formatDate(daysAgo(20)),
+      description: "Rent Transfer - Downtown Loft",
+      amount: -3200,
       direction: "debit",
       category: "housing",
     },
     {
-      id: `${accountId}_tx_5`,
-      date: "2025-02-12",
-      description: "Bank of America Credit Card Payment",
-      amount: -975,
+      id: `${accountId}_tx_invest`,
+      date: formatDate(daysAgo(24)),
+      description: "Attain Smart Cash Sweep",
+      amount: -1250,
       direction: "debit",
-      category: "payments",
+      category: "investing",
+    },
+    {
+      id: `${accountId}_tx_groceries`,
+      date: formatDate(daysAgo(9)),
+      description: "Whole Foods Market",
+      amount: -420.57,
+      direction: "debit",
+      category: "groceries",
+    },
+    {
+      id: `${accountId}_tx_utilities`,
+      date: formatDate(daysAgo(12)),
+      description: "Austin Energy Utility Bill",
+      amount: -198.44,
+      direction: "debit",
+      category: "utilities",
+    },
+    {
+      id: `${accountId}_tx_entertainment`,
+      date: formatDate(daysAgo(5)),
+      description: "Paramount Theatre Tickets",
+      amount: -86.25,
+      direction: "debit",
+      category: "entertainment",
     },
   ];
+
+  const currentBalance = 24580.16;
 
   return {
     account: {
@@ -69,7 +106,7 @@ export function buildDemoBankSeedData(userId: string): DemoBankSeedData {
       mask: "4821",
       type: "depository",
       subtype: "checking",
-      balances_current: 20075.42,
+      balances_current: currentBalance,
       currency_code: "USD",
       last_synced_at: new Date().toISOString(),
     },

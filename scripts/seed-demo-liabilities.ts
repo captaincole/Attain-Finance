@@ -45,7 +45,7 @@ async function main() {
 
     console.log("\n✅ Demo liabilities seeded");
     console.log(
-      `Accounts: ${snapshot.accounts.length}, Mortgage Balance: $${snapshot.totals.totalBalance.toFixed(
+      `Accounts: ${snapshot.accounts.length}, Total Balance: $${snapshot.totals.totalBalance.toFixed(
         2
       )}`
     );
