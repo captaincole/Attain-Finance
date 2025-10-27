@@ -41,6 +41,11 @@ export const CONFIG = {
       name: "Budget List Widget",
       description: "Interactive budget cards showing spending progress with color-coded status bars",
     },
+    mortgageOptions: {
+      uri: "ui://widget/mortgage-options.html",
+      name: "Mortgage Options Widget",
+      description: "Three-offer mortgage comparison with apply buttons for each lender",
+    },
   }
 };
 

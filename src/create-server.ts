@@ -67,6 +67,16 @@ function registerWidgetResources(server: McpServer) {
     }
   };
 
+  const mortgageOptionsUri = CONFIG.widgets.mortgageOptions.uri;
+  const mortgageOptionsMeta = {
+    "openai/widgetDescription": CONFIG.widgets.mortgageOptions.description,
+    "openai/widgetPrefersBorder": true,
+    "openai/widgetCSP": {
+      connect_domains: [],
+      resource_domains: [CONFIG.baseUrl]
+    }
+  };
+
 
   // Generate Connected Institutions widget HTML
   function getConnectedInstitutionsHTML(): string {
@@ -84,6 +94,15 @@ function registerWidgetResources(server: McpServer) {
     return `
 <div id="budget-list-root"></div>
 <script type="module" src="${baseUrl}/widgets/budget-list.js"></script>
+    `.trim();
+  }
+
+  function getMortgageOptionsHTML(): string {
+    const baseUrl = getBaseUrl();
+    return `
+<div id="mortgage-options-root"></div>
+<link rel="stylesheet" href="${baseUrl}/widgets/mortgage-options.css">
+<script type="module" src="${baseUrl}/widgets/mortgage-options.js"></script>
     `.trim();
   }
 
@@ -106,6 +125,13 @@ function registerWidgetResources(server: McpServer) {
         description: CONFIG.widgets.budgetList.description,
         mimeType: "text/html+skybridge",
         _meta: budgetListMeta
+      },
+      {
+        uri: mortgageOptionsUri,
+        name: CONFIG.widgets.mortgageOptions.name,
+        description: CONFIG.widgets.mortgageOptions.description,
+        mimeType: "text/html+skybridge",
+        _meta: mortgageOptionsMeta
       },
     ];
 
@@ -163,6 +189,25 @@ function registerWidgetResources(server: McpServer) {
       return result;
     }
 
+    if (uri === mortgageOptionsUri) {
+      const result = {
+        contents: [
+          {
+            uri: mortgageOptionsUri,
+            mimeType: "text/html+skybridge",
+            text: getMortgageOptionsHTML(),
+            _meta: mortgageOptionsMeta
+          }
+        ]
+      };
+      logServiceEvent("widgets", "resources-read-response", {
+        uri,
+        mimeType: "text/html+skybridge",
+        hasText: true,
+      });
+      return result;
+    }
+
 
     throw new Error(`Unknown resource: ${uri}`);
   });
@@ -186,6 +231,13 @@ function registerWidgetResources(server: McpServer) {
         description: CONFIG.widgets.budgetList.description,
         mimeType: "text/html+skybridge",
         _meta: budgetListMeta
+      },
+      {
+        uriTemplate: mortgageOptionsUri,
+        name: CONFIG.widgets.mortgageOptions.name,
+        description: CONFIG.widgets.mortgageOptions.description,
+        mimeType: "text/html+skybridge",
+        _meta: mortgageOptionsMeta
       },
     ]
   };

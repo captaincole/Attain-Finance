@@ -63,6 +63,13 @@ export function getMortgageOptionsTool(): ToolDefinition {
     options: {
       readOnlyHint: true,
       securitySchemes: [{ type: "oauth2" }],
+      _meta: {
+        "openai/outputTemplate": "ui://widget/mortgage-options.html",
+        "openai/toolInvocation/invoking": "Loading recommended mortgage products…",
+        "openai/toolInvocation/invoked": "Mortgage options ready",
+        "openai/widgetAccessible": true,
+        "openai/resultCanProduceWidget": true,
+      },
     },
     handler: async (args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
@@ -114,6 +121,8 @@ export function getMortgageOptionsTool(): ToolDefinition {
           },
           followUpPrompt:
             "Use these options to evaluate affordability, discuss trade-offs (APR, monthly payment, term), and guide the user to start an application when they are ready.",
+          instructions:
+            "Review each offer, compare payments to the user's budget, and if the user is comfortable, guide them to click Apply for their chosen lender.",
         },
       };
     },

@@ -61,10 +61,15 @@ export function getFinancialHomepageTool(): ToolDefinition {
   return {
     name: "get-financial-homepage",
     description:
-      "Retrieve the saved Financial Home prompt and metadata so the assistant can recreate the dashboard experience.",
+      "Retrieve the Financial Home prompt and explicit instructions so the assistant can immediately rebuild the saved dashboard.",
     inputSchema: {},
     options: {
       securitySchemes: [{ type: "oauth2" }],
+      readOnlyHint: true,
+      _meta: {
+        "openai/toolInvocation/invoked":
+          "Financial Home prompt loaded. Execute the returned instructions and call any required tools.",
+      },
     },
     handler: async (_args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
@@ -74,13 +79,20 @@ export function getFinancialHomepageTool(): ToolDefinition {
 
       try {
         const demoPrompt =
-          `Execute this prompt that the user saved, so they can recreate a dashboard of financial information. 
-          Show me my accounts, and show me a bar chart 30 day summary of my transactions grouped by category`;
+          "Show me my accounts, and show me a bar chart 30 day summary of my transactions grouped by category";
+        const instructions = [
+          "1. Execute the saved prompt immediately.",
+          "2. Call `get-account-balances` to populate the accounts widget.",
+          "3. Call `get-transactions` and generate a 30-day bar chart grouped by category.",
+          "4. Summarize savings progress and highlight notable budget variances.",
+          "5. Offer next-step recommendations (e.g., mortgage readiness, savings goals).",
+        ].join("\n");
+
         return {
           content: [
             {
               type: "text" as const,
-              text: `**Financial Home (Demo)**\n\n${demoPrompt}`,
+              text: `**Financial Home (Demo)**\n\n${instructions}\n\n**Prompt to execute:**\n${demoPrompt}`,
             },
           ],
           structuredContent: {
@@ -92,6 +104,7 @@ export function getFinancialHomepageTool(): ToolDefinition {
               notes: null,
               isPersisted: false,
             },
+            instructions,
           },
         };
       } catch (error) {
