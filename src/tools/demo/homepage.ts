@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { logToolEvent, serializeError } from "../../utils/logger.js";
 
-const saveHomepageArgsSchema = z.object({
+const saveHomepageSchema = z.object({
   prompt: z.string().min(1).max(4000),
   title: z.string().optional(),
   tools: z.array(z.string()).max(12).optional(),
@@ -23,46 +23,7 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
     name: "save-financial-homepage",
     description:
       "Demo placeholder: accept a prompt describing the Financial Home layout so the assistant can pretend to save it.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        prompt: {
-          type: "string",
-          description:
-            "Prompt the assistant should replay to regenerate the user's Financial Home dashboard.",
-        },
-        title: {
-          type: "string",
-          description: "Optional label shown when confirming the save.",
-        },
-        tools: {
-          type: "array",
-          description: "Optional list of tool names that define the dashboard sequence.",
-          items: { type: "string" },
-          maxItems: 12,
-        },
-        sections: {
-          type: "array",
-          description: "Optional layout hints for the saved dashboard.",
-          items: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              description: { type: "string" },
-              widget: { type: "string" },
-            },
-            required: ["title"],
-            additionalProperties: false,
-          },
-        },
-        notes: {
-          type: "string",
-          description: "Optional internal notes for the assistant.",
-        },
-      },
-      required: ["prompt"],
-      additionalProperties: false,
-    },
+    inputSchema: saveHomepageSchema.shape,
     options: {
       securitySchemes: [{ type: "oauth2" }],
       readOnlyHint: true,
@@ -77,7 +38,7 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
         throw new Error("User authentication required");
       }
 
-      const parsed = saveHomepageArgsSchema.parse(args ?? {});
+      const parsed = saveHomepageSchema.parse(args ?? {});
       const normalizedPrompt = parsed.prompt.trim();
       if (!normalizedPrompt) {
         throw new Error("Prompt is required to save a financial homepage.");

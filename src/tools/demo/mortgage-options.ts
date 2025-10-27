@@ -59,21 +59,7 @@ export function getMortgageOptionsTool(): ToolDefinition {
     name: "get-mortgage-options",
     description:
       "Surface three sample mortgage offers from partner lenders, including APR, monthly payment estimates, and application links.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        loanAmount: {
-          type: "number",
-          description: "Optional target loan amount used for context in the response.",
-        },
-        downPayment: {
-          type: "number",
-          description: "Optional down payment amount used for context in the response.",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
+    inputSchema: mortgageArgsSchema.shape,
     options: {
       readOnlyHint: true,
       securitySchemes: [{ type: "oauth2" }],
