@@ -22,7 +22,7 @@ export function buildDemoInvestmentSeedData(userId: string): DemoInvestmentSeedD
     {
       account_id: accountId,
       user_id: userId,
-      name: "Demo Brokerage Account",
+      name: "Brokerage Account",
       mask: "4242",
       type: "investment",
       subtype: "brokerage",

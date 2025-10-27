@@ -21,7 +21,7 @@ export function buildDemoLiabilitySeedData(userId: string): DemoLiabilitySeedDat
     {
       account_id: autoLoanAccountId,
       user_id: userId,
-      name: "Demo Auto Loan",
+      name: "Auto Loan",
       mask: "2741",
       type: "loan",
       subtype: "auto",
@@ -34,7 +34,7 @@ export function buildDemoLiabilitySeedData(userId: string): DemoLiabilitySeedDat
     {
       account_id: studentAccountId,
       user_id: userId,
-      name: "Demo Student Loan",
+      name: "Student Loan",
       mask: "3198",
       type: "loan",
       subtype: "student",
@@ -63,7 +63,7 @@ export function buildDemoLiabilitySeedData(userId: string): DemoLiabilitySeedDat
       escrow_balance: null,
       past_due_amount: 0,
       term_description: "60-month auto loan",
-      lender_name: "Demo Auto Finance",
+      lender_name: "Auto Finance",
       details: {
         vehicle: {
           make: "Tesla",

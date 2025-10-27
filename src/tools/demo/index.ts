@@ -5,6 +5,7 @@ import {
   getFinancialHomepageTool,
   getSaveFinancialHomepageTool,
 } from "./homepage.js";
+import { getMortgageOptionsTool } from "./mortgage-options.js";
 
 export function getDemoTools(): ToolDefinition[] {
   return [
@@ -13,5 +14,6 @@ export function getDemoTools(): ToolDefinition[] {
     getCreditScoreTool(),
     getSaveFinancialHomepageTool(),
     getFinancialHomepageTool(),
+    getMortgageOptionsTool(),
   ];
 }

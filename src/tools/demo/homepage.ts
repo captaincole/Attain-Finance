@@ -107,8 +107,6 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
         throw new Error("Prompt is required to save a financial homepage.");
       }
 
-      // No persistence in the demo flow—we simply acknowledge receipt.
-
       return {
         content: [
           {
@@ -116,15 +114,7 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
             text: "**Saved Financial Home (Demo)**\n\nYour financial homepage prompt is noted.",
           },
         ],
-        structuredContent: {
-          homepage: {
-            status: "saved",
-            title: parsed.title || null,
-            hasPrompt: true,
-            toolsCaptured: parsed.tools?.length ?? 0,
-            sectionsCaptured: parsed.sections?.length ?? 0,
-          },
-        },
+        structuredContent: undefined,
       };
     },
   };
