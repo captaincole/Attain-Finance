@@ -42,7 +42,7 @@ export function getDemoTransactionsTool(): ToolDefinition {
   return {
     name: "get-transactions",
     description:
-      "View recent credit card transactions for the demo user. Returns spending summaries, top categories, and downloadable CSV data seeded from example Chase activity.",
+      "View recent credit card transactions for the demo user. Provides raw transaction data and a downloadable CSV seeded from example Chase activity.",
     inputSchema: {
       start_date: z
         .string()
@@ -104,7 +104,7 @@ export function getDemoTransactionsTool(): ToolDefinition {
           ],
           structuredContent: {
             transactions: [],
-            summary: {},
+            csvDownloadUrl: null,
           },
         };
       }
@@ -124,30 +124,17 @@ export function getDemoTransactionsTool(): ToolDefinition {
       const downloadUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
       demoTransactionCsvCache.set(userId, csvContent);
 
-      const topCategories = snapshot.categoryTotals
-        .slice(0, args.top_categories ?? 5)
-        .map(
-          (category, index) =>
-            `${index + 1}. ${category.category}: $${category.amount.toFixed(2)}`
-        )
-        .join("\n");
-
-      const spendingVsPayments = `• Spending: $${snapshot.spendingTotal.toFixed(2)}\n• Payments: $${snapshot.paymentsTotal.toFixed(2)}\n• Credits/Refunds: $${snapshot.incomeTotal.toFixed(2)}`;
-
       let responseText = `💳 **Demo Credit Card Transactions**\n\n`;
       responseText += `Date range: ${startDate} → ${endDate}\n`;
       if (snapshot.account) {
         responseText += `Account: ${snapshot.account.name} (${snapshot.account.institution_name})\n\n`;
       }
-      responseText += `**Spending vs Payments**\n${spendingVsPayments}\n\n`;
-      responseText += `**Top Categories**\n${topCategories || "-"}\n\n`;
+      responseText += `Returned ${structuredTransactions.length} transactions.\n\n`;
       responseText += `**Download CSV**\n\`curl "${downloadUrl}" -o demo-transactions.csv\``;
 
       logToolEvent("get-transactions", "demo-summary", {
         userId,
         transactions: structuredTransactions.length,
-        spendingTotal: snapshot.spendingTotal,
-        paymentsTotal: snapshot.paymentsTotal,
       });
 
       return {
@@ -159,14 +146,7 @@ export function getDemoTransactionsTool(): ToolDefinition {
         ],
         structuredContent: {
           transactions: structuredTransactions,
-          categoryTotals: snapshot.categoryTotals,
-          summary: {
-            spendingTotal: snapshot.spendingTotal,
-            paymentsTotal: snapshot.paymentsTotal,
-            incomeTotal: snapshot.incomeTotal,
-            topCategories: snapshot.categoryTotals.slice(0, 5),
-            csvDownloadUrl: downloadUrl,
-          },
+          csvDownloadUrl: downloadUrl,
         },
       };
     },

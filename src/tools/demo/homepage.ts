@@ -89,6 +89,11 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
     inputSchema: saveHomepageInputSchema,
     options: {
       securitySchemes: [{ type: "oauth2" }],
+      readOnlyHint: true,
+      _meta: {
+        "openai/toolInvocation/invoked":
+          "Financial Home prompt ready. Execute the returned instruction and call necessary tools to rebuild the dashboard.",
+      },
     },
     handler: async (args, { authInfo }) => {
       const userId = authInfo?.extra?.userId as string | undefined;
@@ -102,29 +107,22 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
         throw new Error("Prompt is required to save a financial homepage.");
       }
 
-      const confirmationLines = [
-        "**Saved Financial Home (Demo)**",
-        "",
-        "Prompt captured for later playback.",
-        "",
-        normalizedPrompt,
-      ];
+      // No persistence in the demo flow—we simply acknowledge receipt.
 
       return {
         content: [
           {
             type: "text" as const,
-            text: confirmationLines.join("\n"),
+            text: "**Saved Financial Home (Demo)**\n\nYour financial homepage prompt is noted.",
           },
         ],
         structuredContent: {
           homepage: {
-            prompt: normalizedPrompt,
+            status: "saved",
             title: parsed.title || null,
-            tools: parsed.tools || [],
-            sections: parsed.sections || [],
-            notes: parsed.notes || null,
-            isPersisted: false,
+            hasPrompt: true,
+            toolsCaptured: parsed.tools?.length ?? 0,
+            sectionsCaptured: parsed.sections?.length ?? 0,
           },
         },
       };

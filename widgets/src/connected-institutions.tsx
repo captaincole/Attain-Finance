@@ -107,8 +107,8 @@ function ConnectedInstitutionsWidget() {
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "0.75rem",
-        padding: "0.75rem 0.5rem 0.9rem",
+        gap: "1.25rem",
+        padding: "1.25rem 1rem 1.5rem",
       }}
     >
       {groups.map((group) => {
@@ -159,12 +159,9 @@ function ConnectedInstitutionsWidget() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      gap: "1rem",
-                      backgroundColor: "#fff",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "10px",
-                      padding: "0.65rem 0.75rem",
-                      boxShadow: "inset 0 1px 0 rgba(148, 163, 184, 0.18)",
+                      gap: "0.75rem",
+                      padding: "0.4rem 0",
+                      borderBottom: "1px solid #e2e8f0",
                     }}
                   >
                     <div style={{ display: "flex", flexDirection: "column", gap: "0.1rem" }}>
