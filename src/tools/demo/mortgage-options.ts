@@ -49,17 +49,31 @@ const mortgageOptions: MortgageOption[] = [
   },
 ];
 
-export function getMortgageOptionsTool(): ToolDefinition {
-  const inputSchema = z.object({
-    loanAmount: z.number().positive().optional(),
-    downPayment: z.number().min(0).optional(),
-  });
+const mortgageArgsSchema = z.object({
+  loanAmount: z.number().positive().optional(),
+  downPayment: z.number().min(0).optional(),
+});
 
+export function getMortgageOptionsTool(): ToolDefinition {
   return {
     name: "get-mortgage-options",
     description:
       "Surface three sample mortgage offers from partner lenders, including APR, monthly payment estimates, and application links.",
-    inputSchema,
+    inputSchema: {
+      type: "object",
+      properties: {
+        loanAmount: {
+          type: "number",
+          description: "Optional target loan amount used for context in the response.",
+        },
+        downPayment: {
+          type: "number",
+          description: "Optional down payment amount used for context in the response.",
+        },
+      },
+      required: [],
+      additionalProperties: false,
+    },
     options: {
       readOnlyHint: true,
       securitySchemes: [{ type: "oauth2" }],
@@ -70,7 +84,7 @@ export function getMortgageOptionsTool(): ToolDefinition {
         throw new Error("User authentication required");
       }
 
-      const parsedArgs = inputSchema.parse(args ?? {});
+      const parsedArgs = mortgageArgsSchema.parse(args ?? {});
       const contextLines: string[] = [];
       if (typeof parsedArgs.loanAmount === "number") {
         contextLines.push(`Target loan amount: $${parsedArgs.loanAmount.toLocaleString()}`);

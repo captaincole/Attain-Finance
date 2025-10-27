@@ -2,42 +2,20 @@ import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
 import { logToolEvent, serializeError } from "../../utils/logger.js";
 
-const homepageSectionSchema = z.object({
-  title: z
-    .string()
-    .min(1, "Section title cannot be empty")
-    .max(160, "Section titles should be concise"),
-  description: z
-    .string()
-    .optional()
-    .transform((value) => value?.trim() || undefined),
-  widget: z
-    .string()
-    .optional()
-    .transform((value) => value?.trim() || undefined),
-});
-
-const saveHomepageSchema = z.object({
-  prompt: z
-    .string()
-    .min(1, "A prompt describing the homepage is required")
-    .max(4000, "Prompt is too long"),
-  title: z
-    .string()
-    .optional()
-    .transform((value) => value?.trim() || undefined),
-  tools: z
-    .array(z.string().min(1))
-    .max(12, "Limit homepage plans to at most 12 tools")
-    .optional()
-    .transform((tools) =>
-      tools?.map((tool) => tool.trim()).filter(Boolean)
-    ),
-  sections: z.array(homepageSectionSchema).optional(),
-  notes: z
-    .string()
-    .optional()
-    .transform((value) => value?.trim() || undefined),
+const saveHomepageArgsSchema = z.object({
+  prompt: z.string().min(1).max(4000),
+  title: z.string().optional(),
+  tools: z.array(z.string()).max(12).optional(),
+  sections: z
+    .array(
+      z.object({
+        title: z.string(),
+        description: z.string().optional(),
+        widget: z.string().optional(),
+      })
+    )
+    .optional(),
+  notes: z.string().optional(),
 });
 
 export function getSaveFinancialHomepageTool(): ToolDefinition {
@@ -45,7 +23,46 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
     name: "save-financial-homepage",
     description:
       "Demo placeholder: accept a prompt describing the Financial Home layout so the assistant can pretend to save it.",
-    inputSchema: saveHomepageSchema,
+    inputSchema: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description:
+            "Prompt the assistant should replay to regenerate the user's Financial Home dashboard.",
+        },
+        title: {
+          type: "string",
+          description: "Optional label shown when confirming the save.",
+        },
+        tools: {
+          type: "array",
+          description: "Optional list of tool names that define the dashboard sequence.",
+          items: { type: "string" },
+          maxItems: 12,
+        },
+        sections: {
+          type: "array",
+          description: "Optional layout hints for the saved dashboard.",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              widget: { type: "string" },
+            },
+            required: ["title"],
+            additionalProperties: false,
+          },
+        },
+        notes: {
+          type: "string",
+          description: "Optional internal notes for the assistant.",
+        },
+      },
+      required: ["prompt"],
+      additionalProperties: false,
+    },
     options: {
       securitySchemes: [{ type: "oauth2" }],
       readOnlyHint: true,
@@ -60,7 +77,7 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
         throw new Error("User authentication required");
       }
 
-      const parsed = saveHomepageSchema.parse(args);
+      const parsed = saveHomepageArgsSchema.parse(args ?? {});
       const normalizedPrompt = parsed.prompt.trim();
       if (!normalizedPrompt) {
         throw new Error("Prompt is required to save a financial homepage.");
