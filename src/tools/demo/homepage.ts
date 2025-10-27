@@ -149,7 +149,7 @@ export function getFinancialHomepageTool(): ToolDefinition {
 
       try {
         const demoPrompt =
-          "Show me my accounts, and show me a 30 day summary of my transactions grouped by category";
+          "Show me my accounts, and show me a bar chart 30 day summary of my transactions grouped by category";
 
         return {
           content: [

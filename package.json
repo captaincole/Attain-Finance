@@ -16,7 +16,7 @@
     "sandbox:create": "tsx scripts/create-sandbox-user.ts",
     "sandbox:validate": "tsx scripts/validate-config.ts",
     "reset-user": "tsx scripts/reset-user.ts",
-    "demo:seed": "tsx scripts/seed-demo-investments.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
+    "demo:seed": "tsx scripts/seed-demo-all.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
     "demo:reset": "tsx scripts/reset-demo-investments.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
     "demo:seed-liabilities": "tsx scripts/seed-demo-liabilities.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",
     "demo:reset-liabilities": "tsx scripts/reset-demo-liabilities.ts --userId=user_34TgygyzWWGUkKpr0BYhbnhkqSX",

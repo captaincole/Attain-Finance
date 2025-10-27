@@ -67,6 +67,7 @@ Use the provided seed/reset scripts to populate or clear these tables for a demo
 1. **Reset/seed data** for the chosen demo user:
    ```bash
    npm run demo:reset-all
+   npm run demo:seed
    # or run individually:
    npm run demo:reset-banking
    npm run demo:reset-liabilities
@@ -114,6 +115,7 @@ Prompt: - Show me my financial homepage
 ## 6. Manual Testing Checklist
 
 - [ ] Run each `demo:reset-*` script with the target demo user ID.
+- [ ] Run `npm run demo:seed` (or individual `demo:seed-*` scripts) to populate data.
 - [ ] Trigger `get-account-balances` → confirm grouped widget renders.
 - [ ] Call `get-transactions` → confirm sample data (latest date == today), CSV download works.
 - [ ] Review `get-debt-overview` and `get-investments` responses for seeded snapshots.
