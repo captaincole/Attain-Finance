@@ -1,10 +1,5 @@
 import { z } from "zod";
 import type { ToolDefinition } from "../types.js";
-import {
-  getDemoHomepage,
-  saveDemoHomepage,
-  DemoHomepageSection,
-} from "../../storage/demo/homepage.js";
 import { logToolEvent, serializeError } from "../../utils/logger.js";
 
 const homepageSectionSchema = z.object({
@@ -90,7 +85,7 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
   return {
     name: "save-financial-homepage",
     description:
-      "Persist a reusable 'Financial Home' prompt so the assistant can rebuild the user's preferred dashboard layout on demand.",
+      "Demo placeholder: accept a prompt describing the Financial Home layout so the assistant can pretend to save it.",
     inputSchema: saveHomepageInputSchema,
     options: {
       securitySchemes: [{ type: "oauth2" }],
@@ -107,24 +102,13 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
         throw new Error("Prompt is required to save a financial homepage.");
       }
 
-      const record = saveDemoHomepage(userId, {
-        prompt: normalizedPrompt,
-        title: parsed.title,
-        tools: parsed.tools,
-        sections: parsed.sections as DemoHomepageSection[] | undefined,
-        notes: parsed.notes,
-      });
-
       const confirmationLines = [
-        `**Saved Financial Home: ${record.title}**`,
+        "**Saved Financial Home (Demo)**",
         "",
-        `• Prompt stored (${record.prompt.length} characters)`,
-        `• Tool plan: ${record.tools.length > 0 ? record.tools.join(", ") : "add tools later"}`,
-        `• Sections: ${record.sections.length}`,
+        "Prompt captured for later playback.",
+        "",
+        normalizedPrompt,
       ];
-      if (record.notes) {
-        confirmationLines.push(`• Notes: ${record.notes}`);
-      }
 
       return {
         content: [
@@ -134,7 +118,14 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
           },
         ],
         structuredContent: {
-          homepage: record,
+          homepage: {
+            prompt: normalizedPrompt,
+            title: parsed.title || null,
+            tools: parsed.tools || [],
+            sections: parsed.sections || [],
+            notes: parsed.notes || null,
+            isPersisted: false,
+          },
         },
       };
     },
@@ -157,63 +148,25 @@ export function getFinancialHomepageTool(): ToolDefinition {
       }
 
       try {
-        const record = getDemoHomepage(userId);
-        if (!record) {
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text:
-                  "No Financial Home is saved yet. Call `save-financial-homepage` with a prompt and tool plan to create one.",
-              },
-            ],
-            structuredContent: {
-              homepage: null,
-            },
-          };
-        }
-
-        const recap = [
-          `**${record.title}**`,
-          "",
-          record.prompt,
-          "",
-          `Saved ${new Date(record.updatedAt).toLocaleString()}`,
-        ];
-
-        if (record.tools.length > 0) {
-          recap.push("", "**Recommended tools to run**");
-          record.tools.forEach((tool) => {
-            recap.push(`• ${tool}`);
-          });
-        }
-
-        if (record.sections.length > 0) {
-          recap.push("", "**Layout**");
-          record.sections.forEach((section) => {
-            recap.push(`• ${section.title}${section.widget ? ` (${section.widget})` : ""}`);
-            if (section.description) {
-              recap.push(`  ${section.description}`);
-            }
-          });
-        }
+        const demoPrompt =
+          "Show me my accounts, and show me a 30 day summary of my transactions grouped by category";
 
         return {
           content: [
             {
               type: "text" as const,
-              text: recap.join("\n"),
+              text: `**Financial Home (Demo)**\n\n${demoPrompt}`,
             },
           ],
           structuredContent: {
-            homepage: record,
-            callPlan:
-              record.tools.length > 0
-                ? record.tools.map((toolName, index) => ({
-                    order: index + 1,
-                    tool: toolName,
-                  }))
-                : [],
+            homepage: {
+              prompt: demoPrompt,
+              title: "Financial Home",
+              tools: [],
+              sections: [],
+              notes: null,
+              isPersisted: false,
+            },
           },
         };
       } catch (error) {
