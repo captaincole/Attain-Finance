@@ -97,14 +97,15 @@ function registerWidgetResources(server: McpServer) {
     `.trim();
   }
 
-  function getMortgageOptionsHTML(): string {
-    const baseUrl = getBaseUrl();
-    return `
+function getMortgageOptionsHTML(): string {
+  const baseUrl = getBaseUrl();
+  return `
 <div id="mortgage-options-root"></div>
 <link rel="stylesheet" href="${baseUrl}/widgets/mortgage-options.css">
+<style>body { margin: 0; padding: 0; }</style>
 <script type="module" src="${baseUrl}/widgets/mortgage-options.js"></script>
     `.trim();
-  }
+}
 
 
   // List all available resources

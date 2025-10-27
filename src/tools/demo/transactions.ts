@@ -206,6 +206,8 @@ export function getDemoTransactionsTool(): ToolDefinition {
           bankTransactions: bankStructuredTransactions,
           combinedTransactions,
           csvDownloadUrl: downloadUrl,
+          instructions:
+            "Treat transfers into investments or savings as allocations, not spending. Focus on debit transactions for true outflows when analyzing budgets.",
         },
       };
     },
