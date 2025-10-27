@@ -23621,28 +23621,77 @@ function ConnectedInstitutionsWidget() {
   if (groups.length === 0) {
     return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No accounts available in this demo.")));
   }
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget", style: { display: "flex", flexDirection: "column", gap: "1rem" } }, groups.map((group) => /* @__PURE__ */ import_react.default.createElement("div", { key: group.label, style: { display: "flex", flexDirection: "column", gap: "0.45rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.8rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" } }, group.label), /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.35rem" } }, group.accounts.map((account, index) => {
-    const balance = account.current_balance ?? 0;
-    const isLiability = account.type === "credit" || account.type === "loan";
-    const displayBalance = isLiability ? `-${formatCurrency(Math.abs(balance))}` : formatCurrency(balance);
-    return /* @__PURE__ */ import_react.default.createElement(
-      "div",
-      {
-        key: `${account.name}-${index}`,
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "0.85rem",
-          color: "#1f2937",
-          borderBottom: "1px solid #e2e8f0",
-          paddingBottom: "0.25rem"
-        }
-      },
-      /* @__PURE__ */ import_react.default.createElement("span", null, account.name),
-      /* @__PURE__ */ import_react.default.createElement("span", { style: { fontWeight: 600, color: isLiability ? "#b91c1c" : "#0f172a" } }, displayBalance)
-    );
-  })))));
+  return /* @__PURE__ */ import_react.default.createElement(
+    "div",
+    {
+      className: "institutions-widget",
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "1.25rem",
+        padding: "1.25rem 1rem 1.5rem"
+      }
+    },
+    groups.map((group) => {
+      const groupTotal = group.accounts.reduce((sum, account) => {
+        const balance = account.current_balance ?? 0;
+        const isLiability = account.type === "credit" || account.type === "loan";
+        return sum + (isLiability ? -Math.abs(balance) : balance);
+      }, 0);
+      return /* @__PURE__ */ import_react.default.createElement(
+        "div",
+        {
+          key: group.label,
+          style: {
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.45rem",
+            padding: "0.15rem 0"
+          }
+        },
+        /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "baseline" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.8rem", fontWeight: 600, color: "#475569", textTransform: "uppercase" } }, group.label), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" } }, formatCurrency(groupTotal))),
+        /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.45rem" } }, group.accounts.map((account, index) => {
+          const balance = account.current_balance ?? 0;
+          const isLiability = account.type === "credit" || account.type === "loan";
+          const displayBalance = isLiability ? `-${formatCurrency(Math.abs(balance))}` : formatCurrency(balance);
+          const subtitleParts = [];
+          if (account.institution_name) {
+            subtitleParts.push(account.institution_name);
+          }
+          if (account.subtype) {
+            subtitleParts.push(account.subtype);
+          }
+          const subtitle = subtitleParts.join(" \u2022 ");
+          return /* @__PURE__ */ import_react.default.createElement(
+            "div",
+            {
+              key: `${account.name}-${index}`,
+              style: {
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "0.75rem",
+                padding: "0.4rem 0",
+                borderBottom: "1px solid #e2e8f0"
+              }
+            },
+            /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "0.1rem" } }, /* @__PURE__ */ import_react.default.createElement("span", { style: { fontSize: "0.92rem", fontWeight: 600, color: "#0f172a" } }, account.name), subtitle && /* @__PURE__ */ import_react.default.createElement("span", { style: { fontSize: "0.75rem", color: "#64748b" } }, subtitle)),
+            /* @__PURE__ */ import_react.default.createElement(
+              "span",
+              {
+                style: {
+                  fontWeight: 700,
+                  fontSize: "0.95rem",
+                  color: isLiability ? "#dc2626" : "#047857"
+                }
+              },
+              displayBalance
+            )
+          );
+        }))
+      );
+    })
+  );
 }
 var root = document.getElementById("connected-institutions-root");
 if (root) {

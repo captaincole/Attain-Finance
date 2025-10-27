@@ -2,6 +2,7 @@ import { z } from "zod";
 import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { getBaseUrl } from "../../utils/config.js";
 import { getDemoTransactions } from "../../storage/demo/transactions.js";
+import { getDemoBankSnapshot } from "../../storage/demo/banking.js";
 import { logToolEvent } from "../../utils/logger.js";
 import type { ToolDefinition } from "../types.js";
 
@@ -117,7 +118,36 @@ export function getDemoTransactionsTool(): ToolDefinition {
         amount: tx.amount,
         direction: tx.direction,
         category: tx.category || "Uncategorized",
+        source: "credit-card" as const,
       }));
+
+      let bankSnapshot = null;
+      try {
+        bankSnapshot = await getDemoBankSnapshot(userId);
+      } catch (error) {
+        logToolEvent(
+          "get-transactions",
+          "bank-snapshot-error",
+          { userId, error: (error as Error).message },
+          "warn"
+        );
+      }
+
+      const bankStructuredTransactions =
+        bankSnapshot?.transactions.map((tx) => ({
+          transaction_id: tx.id,
+          date: tx.date,
+          description: tx.description,
+          merchant: tx.description,
+          amount: Math.abs(Number(tx.amount) || 0),
+          direction: tx.direction,
+          category: tx.category || "Uncategorized",
+          source: "bank-account" as const,
+        })) ?? [];
+
+      const combinedTransactions = [...structuredTransactions, ...bankStructuredTransactions].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
 
       const csvContent = convertTransactionsToCsv(structuredTransactions);
       const baseUrl = getBaseUrl();
@@ -129,7 +159,11 @@ export function getDemoTransactionsTool(): ToolDefinition {
       if (snapshot.account) {
         responseText += `Account: ${snapshot.account.name} (${snapshot.account.institution_name})\n\n`;
       }
-      responseText += `Returned ${structuredTransactions.length} transactions.\n\n`;
+      responseText += `Returned ${structuredTransactions.length} credit card transactions.\n`;
+      if (bankStructuredTransactions.length > 0 && bankSnapshot?.account) {
+        responseText += `Included ${bankStructuredTransactions.length} bank account transactions from ${bankSnapshot.account.name}.\n`;
+      }
+      responseText += "\n";
       responseText += `**Download CSV**\n\`curl "${downloadUrl}" -o demo-transactions.csv\``;
 
       logToolEvent("get-transactions", "demo-summary", {
@@ -145,7 +179,32 @@ export function getDemoTransactionsTool(): ToolDefinition {
           },
         ],
         structuredContent: {
+          accounts: {
+            creditCard: snapshot.account
+              ? {
+                  account_id: snapshot.account.account_id,
+                  name: snapshot.account.name,
+                  institution_name: snapshot.account.institution_name,
+                  type: snapshot.account.type,
+                  subtype: snapshot.account.subtype,
+                  current_balance: snapshot.account.current_balance,
+                  available_credit: snapshot.account.available_credit,
+                }
+              : null,
+            bank: bankSnapshot?.account
+              ? {
+                  account_id: bankSnapshot.account.account_id,
+                  name: bankSnapshot.account.name,
+                  institution_name: bankSnapshot.account.institution_name,
+                  type: bankSnapshot.account.type,
+                  subtype: bankSnapshot.account.subtype,
+                  current_balance: bankSnapshot.account.balances_current,
+                }
+              : null,
+          },
           transactions: structuredTransactions,
+          bankTransactions: bankStructuredTransactions,
+          combinedTransactions,
           csvDownloadUrl: downloadUrl,
         },
       };
