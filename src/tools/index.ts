@@ -160,6 +160,18 @@ function injectWidgetMetadata(server: McpServer) {
             }
           };
         }
+        if (tool.name === "get-mortgage-options") {
+          return {
+            ...tool,
+            _meta: {
+              "openai/outputTemplate": "ui://widget/mortgage-options.html",
+              "openai/toolInvocation/invoking": "Fetching mortgage offers...",
+              "openai/toolInvocation/invoked": "Mortgage options ready",
+              "openai/widgetAccessible": true,
+              "openai/resultCanProduceWidget": true
+            }
+          };
+        }
         return tool;
       });
 
