@@ -45,12 +45,53 @@ const saveHomepageSchema = z.object({
     .transform((value) => value?.trim() || undefined),
 });
 
+const saveHomepageInputSchema = {
+  type: "object",
+  properties: {
+    prompt: {
+      type: "string",
+      description:
+        "The exact instruction the assistant should replay to reconstruct the saved financial homepage.",
+    },
+    title: {
+      type: "string",
+      description: "Optional descriptive title for the saved homepage.",
+    },
+    tools: {
+      type: "array",
+      description: "Optional ordered list of tool names the assistant should call when replaying the homepage.",
+      items: { type: "string" },
+      maxItems: 12,
+    },
+    sections: {
+      type: "array",
+      description: "Optional layout hints for the homepage.",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          description: { type: "string" },
+          widget: { type: "string" },
+        },
+        required: ["title"],
+        additionalProperties: false,
+      },
+    },
+    notes: {
+      type: "string",
+      description: "Optional internal notes about how this homepage should be used.",
+    },
+  },
+  required: ["prompt"],
+  additionalProperties: false,
+} as const;
+
 export function getSaveFinancialHomepageTool(): ToolDefinition {
   return {
     name: "save-financial-homepage",
     description:
       "Persist a reusable 'Financial Home' prompt so the assistant can rebuild the user's preferred dashboard layout on demand.",
-    inputSchema: saveHomepageSchema,
+    inputSchema: saveHomepageInputSchema,
     options: {
       securitySchemes: [{ type: "oauth2" }],
     },
@@ -61,8 +102,13 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
       }
 
       const parsed = saveHomepageSchema.parse(args);
+      const normalizedPrompt = parsed.prompt.trim();
+      if (!normalizedPrompt) {
+        throw new Error("Prompt is required to save a financial homepage.");
+      }
+
       const record = saveDemoHomepage(userId, {
-        prompt: parsed.prompt,
+        prompt: normalizedPrompt,
         title: parsed.title,
         tools: parsed.tools,
         sections: parsed.sections as DemoHomepageSection[] | undefined,
