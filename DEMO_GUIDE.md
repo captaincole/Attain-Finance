@@ -95,7 +95,7 @@ Prompt: Show me my account balances
 - Financial connectivity: Walk through linking Plaid via `connect-account`, then run `get-account-balances` to show consolidated real + demo accounts in the widget.
 Prompt: Give me a breakdown of my spending in the last month as a cash flow analysis. Remove my donation as that is a one time expense and show me how much money I am saving and what my top 3 spending categories are. Show a bar chart of the expenses instead of a table. 
 - Save Generative Homepage
-prompt: Could you save this analysis as my financial homepage?
+prompt: Could you save this analysis to my financial homepage?
 - High-value analysis: Ask the assistant if a $4k/month mortgage is feasible and chain `get-transactions`, `get-debt-overview`, and `get-investments` to illustrate cash flow, payoff timelines, and investment runway insights.
 Prompt: Would a 4k per month mortgage be feasible if I wanted to buy a house?
 - In-situ recommendations: While reviewing mortgage readiness, surface Morgan Stanley and Chase offers plus an Attain Finance CTA, emphasizing trusted, actionable links directly within chat.

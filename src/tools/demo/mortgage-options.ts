@@ -103,9 +103,6 @@ export function getMortgageOptionsTool(): ToolDefinition {
         responseText += `• Apply: ${option.link}\n\n`;
       });
 
-      responseText +=
-        "Next steps: compare the payments to your cash flow, then follow one of the application links if the option fits.";
-
       return {
         content: [
           {
@@ -119,8 +116,6 @@ export function getMortgageOptionsTool(): ToolDefinition {
             loanAmount: parsedArgs.loanAmount ?? null,
             downPayment: parsedArgs.downPayment ?? null,
           },
-          followUpPrompt:
-            "Use these options to evaluate affordability, discuss trade-offs (APR, monthly payment, term), and guide the user to start an application when they are ready.",
         },
       };
     },
