@@ -121,8 +121,6 @@ export function getMortgageOptionsTool(): ToolDefinition {
           },
           followUpPrompt:
             "Use these options to evaluate affordability, discuss trade-offs (APR, monthly payment, term), and guide the user to start an application when they are ready.",
-          instructions:
-            "Review each offer, compare payments to the user's budget, and if the user is comfortable, guide them to click Apply for their chosen lender.",
         },
       };
     },
