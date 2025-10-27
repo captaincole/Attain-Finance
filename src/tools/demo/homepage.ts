@@ -22,7 +22,7 @@ export function getSaveFinancialHomepageTool(): ToolDefinition {
   return {
     name: "save-financial-homepage",
     description:
-      "Demo placeholder: accept a prompt describing the Financial Home layout so the assistant can pretend to save it.",
+      "Placeholder tool: accept a prompt describing the Financial Home layout so the assistant can pretend to save it.",
     inputSchema: saveHomepageSchema.shape,
     options: {
       securitySchemes: [{ type: "oauth2" }],

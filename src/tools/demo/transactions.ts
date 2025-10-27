@@ -154,7 +154,7 @@ export function getDemoTransactionsTool(): ToolDefinition {
       const downloadUrl = generateSignedUrl(baseUrl, userId, "transactions", 600);
       demoTransactionCsvCache.set(userId, csvContent);
 
-      let responseText = `💳 **Demo Credit Card Transactions**\n\n`;
+      let responseText = `💳 **Credit Card Transactions**\n\n`;
       responseText += `Date range: ${startDate} → ${endDate}\n`;
       if (snapshot.account) {
         responseText += `Account: ${snapshot.account.name} (${snapshot.account.institution_name})\n\n`;
@@ -164,7 +164,7 @@ export function getDemoTransactionsTool(): ToolDefinition {
         responseText += `Included ${bankStructuredTransactions.length} bank account transactions from ${bankSnapshot.account.name}.\n`;
       }
       responseText += "\n";
-      responseText += `**Download CSV**\n\`curl "${downloadUrl}" -o demo-transactions.csv\``;
+      responseText += `**Download CSV**\n\`curl "${downloadUrl}" -o transactions.csv\``;
 
       logToolEvent("get-transactions", "demo-summary", {
         userId,

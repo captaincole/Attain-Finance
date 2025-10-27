@@ -92,7 +92,7 @@ export function buildDemoLiabilitySeedData(userId: string): DemoLiabilitySeedDat
       escrow_balance: null,
       past_due_amount: 0,
       term_description: "Income-driven repayment",
-      lender_name: "Demo Student Loan Servicing",
+      lender_name: "Student Loan Servicing",
       details: {
         repayment_plan: {
           type: "income_driven",

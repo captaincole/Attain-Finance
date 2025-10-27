@@ -115,12 +115,12 @@ export async function getAccountBalancesHandler(userId: string) {
 
     if (investmentSnapshot && investmentSnapshot.accounts.length > 0) {
       const now = new Date().toISOString();
-      const demoItemId = `demo_investments_${userId}`;
+      const investmentItemId = `attain_investments_${userId}`;
 
       const demoAccounts = investmentSnapshot.accounts.map((account) => ({
-        id: `demo-${account.account_id}`,
+        id: `attain-investment-${account.account_id}`,
         user_id: userId,
-        item_id: demoItemId,
+        item_id: investmentItemId,
         account_id: account.account_id,
         name: account.name,
         official_name: account.name,
@@ -140,10 +140,10 @@ export async function getAccountBalancesHandler(userId: string) {
       syntheticConnections.push({
         userId,
         accessToken: "",
-        itemId: demoItemId,
+        itemId: investmentItemId,
         connectedAt: new Date(demoAccounts[0].last_synced_at),
         environment: "sandbox" as const,
-        institutionName: "Demo Investments",
+        institutionName: "Attain Investments",
         status: "active",
         errorCode: null,
         errorMessage: null,
@@ -163,10 +163,10 @@ export async function getAccountBalancesHandler(userId: string) {
 
     if (liabilitySnapshot && liabilitySnapshot.accounts.length > 0) {
       const now = new Date().toISOString();
-      const liabilityItemId = `demo_liabilities_${userId}`;
+      const liabilityItemId = `attain_liabilities_${userId}`;
 
       const liabilityAccounts = liabilitySnapshot.accounts.map((account) => ({
-        id: `demo-liability-${account.account_id}`,
+        id: `attain-liability-${account.account_id}`,
         user_id: userId,
         item_id: liabilityItemId,
         account_id: account.account_id,
@@ -191,7 +191,7 @@ export async function getAccountBalancesHandler(userId: string) {
         itemId: liabilityItemId,
         connectedAt: new Date(liabilityAccounts[0].last_synced_at),
         environment: "sandbox" as const,
-        institutionName: "Demo Liabilities",
+        institutionName: "Attain Liabilities",
         status: "active",
         errorCode: null,
         errorMessage: null,
@@ -201,16 +201,16 @@ export async function getAccountBalancesHandler(userId: string) {
     try {
       bankSnapshot = await getDemoBankSnapshot(userId);
     } catch (error) {
-      console.warn("[ACCOUNTS] Failed to load demo bank snapshot", error);
+      console.warn("[ACCOUNTS] Failed to load bank snapshot", error);
     }
 
     if (bankSnapshot) {
       const now = new Date().toISOString();
-      const bankItemId = `demo_banking_${userId}`;
+      const bankItemId = `attain_banking_${userId}`;
 
       const bankAccounts = [
         {
-          id: `demo-bank-${bankSnapshot.account.account_id}`,
+          id: `attain-bank-${bankSnapshot.account.account_id}`,
           user_id: userId,
           item_id: bankItemId,
           account_id: bankSnapshot.account.account_id,
@@ -240,7 +240,7 @@ export async function getAccountBalancesHandler(userId: string) {
         status: "active",
         errorCode: null,
         errorMessage: null,
-        groupType: "demo-banking",
+        groupType: "synthetic-banking",
       });
     }
 
@@ -254,12 +254,12 @@ export async function getAccountBalancesHandler(userId: string) {
 
     if (transactionSnapshot?.account) {
       const now = new Date().toISOString();
-      const cardItemId = `demo_transactions_${userId}`;
+      const cardItemId = `attain_transactions_${userId}`;
 
       const cardAccount = transactionSnapshot.account;
 
       const creditAccount = {
-        id: `demo-cc-${cardAccount.account_id}`,
+        id: `attain-cc-${cardAccount.account_id}`,
         user_id: userId,
         item_id: cardItemId,
         account_id: cardAccount.account_id,
@@ -289,7 +289,7 @@ export async function getAccountBalancesHandler(userId: string) {
         status: "active",
         errorCode: null,
         errorMessage: null,
-        groupType: "demo-transactions",
+        groupType: "synthetic-transactions",
       });
     }
   }
@@ -427,21 +427,21 @@ To get started, say: "Connect my account"
   // Widget expects institutions array grouped by item_id
   const institutions = Object.entries(accountsByInstitution).map(([itemId, institutionAccounts]) => {
     const connection = connectionMap.get(itemId);
-    const groupType = itemId.startsWith("demo_investments_")
-      ? "demo-investments"
-      : itemId.startsWith("demo_liabilities_")
-        ? "demo-liabilities"
-        : itemId.startsWith("demo_banking_")
-          ? "demo-banking"
-          : itemId.startsWith("demo_transactions_")
-            ? "demo-transactions"
+    const groupType = itemId.startsWith("attain_investments_")
+      ? "synthetic-investments"
+      : itemId.startsWith("attain_liabilities_")
+        ? "synthetic-liabilities"
+        : itemId.startsWith("attain_banking_")
+          ? "synthetic-banking"
+          : itemId.startsWith("attain_transactions_")
+            ? "synthetic-transactions"
             : "plaid";
 
     const institutionName = connection?.institutionName
-      || (groupType === "demo-investments"
-        ? "Demo Investments"
-        : groupType === "demo-liabilities"
-          ? "Demo Liabilities"
+      || (groupType === "synthetic-investments"
+        ? "Attain Investments"
+        : groupType === "synthetic-liabilities"
+          ? "Attain Liabilities"
           : "Unknown Institution");
 
     const fallbackDate = institutionAccounts[0]?.created_at
@@ -454,19 +454,19 @@ To get started, say: "Connect my account"
 
     let totals: any;
     let meta: any;
-    if (groupType === "demo-investments" && investmentSnapshot) {
+    if (groupType === "synthetic-investments" && investmentSnapshot) {
       totals = {
         totalValue: investmentSnapshot.totals.totalValue,
         totalCash: investmentSnapshot.totals.totalCash,
         totalInvested: investmentSnapshot.totals.totalInvested,
       };
-    } else if (groupType === "demo-liabilities" && liabilitySnapshot) {
+    } else if (groupType === "synthetic-liabilities" && liabilitySnapshot) {
       totals = {
         totalBalance: liabilitySnapshot.totals.totalBalance,
         totalMinimumPayment: liabilitySnapshot.totals.totalMinimumPayment,
         totalPastDue: liabilitySnapshot.totals.totalPastDue,
       };
-    } else if (groupType === "demo-banking" && bankSnapshot) {
+    } else if (groupType === "synthetic-banking" && bankSnapshot) {
       totals = {
         availableBalance: bankSnapshot.account.balances_current,
         inflow30Days: bankSnapshot.monthlySummary.inflow,
@@ -476,7 +476,7 @@ To get started, say: "Connect my account"
         lastDeposit: bankSnapshot.lastDeposit,
         recentPayment: bankSnapshot.recentPayments[0] || null,
       };
-    } else if (groupType === "demo-transactions" && transactionSnapshot) {
+    } else if (groupType === "synthetic-transactions" && transactionSnapshot) {
       totals = {
         spendingTotal: transactionSnapshot.spendingTotal,
         paymentsTotal: transactionSnapshot.paymentsTotal,

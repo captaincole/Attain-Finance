@@ -24,7 +24,7 @@ export function getDebtOverviewTool(): ToolDefinition {
   return {
     name: "get-debt-overview",
     description:
-      "Summarize mortgage and student loan liabilities for the demo user, including balances, APRs, payoff timelines, and minimum payments.",
+      "Summarize mortgage and student loan liabilities for the seeded user, including balances, APRs, payoff timelines, and minimum payments.",
     inputSchema: {},
     options: {
       readOnlyHint: true,
@@ -44,7 +44,7 @@ export function getDebtOverviewTool(): ToolDefinition {
           content: [
             {
               type: "text" as const,
-              text: "No liability data found. Run the demo liability seed script to populate mortgage and student loan examples.",
+              text: "No liability data found. Run the liability seed script to populate mortgage and student loan examples.",
             },
           ],
           structuredContent: {
@@ -60,7 +60,7 @@ export function getDebtOverviewTool(): ToolDefinition {
         snapshot.accounts.map((account) => [account.account_id, account])
       );
 
-      let text = `**Demo Debt Overview**\n\n`;
+      let text = `**Debt Overview**\n\n`;
       text += `Total balance across debts: ${formatCurrency(
         snapshot.totals.totalBalance
       )}\n`;
@@ -129,7 +129,7 @@ export function getCreditScoreTool(): ToolDefinition {
   return {
     name: "get-credit-score",
     description:
-      "Fetch the demo user's credit score snapshot for use in financial conversations.",
+      "Fetch the seeded user's credit score snapshot for use in financial conversations.",
     inputSchema: {},
     options: {
       readOnlyHint: true,
@@ -150,7 +150,7 @@ export function getCreditScoreTool(): ToolDefinition {
           content: [
             {
               type: "text" as const,
-              text: "No credit score is available for the demo user. Seed liabilities data to generate a score.",
+              text: "No credit score is available yet. Seed liabilities data to generate a score.",
             },
           ],
           structuredContent: {},

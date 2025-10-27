@@ -69,7 +69,7 @@ export function getInvestmentsTool(): ToolDefinition {
         }
 
         if (demoAccount) {
-          textSections.push("\n**Demo Brokerage Portfolio**");
+          textSections.push("\n**Brokerage Portfolio**");
           textSections.push(
             `${demoAccount.name}${
               demoAccount.mask ? ` ••••${demoAccount.mask}` : ""
@@ -92,7 +92,7 @@ export function getInvestmentsTool(): ToolDefinition {
           }
         } else {
           textSections.push(
-            "⚠️ Demo brokerage data not found. Run `npm run demo:seed -- --userId=<id>` to populate demo investments."
+            "⚠️ Brokerage data not found. Run `npm run demo:seed -- --userId=<id>` to populate investments."
           );
         }
 
