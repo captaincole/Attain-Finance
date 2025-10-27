@@ -40,53 +40,12 @@ const saveHomepageSchema = z.object({
     .transform((value) => value?.trim() || undefined),
 });
 
-const saveHomepageInputSchema = {
-  type: "object",
-  properties: {
-    prompt: {
-      type: "string",
-      description:
-        "The exact instruction the assistant should replay to reconstruct the saved financial homepage.",
-    },
-    title: {
-      type: "string",
-      description: "Optional descriptive title for the saved homepage.",
-    },
-    tools: {
-      type: "array",
-      description: "Optional ordered list of tool names the assistant should call when replaying the homepage.",
-      items: { type: "string" },
-      maxItems: 12,
-    },
-    sections: {
-      type: "array",
-      description: "Optional layout hints for the homepage.",
-      items: {
-        type: "object",
-        properties: {
-          title: { type: "string" },
-          description: { type: "string" },
-          widget: { type: "string" },
-        },
-        required: ["title"],
-        additionalProperties: false,
-      },
-    },
-    notes: {
-      type: "string",
-      description: "Optional internal notes about how this homepage should be used.",
-    },
-  },
-  required: ["prompt"],
-  additionalProperties: false,
-} as const;
-
 export function getSaveFinancialHomepageTool(): ToolDefinition {
   return {
     name: "save-financial-homepage",
     description:
       "Demo placeholder: accept a prompt describing the Financial Home layout so the assistant can pretend to save it.",
-    inputSchema: saveHomepageInputSchema,
+    inputSchema: saveHomepageSchema,
     options: {
       securitySchemes: [{ type: "oauth2" }],
       readOnlyHint: true,
@@ -137,8 +96,8 @@ export function getFinancialHomepageTool(): ToolDefinition {
 
       try {
         const demoPrompt =
-          "Show me my accounts, and show me a bar chart 30 day summary of my transactions grouped by category";
-
+          `Execute this prompt that the user saved, so they can recreate a dashboard of financial information. 
+          Show me my accounts, and show me a bar chart 30 day summary of my transactions grouped by category`;
         return {
           content: [
             {

@@ -50,25 +50,16 @@ const mortgageOptions: MortgageOption[] = [
 ];
 
 export function getMortgageOptionsTool(): ToolDefinition {
+  const inputSchema = z.object({
+    loanAmount: z.number().positive().optional(),
+    downPayment: z.number().min(0).optional(),
+  });
+
   return {
     name: "get-mortgage-options",
     description:
       "Surface three sample mortgage offers from partner lenders, including APR, monthly payment estimates, and application links.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        loanAmount: {
-          type: "number",
-          description: "Optional loan amount to display alongside the offers (used for context only).",
-        },
-        downPayment: {
-          type: "number",
-          description: "Optional down payment amount used for context in the response.",
-        },
-      },
-      required: [],
-      additionalProperties: false,
-    },
+    inputSchema,
     options: {
       readOnlyHint: true,
       securitySchemes: [{ type: "oauth2" }],
@@ -79,12 +70,13 @@ export function getMortgageOptionsTool(): ToolDefinition {
         throw new Error("User authentication required");
       }
 
+      const parsedArgs = inputSchema.parse(args ?? {});
       const contextLines: string[] = [];
-      if (typeof args?.loanAmount === "number") {
-        contextLines.push(`Target loan amount: $${args.loanAmount.toLocaleString()}`);
+      if (typeof parsedArgs.loanAmount === "number") {
+        contextLines.push(`Target loan amount: $${parsedArgs.loanAmount.toLocaleString()}`);
       }
-      if (typeof args?.downPayment === "number") {
-        contextLines.push(`Down payment: $${args.downPayment.toLocaleString()}`);
+      if (typeof parsedArgs.downPayment === "number") {
+        contextLines.push(`Down payment: $${parsedArgs.downPayment.toLocaleString()}`);
       }
 
       let responseText = "🏠 **Suggested Mortgage Options**\n\n";
@@ -104,6 +96,9 @@ export function getMortgageOptionsTool(): ToolDefinition {
         responseText += `• Apply: ${option.link}\n\n`;
       });
 
+      responseText +=
+        "Next steps: compare the payments to your cash flow, then follow one of the application links if the option fits.";
+
       return {
         content: [
           {
@@ -114,9 +109,11 @@ export function getMortgageOptionsTool(): ToolDefinition {
         structuredContent: {
           mortgageOptions,
           context: {
-            loanAmount: typeof args?.loanAmount === "number" ? args.loanAmount : null,
-            downPayment: typeof args?.downPayment === "number" ? args.downPayment : null,
+            loanAmount: parsedArgs.loanAmount ?? null,
+            downPayment: parsedArgs.downPayment ?? null,
           },
+          followUpPrompt:
+            "Use these options to evaluate affordability, discuss trade-offs (APR, monthly payment, term), and guide the user to start an application when they are ready.",
         },
       };
     },
