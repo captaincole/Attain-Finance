@@ -158,7 +158,7 @@ export async function getAccountBalancesHandler(userId: string) {
         );
       }
     } catch (error) {
-      console.warn("[ACCOUNTS] Failed to load demo liability snapshot", error);
+      console.warn("[ACCOUNTS] Failed to load liability snapshot", error);
     }
 
     if (liabilitySnapshot && liabilitySnapshot.accounts.length > 0) {
