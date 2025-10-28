@@ -7,8 +7,15 @@
 import { PlaidApi } from "plaid";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { AccountSyncStateRepository } from "../storage/repositories/account-sync-state.js";
-import { upsertTransactions } from "../storage/repositories/transactions.js";
-import { getAccountsByItemId } from "../storage/repositories/accounts.js";
+import {
+  upsertTransactions,
+  deleteTransactions,
+} from "../storage/repositories/transactions.js";
+import {
+  getAccountsByItemId,
+  upsertAccounts,
+  PlaidAccountData,
+} from "../storage/repositories/accounts.js";
 import {
   categorizeTransactions,
   TransactionForCategorization,
@@ -217,13 +224,20 @@ export class TransactionSyncService {
 
         // Handle removed transactions (delete from database)
         if (removed.length > 0) {
-          logServiceEvent("transaction-sync", "remove-transactions", {
+          logServiceEvent("transaction-sync", "remove-transactions-start", {
             accountId,
             page: pageCount,
             removedCount: removed.length,
           });
-          // TODO: Implement transaction deletion
-          // For now, we'll skip this as it's rare and can be handled later
+
+          const transactionIds = removed.map((tx) => tx.transaction_id);
+          await deleteTransactions(transactionIds);
+
+          logServiceEvent("transaction-sync", "remove-transactions-complete", {
+            accountId,
+            page: pageCount,
+            removedCount: removed.length,
+          });
         }
 
         // Update cursor and counters
@@ -303,7 +317,8 @@ export class TransactionSyncService {
 
   /**
    * Initiate sync for all accounts in a connection
-   * Called from OAuth callback after account connection
+   * Called from OAuth callback and cron jobs
+   * Refreshes account metadata (balances, names) before syncing transactions
    */
   async initiateSyncForConnection(
     itemId: string,
@@ -316,6 +331,45 @@ export class TransactionSyncService {
     });
 
     try {
+      // Refresh account metadata from Plaid FIRST (balances, names, etc.)
+      // This ensures last_synced_at and updated_at columns stay fresh
+      try {
+        const accountsResponse = await this.plaidClient.accountsGet({
+          access_token: accessToken,
+        });
+
+        const plaidAccounts: PlaidAccountData[] =
+          accountsResponse.data.accounts.map((account) => ({
+            account_id: account.account_id,
+            name: account.name,
+            official_name: account.official_name || null,
+            type: account.type,
+            subtype: account.subtype || null,
+            balances: {
+              current: account.balances.current,
+              available: account.balances.available,
+              limit: account.balances.limit || null,
+              iso_currency_code: account.balances.iso_currency_code || null,
+            },
+          }));
+
+        await upsertAccounts(userId, itemId, plaidAccounts);
+
+        logServiceEvent("transaction-sync", "accounts-refreshed", {
+          itemId,
+          userId,
+          accountCount: plaidAccounts.length,
+        });
+      } catch (error: any) {
+        logServiceEvent(
+          "transaction-sync",
+          "accounts-refresh-error",
+          { itemId, userId, error: serializeError(error) },
+          "warn"
+        );
+        // Continue to transaction sync even if account refresh fails
+      }
+
       // Get all accounts for this connection
       const accounts = await getAccountsByItemId(userId, itemId);
 

@@ -71,6 +71,32 @@ export async function upsertTransactions(
 }
 
 /**
+ * Delete transactions by transaction IDs
+ * Used when Plaid reports transactions as removed
+ */
+export async function deleteTransactions(
+  transactionIds: string[]
+): Promise<void> {
+  if (transactionIds.length === 0) {
+    return;
+  }
+
+  logEvent("REPO/TRANSACTIONS", "deleting", { count: transactionIds.length });
+
+  const { error } = await getSupabase()
+    .from("transactions")
+    .delete()
+    .in("transaction_id", transactionIds);
+
+  if (error) {
+    logEvent("REPO/TRANSACTIONS", "delete-error", { error: error.message }, "error");
+    throw new Error(`Failed to delete transactions: ${error.message}`);
+  }
+
+  logEvent("REPO/TRANSACTIONS", "deleted", { count: transactionIds.length });
+}
+
+/**
  * Get all transactions for a user within date range
  */
 export async function findTransactionsByUserId(

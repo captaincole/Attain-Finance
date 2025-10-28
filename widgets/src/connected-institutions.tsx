@@ -16,6 +16,7 @@ interface Institution {
   institutionName: string;
   env: string;
   connectedAt: Date;
+  lastSyncedAt?: string;
   accounts: Account[];
   error?: string;
 }
@@ -96,10 +97,15 @@ function ConnectedInstitutionsWidget() {
               {instIndex > 0 && <div style={{ height: '1px', background: '#e0e0e0', margin: '0.75rem 0' }} />}
 
               <div className="institution-section">
-                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>{institution.institutionName}</span>
                   <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>{institution.env}</span>
                 </div>
+                {institution.lastSyncedAt && (
+                  <div style={{ fontSize: '0.75rem', color: '#999', marginBottom: '0.5rem' }}>
+                    Last updated {new Date(institution.lastSyncedAt).toLocaleString()}
+                  </div>
+                )}
 
                 {institution.error ? (
                   <div style={{ color: '#d32f2f', fontSize: '0.85rem', padding: '0.5rem 0' }}>

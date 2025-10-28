@@ -200,12 +200,19 @@ To get started, say: "Connect my account"
   // Widget expects institutions array grouped by item_id
   const institutions = Object.entries(accountsByInstitution).map(([itemId, institutionAccounts]) => {
     const connection = connectionMap.get(itemId);
+    // Get the most recent last_synced_at from all accounts in this institution
+    const mostRecentSync = institutionAccounts.reduce((latest, account) => {
+      const syncDate = new Date(account.last_synced_at);
+      return !latest || syncDate > latest ? syncDate : latest;
+    }, null as Date | null);
+
     return {
       itemId,
       institutionName: connection?.institutionName || "Unknown Institution",
       status: connection?.status || "unknown",
       errorMessage: connection?.errorMessage || undefined,
       connectedAt: connection?.connectedAt || new Date(institutionAccounts[0].created_at),
+      lastSyncedAt: mostRecentSync?.toISOString(),
       accounts: institutionAccounts.map(account => ({
         name: account.name,
         type: account.type,
