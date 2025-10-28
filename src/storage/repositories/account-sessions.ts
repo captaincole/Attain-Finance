@@ -6,6 +6,7 @@
 
 import { getSupabase } from "../supabase.js";
 import { Tables } from "../database.types.js";
+import { logEvent } from "../../utils/logger.js";
 
 /**
  * Database row type
@@ -32,7 +33,7 @@ export async function createAccountSession(
   sessionId: string,
   userId: string
 ): Promise<AccountSession> {
-  console.log("[REPO/ACCOUNT-SESSIONS] Creating session:", sessionId);
+  logEvent("REPO/ACCOUNT-SESSIONS", "creating-session", { sessionId, userId });
 
   const { data, error } = await getSupabase()
     .from("plaid_sessions")
@@ -45,11 +46,11 @@ export async function createAccountSession(
     .single();
 
   if (error) {
-    console.error("[REPO/ACCOUNT-SESSIONS] Insert error:", error);
+    logEvent("REPO/ACCOUNT-SESSIONS", "insert-error", { error: error.message }, "error");
     throw new Error(`Failed to create session: ${error.message}`);
   }
 
-  console.log("[REPO/ACCOUNT-SESSIONS] Session created successfully");
+  logEvent("REPO/ACCOUNT-SESSIONS", "session-created", { sessionId });
 
   return {
     sessionId: data.session_id,
@@ -68,7 +69,7 @@ export async function createAccountSession(
 export async function findAccountSessionById(
   sessionId: string
 ): Promise<AccountSession | null> {
-  console.log("[REPO/ACCOUNT-SESSIONS] Finding session:", sessionId);
+  logEvent("REPO/ACCOUNT-SESSIONS", "finding-session", { sessionId });
 
   const { data, error } = await getSupabase()
     .from("plaid_sessions")
@@ -79,10 +80,10 @@ export async function findAccountSessionById(
 
   if (error) {
     if (error.code === "PGRST116") {
-      console.log("[REPO/ACCOUNT-SESSIONS] Session not found or expired");
+      logEvent("REPO/ACCOUNT-SESSIONS", "session-not-found", { sessionId });
       return null;
     }
-    console.error("[REPO/ACCOUNT-SESSIONS] Query error:", error);
+    logEvent("REPO/ACCOUNT-SESSIONS", "query-error", { error: error.message }, "error");
     throw new Error(`Failed to fetch session: ${error.message}`);
   }
 
@@ -101,7 +102,7 @@ export async function findAccountSessionById(
  * Mark a session as completed
  */
 export async function markAccountSessionCompleted(sessionId: string): Promise<void> {
-  console.log("[REPO/ACCOUNT-SESSIONS] Marking session completed:", sessionId);
+  logEvent("REPO/ACCOUNT-SESSIONS", "marking-session-completed", { sessionId });
 
   const { error } = await getSupabase()
     .from("plaid_sessions")
@@ -112,11 +113,11 @@ export async function markAccountSessionCompleted(sessionId: string): Promise<vo
     .eq("session_id", sessionId);
 
   if (error) {
-    console.error("[REPO/ACCOUNT-SESSIONS] Update error:", error);
+    logEvent("REPO/ACCOUNT-SESSIONS", "update-error", { error: error.message }, "error");
     throw new Error(`Failed to complete session: ${error.message}`);
   }
 
-  console.log("[REPO/ACCOUNT-SESSIONS] Session marked completed");
+  logEvent("REPO/ACCOUNT-SESSIONS", "session-marked-completed", { sessionId });
 }
 
 /**
@@ -126,7 +127,7 @@ export async function markAccountSessionFailed(
   sessionId: string,
   errorMessage: string
 ): Promise<void> {
-  console.log("[REPO/ACCOUNT-SESSIONS] Marking session failed:", sessionId);
+  logEvent("REPO/ACCOUNT-SESSIONS", "marking-session-failed", { sessionId, errorMessage });
 
   const { error } = await getSupabase()
     .from("plaid_sessions")
@@ -138,11 +139,11 @@ export async function markAccountSessionFailed(
     .eq("session_id", sessionId);
 
   if (error) {
-    console.error("[REPO/ACCOUNT-SESSIONS] Update error:", error);
+    logEvent("REPO/ACCOUNT-SESSIONS", "update-error", { error: error.message }, "error");
     throw new Error(`Failed to fail session: ${error.message}`);
   }
 
-  console.log("[REPO/ACCOUNT-SESSIONS] Session marked failed");
+  logEvent("REPO/ACCOUNT-SESSIONS", "session-marked-failed", { sessionId });
 }
 
 /**
@@ -150,7 +151,7 @@ export async function markAccountSessionFailed(
  * Used when creating a new session to invalidate old ones
  */
 export async function cancelPendingSessionsForUser(userId: string): Promise<number> {
-  console.log("[REPO/ACCOUNT-SESSIONS] Cancelling pending sessions for user:", userId);
+  logEvent("REPO/ACCOUNT-SESSIONS", "cancelling-pending-sessions", { userId });
 
   const { data, error } = await getSupabase()
     .from("plaid_sessions")
@@ -164,13 +165,13 @@ export async function cancelPendingSessionsForUser(userId: string): Promise<numb
     .select();
 
   if (error) {
-    console.error("[REPO/ACCOUNT-SESSIONS] Update error:", error);
+    logEvent("REPO/ACCOUNT-SESSIONS", "update-error", { error: error.message }, "error");
     throw new Error(`Failed to cancel pending sessions: ${error.message}`);
   }
 
   const count = data?.length || 0;
   if (count > 0) {
-    console.log("[REPO/ACCOUNT-SESSIONS] Cancelled", count, "pending session(s)");
+    logEvent("REPO/ACCOUNT-SESSIONS", "cancelled-sessions", { userId, count });
   }
 
   return count;
@@ -180,7 +181,7 @@ export async function cancelPendingSessionsForUser(userId: string): Promise<numb
  * Delete expired sessions (cleanup utility)
  */
 export async function deleteExpiredAccountSessions(): Promise<number> {
-  console.log("[REPO/ACCOUNT-SESSIONS] Cleaning up expired sessions");
+  logEvent("REPO/ACCOUNT-SESSIONS", "cleaning-up-expired-sessions");
 
   const { data, error } = await getSupabase()
     .from("plaid_sessions")
@@ -189,13 +190,13 @@ export async function deleteExpiredAccountSessions(): Promise<number> {
     .select();
 
   if (error) {
-    console.error("[REPO/ACCOUNT-SESSIONS] Delete error:", error);
+    logEvent("REPO/ACCOUNT-SESSIONS", "delete-error", { error: error.message }, "error");
     throw new Error(`Failed to cleanup sessions: ${error.message}`);
   }
 
   const count = data?.length || 0;
   if (count > 0) {
-    console.log("[REPO/ACCOUNT-SESSIONS] Cleaned up", count, "expired sessions");
+    logEvent("REPO/ACCOUNT-SESSIONS", "cleaned-up-sessions", { count });
   }
 
   return count;

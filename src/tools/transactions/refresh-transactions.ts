@@ -25,6 +25,7 @@ import { getCustomRules } from "../../storage/categorization/rules.js";
 import { getBudgets } from "../../storage/budgets/budgets.js";
 import { labelTransactionsForBudgets } from "../../utils/budget-labeling.js";
 import { upsertAccounts, PlaidAccountData } from "../../storage/repositories/accounts.js";
+import { logEvent } from "../../utils/logger.js";
 
 /**
  * Refresh Transactions Handler
@@ -35,7 +36,7 @@ export async function refreshTransactionsHandler(
   plaidClient: PlaidApi,
   claudeClient?: ClaudeClient
 ) {
-  console.log(`[REFRESH] Starting transaction refresh for user ${userId}`);
+  logEvent("TOOL/REFRESH-TRANSACTIONS", "starting-refresh", { userId });
 
   // Step 1: Get user's account connections
   const connections = await findAccountConnectionsByUserId(userId);
@@ -127,7 +128,7 @@ export async function refreshTransactionsHandler(
     }
   }
 
-  console.log(`[REFRESH] Fetched ${allPlaidTransactions.length} transactions from Plaid`);
+  logEvent("TOOL/REFRESH-TRANSACTIONS", "fetched-from-plaid", { count: allPlaidTransactions.length });
 
   if (allPlaidTransactions.length === 0) {
     let errorMsg = `📊 **No Transactions Found**\n\nNo transactions found from your connected accounts.`;
@@ -170,11 +171,11 @@ export async function refreshTransactionsHandler(
     });
 
   await upsertTransactions(transactionsToUpsert);
-  console.log(`[REFRESH] Upserted ${transactionsToUpsert.length} transactions`);
+  logEvent("TOOL/REFRESH-TRANSACTIONS", "upserted", { count: transactionsToUpsert.length });
 
   // Step 4: Categorize uncategorized transactions
   const uncategorized = await findUncategorizedTransactions(userId);
-  console.log(`[REFRESH] Found ${uncategorized.length} uncategorized transactions`);
+  logEvent("TOOL/REFRESH-TRANSACTIONS", "found-uncategorized", { count: uncategorized.length });
 
   let categorizationCount = 0;
 
@@ -191,7 +192,7 @@ export async function refreshTransactionsHandler(
         pending: tx.pending ? "true" : "false",
       }));
 
-    console.log(`[REFRESH] Categorizing ${txsForCategorization.length} transactions...`);
+    logEvent("TOOL/REFRESH-TRANSACTIONS", "categorizing", { count: txsForCategorization.length });
 
     try {
       const categorized = await categorizeTransactions(
@@ -208,25 +209,25 @@ export async function refreshTransactionsHandler(
 
       await updateTransactionCategories(updates);
       categorizationCount = updates.length;
-      console.log(`[REFRESH] Categorized ${categorizationCount} transactions`);
+      logEvent("TOOL/REFRESH-TRANSACTIONS", "categorized", { count: categorizationCount });
     } catch (error: any) {
-      console.error("[REFRESH] Categorization error:", error.message);
+      logEvent("TOOL/REFRESH-TRANSACTIONS", "categorization-error", { error: error.message }, "error");
       errors.push(`Categorization: ${error.message}`);
     }
   }
 
   // Step 5: Label transactions for budgets
   const budgets = await getBudgets(userId);
-  console.log(`[REFRESH] Found ${budgets.length} budgets`);
+  logEvent("TOOL/REFRESH-TRANSACTIONS", "found-budgets", { count: budgets.length });
 
   let budgetLabelCount = 0;
 
   if (budgets.length > 0) {
     try {
       budgetLabelCount = await labelTransactionsForBudgets(userId, budgets, claudeClient);
-      console.log(`[REFRESH] Labeled ${budgetLabelCount} transactions for budgets`);
+      logEvent("TOOL/REFRESH-TRANSACTIONS", "labeled-for-budgets", { count: budgetLabelCount });
     } catch (error: any) {
-      console.error("[REFRESH] Budget labeling error:", error.message);
+      logEvent("TOOL/REFRESH-TRANSACTIONS", "budget-labeling-error", { error: error.message }, "error");
       errors.push(`Budget labeling: ${error.message}`);
     }
   }

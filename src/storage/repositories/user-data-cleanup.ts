@@ -4,6 +4,7 @@
  */
 
 import { getSupabase } from "../supabase.js";
+import { logEvent } from "../../utils/logger.js";
 
 export interface UserDataDeletionSummary {
   userId: string;
@@ -31,7 +32,7 @@ export async function deleteAllUserData(
 ): Promise<UserDataDeletionSummary> {
   const supabase = getSupabase();
 
-  console.log(`[USER-DATA-CLEANUP] Starting deletion for user ${userId}`);
+  logEvent("USER-DATA-CLEANUP", "starting-deletion", { userId });
 
   // Step 1: Delete budgets
   const { error: budgetError, count: budgetsDeleted } = await supabase
@@ -43,7 +44,7 @@ export async function deleteAllUserData(
     throw new Error(`Failed to delete budgets: ${budgetError.message}`);
   }
 
-  console.log(`[USER-DATA-CLEANUP] Deleted ${budgetsDeleted || 0} budgets`);
+  logEvent("USER-DATA-CLEANUP", "deleted-budgets", { userId, count: budgetsDeleted || 0 });
 
   // Step 2: Delete categorization prompts/rules
   const { error: rulesError, count: rulesDeleted } = await supabase
@@ -57,9 +58,7 @@ export async function deleteAllUserData(
     );
   }
 
-  console.log(
-    `[USER-DATA-CLEANUP] Deleted ${rulesDeleted || 0} categorization rules`
-  );
+  logEvent("USER-DATA-CLEANUP", "deleted-rules", { userId, count: rulesDeleted || 0 });
 
   // Step 3: Delete plaid sessions
   const { error: sessionsError, count: sessionsDeleted } = await supabase
@@ -73,9 +72,7 @@ export async function deleteAllUserData(
     );
   }
 
-  console.log(
-    `[USER-DATA-CLEANUP] Deleted ${sessionsDeleted || 0} account sessions`
-  );
+  logEvent("USER-DATA-CLEANUP", "deleted-sessions", { userId, count: sessionsDeleted || 0 });
 
   // Step 4: Count related records before cascade deletion
   const { count: accountsCount } = await supabase
@@ -117,12 +114,13 @@ export async function deleteAllUserData(
     );
   }
 
-  console.log(
-    `[USER-DATA-CLEANUP] Deleted ${connectionsDeleted || 0} plaid connections`
-  );
-  console.log(
-    `[USER-DATA-CLEANUP] Cascade deleted ~${accountsCount || 0} accounts, ~${transactionsCount || 0} transactions, ~${syncStatesCount || 0} sync states`
-  );
+  logEvent("USER-DATA-CLEANUP", "deleted-connections", { userId, count: connectionsDeleted || 0 });
+  logEvent("USER-DATA-CLEANUP", "cascade-deleted", {
+    userId,
+    accounts: accountsCount || 0,
+    transactions: transactionsCount || 0,
+    syncStates: syncStatesCount || 0
+  });
 
   const summary: UserDataDeletionSummary = {
     userId,
@@ -135,7 +133,16 @@ export async function deleteAllUserData(
     syncStatesDeleted: syncStatesCount || 0,
   };
 
-  console.log(`[USER-DATA-CLEANUP] ✓ Deletion complete:`, summary);
+  logEvent("USER-DATA-CLEANUP", "deletion-complete", {
+    userId: summary.userId,
+    budgetsDeleted: summary.budgetsDeleted,
+    rulesDeleted: summary.rulesDeleted,
+    sessionsDeleted: summary.sessionsDeleted,
+    connectionsDeleted: summary.connectionsDeleted,
+    accountsDeleted: summary.accountsDeleted,
+    transactionsDeleted: summary.transactionsDeleted,
+    syncStatesDeleted: summary.syncStatesDeleted
+  });
 
   return summary;
 }
