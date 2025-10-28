@@ -9,7 +9,7 @@ import {
   findAccountConnectionsByUserId,
   AccountConnection,
 } from "../../storage/repositories/account-connections.js";
-import { CronLogger } from "../utils/cron-logger.js";
+import { logBatchOperation, logEvent } from "../../utils/logger.js";
 
 export interface UserSyncOptions {
   /**
@@ -27,11 +27,6 @@ export interface UserSyncOptions {
    * If specified, only syncs connections from this environment
    */
   environment?: "sandbox" | "development" | "production";
-
-  /**
-   * Logger instance (optional, creates default if not provided)
-   */
-  logger?: CronLogger;
 }
 
 export class UserBatchSyncService {
@@ -65,46 +60,49 @@ export class UserBatchSyncService {
    */
   private async syncUserConnections(
     userId: string,
-    syncFn: UserSyncOptions["syncFn"],
-    logger: CronLogger
-  ): Promise<{ success: boolean; error?: string }> {
+    syncFn: UserSyncOptions["syncFn"]
+  ): Promise<{ success: boolean; error?: unknown }> {
     try {
-      logger.info(`━━━ Syncing user: ${userId} ━━━`);
+      logEvent("CRON:batch-sync", "user-sync-start", { userId });
 
       // Get all connections for this user
       const connections = await findAccountConnectionsByUserId(userId);
 
       if (connections.length === 0) {
-        logger.warn(`User ${userId} has no connections, skipping`);
+        logEvent("CRON:batch-sync", "user-no-connections", { userId }, "warn");
         return { success: true };
       }
 
-      logger.info(
-        `User ${userId} has ${connections.length} connection(s)`
-      );
+      logEvent("CRON:batch-sync", "user-connections-found", {
+        userId,
+        connectionCount: connections.length,
+      });
 
       // Sync each connection
       for (const connection of connections) {
-        try {
-          logger.info(`Syncing connection ${connection.itemId}`);
-          await syncFn(userId, connection);
-          logger.success(
-            `Connection ${connection.itemId} synced successfully`
-          );
-        } catch (error: any) {
-          logger.error(
-            `Failed to sync connection ${connection.itemId}`,
-            error
-          );
-          throw error; // Propagate to mark user as failed
-        }
+        logEvent("CRON:batch-sync", "connection-sync-start", {
+          userId,
+          itemId: connection.itemId,
+        });
+
+        await syncFn(userId, connection);
+
+        logEvent("CRON:batch-sync", "connection-sync-complete", {
+          userId,
+          itemId: connection.itemId,
+        });
       }
 
-      logger.success(`User ${userId} sync complete`);
+      logEvent("CRON:batch-sync", "user-sync-complete", { userId });
       return { success: true };
     } catch (error: any) {
-      logger.error(`User ${userId} sync failed`, error);
-      return { success: false, error: error.message };
+      logEvent(
+        "CRON:batch-sync",
+        "user-sync-error",
+        { userId, error: error.message },
+        "error"
+      );
+      return { success: false, error };
     }
   }
 
@@ -113,73 +111,45 @@ export class UserBatchSyncService {
    * Handles error isolation, stats tracking, and logging
    */
   async syncAllUsers(options: UserSyncOptions): Promise<void> {
-    const {
-      syncFn,
-      parallel = false,
-      environment,
-      logger = new CronLogger("batch-sync"),
-    } = options;
-
-    logger.logStart();
+    const { syncFn, environment } = options;
 
     if (environment) {
-      logger.info(`Filtering connections by environment: ${environment}`);
+      logEvent("CRON:batch-sync", "filter-environment", { environment });
     }
 
-    try {
-      // Get all user IDs (optionally filtered by environment)
-      const userIds = await this.getAllUserIds(environment);
-      logger.info(`Found ${userIds.length} unique users`);
+    // Get all user IDs (optionally filtered by environment)
+    const userIds = await this.getAllUserIds(environment);
 
-      if (userIds.length === 0) {
-        logger.warn(
-          environment
+    if (userIds.length === 0) {
+      logEvent(
+        "CRON:batch-sync",
+        "no-users-found",
+        {
+          message: environment
             ? `No users found with ${environment} connections`
-            : "No users found with Plaid connections"
-        );
-        return;
+            : "No users found with Plaid connections",
+        },
+        "warn"
+      );
+      return;
+    }
+
+    logEvent("CRON:batch-sync", "users-found", {
+      userCount: userIds.length,
+    });
+
+    // Use functional batch logger to process all users
+    const result = await logBatchOperation(
+      "CRON:batch-sync",
+      userIds,
+      async (userId) => {
+        return await this.syncUserConnections(userId, syncFn);
       }
+    );
 
-      logger.updateStats({ totalItems: userIds.length });
-
-      // Sync each user (sequential or parallel)
-      if (parallel) {
-        // Parallel execution (faster but less safe)
-        const results = await Promise.allSettled(
-          userIds.map((userId) =>
-            this.syncUserConnections(userId, syncFn, logger)
-          )
-        );
-
-        results.forEach((result) => {
-          if (result.status === "fulfilled" && result.value.success) {
-            logger.incrementSuccess();
-          } else {
-            logger.incrementFailure();
-          }
-        });
-      } else {
-        // Sequential execution (safer, default)
-        for (const userId of userIds) {
-          const result = await this.syncUserConnections(userId, syncFn, logger);
-
-          if (result.success) {
-            logger.incrementSuccess();
-          } else {
-            logger.incrementFailure();
-          }
-        }
-      }
-    } catch (error: any) {
-      logger.error("Fatal error during batch sync", error);
-      throw error;
-    } finally {
-      logger.logSummary();
-
-      // Exit with error code if any users failed
-      if (logger.hasFailures()) {
-        process.exit(1);
-      }
+    // Exit with error code if any users failed
+    if (result.failedItems > 0) {
+      process.exit(1);
     }
   }
 }

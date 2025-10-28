@@ -5,6 +5,7 @@
 
 import { getSupabase } from "../supabase.js";
 import { Tables } from "../database.types.js";
+import { logEvent } from "../../utils/logger.js";
 
 export type TransactionRow = Tables<"transactions">;
 
@@ -34,7 +35,7 @@ export interface Transaction {
 export async function upsertTransactions(
   transactions: Omit<Transaction, "createdAt" | "updatedAt">[]
 ): Promise<void> {
-  console.log(`[REPO/TRANSACTIONS] Upserting ${transactions.length} transactions`);
+  logEvent("REPO/TRANSACTIONS", "upserting", { count: transactions.length });
 
   const rows = transactions.map((tx) => ({
     transaction_id: tx.transactionId,
@@ -62,11 +63,11 @@ export async function upsertTransactions(
     });
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Upsert error:", error);
+    logEvent("REPO/TRANSACTIONS", "upsert-error", { error: error.message }, "error");
     throw new Error(`Failed to upsert transactions: ${error.message}`);
   }
 
-  console.log(`[REPO/TRANSACTIONS] Successfully upserted ${transactions.length} transactions`);
+  logEvent("REPO/TRANSACTIONS", "upserted", { count: transactions.length });
 }
 
 /**
@@ -77,7 +78,7 @@ export async function findTransactionsByUserId(
   startDate?: string,
   endDate?: string
 ): Promise<Transaction[]> {
-  console.log(`[REPO/TRANSACTIONS] Fetching transactions for user ${userId}`);
+  logEvent("REPO/TRANSACTIONS", "fetching-user-transactions", { userId, startDate, endDate });
 
   let query = getSupabase()
     .from("transactions")
@@ -96,11 +97,11 @@ export async function findTransactionsByUserId(
   const { data, error } = await query;
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Query error:", error);
+    logEvent("REPO/TRANSACTIONS", "query-error", { error: error.message }, "error");
     throw new Error(`Failed to fetch transactions: ${error.message}`);
   }
 
-  console.log(`[REPO/TRANSACTIONS] Found ${data?.length || 0} transactions`);
+  logEvent("REPO/TRANSACTIONS", "found-transactions", { count: data?.length || 0 });
 
   return (data || []).map(rowToTransaction);
 }
@@ -114,7 +115,7 @@ export async function findTransactionsByBudgetId(
   startDate?: string,
   endDate?: string
 ): Promise<Transaction[]> {
-  console.log(`[REPO/TRANSACTIONS] Fetching transactions for budget ${budgetId}`);
+  logEvent("REPO/TRANSACTIONS", "fetching-budget-transactions", { userId, budgetId, startDate, endDate });
 
   let query = getSupabase()
     .from("transactions")
@@ -134,11 +135,11 @@ export async function findTransactionsByBudgetId(
   const { data, error } = await query;
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Query error:", error);
+    logEvent("REPO/TRANSACTIONS", "query-error", { error: error.message }, "error");
     throw new Error(`Failed to fetch budget transactions: ${error.message}`);
   }
 
-  console.log(`[REPO/TRANSACTIONS] Found ${data?.length || 0} transactions for budget`);
+  logEvent("REPO/TRANSACTIONS", "found-budget-transactions", { count: data?.length || 0 });
 
   return (data || []).map(rowToTransaction);
 }
@@ -149,7 +150,7 @@ export async function findTransactionsByBudgetId(
 export async function findUncategorizedTransactions(
   userId: string
 ): Promise<Transaction[]> {
-  console.log(`[REPO/TRANSACTIONS] Fetching uncategorized transactions for user ${userId}`);
+  logEvent("REPO/TRANSACTIONS", "fetching-uncategorized", { userId });
 
   const { data, error } = await getSupabase()
     .from("transactions")
@@ -159,11 +160,11 @@ export async function findUncategorizedTransactions(
     .order("date", { ascending: false });
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Query error:", error);
+    logEvent("REPO/TRANSACTIONS", "query-error", { error: error.message }, "error");
     throw new Error(`Failed to fetch uncategorized transactions: ${error.message}`);
   }
 
-  console.log(`[REPO/TRANSACTIONS] Found ${data?.length || 0} uncategorized transactions`);
+  logEvent("REPO/TRANSACTIONS", "found-uncategorized", { count: data?.length || 0 });
 
   return (data || []).map(rowToTransaction);
 }
@@ -174,7 +175,7 @@ export async function findUncategorizedTransactions(
 export async function updateTransactionCategories(
   updates: { transactionId: string; customCategory: string }[]
 ): Promise<void> {
-  console.log(`[REPO/TRANSACTIONS] Updating categories for ${updates.length} transactions`);
+  logEvent("REPO/TRANSACTIONS", "updating-categories", { count: updates.length });
 
   const promises = updates.map((update) =>
     getSupabase()
@@ -191,13 +192,13 @@ export async function updateTransactionCategories(
 
   const errors = results.filter((r) => r.error);
   if (errors.length > 0) {
-    console.error("[REPO/TRANSACTIONS] Update errors:", errors);
+    logEvent("REPO/TRANSACTIONS", "update-errors", { errorCount: errors.length, errors: errors.map((e) => e.error?.message) }, "error");
     throw new Error(
       `Failed to update categories: ${errors.map((e) => e.error?.message).join(", ")}`
     );
   }
 
-  console.log(`[REPO/TRANSACTIONS] Successfully updated ${updates.length} categories`);
+  logEvent("REPO/TRANSACTIONS", "updated-categories", { count: updates.length });
 }
 
 /**
@@ -217,7 +218,7 @@ export async function updateTransactionBudgets(
     .eq("transaction_id", transactionId);
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Update budget error:", error);
+    logEvent("REPO/TRANSACTIONS", "update-budget-error", { error: error.message }, "error");
     throw new Error(`Failed to update budget associations: ${error.message}`);
   }
 }
@@ -228,7 +229,7 @@ export async function updateTransactionBudgets(
 export async function batchUpdateTransactionBudgets(
   updates: { transactionId: string; budgetIds: string[] }[]
 ): Promise<void> {
-  console.log(`[REPO/TRANSACTIONS] Batch updating budgets for ${updates.length} transactions`);
+  logEvent("REPO/TRANSACTIONS", "batch-updating-budgets", { count: updates.length });
 
   const promises = updates.map((update) =>
     updateTransactionBudgets(update.transactionId, update.budgetIds)
@@ -236,14 +237,14 @@ export async function batchUpdateTransactionBudgets(
 
   await Promise.all(promises);
 
-  console.log(`[REPO/TRANSACTIONS] Successfully updated budgets for ${updates.length} transactions`);
+  logEvent("REPO/TRANSACTIONS", "batch-updated-budgets", { count: updates.length });
 }
 
 /**
  * Delete all transactions for a user (when disconnecting accounts)
  */
 export async function deleteTransactionsByUserId(userId: string): Promise<void> {
-  console.log(`[REPO/TRANSACTIONS] Deleting all transactions for user ${userId}`);
+  logEvent("REPO/TRANSACTIONS", "deleting-user-transactions", { userId });
 
   const { error } = await getSupabase()
     .from("transactions")
@@ -251,18 +252,18 @@ export async function deleteTransactionsByUserId(userId: string): Promise<void> 
     .eq("user_id", userId);
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Delete error:", error);
+    logEvent("REPO/TRANSACTIONS", "delete-error", { error: error.message }, "error");
     throw new Error(`Failed to delete transactions: ${error.message}`);
   }
 
-  console.log(`[REPO/TRANSACTIONS] Successfully deleted transactions`);
+  logEvent("REPO/TRANSACTIONS", "deleted-transactions", { userId });
 }
 
 /**
  * Delete transactions for a specific item (when disconnecting an institution)
  */
 export async function deleteTransactionsByItemId(itemId: string): Promise<void> {
-  console.log(`[REPO/TRANSACTIONS] Deleting transactions for item ${itemId}`);
+  logEvent("REPO/TRANSACTIONS", "deleting-item-transactions", { itemId });
 
   const { error } = await getSupabase()
     .from("transactions")
@@ -270,11 +271,11 @@ export async function deleteTransactionsByItemId(itemId: string): Promise<void> 
     .eq("item_id", itemId);
 
   if (error) {
-    console.error("[REPO/TRANSACTIONS] Delete error:", error);
+    logEvent("REPO/TRANSACTIONS", "delete-error", { error: error.message }, "error");
     throw new Error(`Failed to delete transactions: ${error.message}`);
   }
 
-  console.log(`[REPO/TRANSACTIONS] Successfully deleted transactions for item`);
+  logEvent("REPO/TRANSACTIONS", "deleted-item-transactions", { itemId });
 }
 
 /**

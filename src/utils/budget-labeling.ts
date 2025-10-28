@@ -13,6 +13,7 @@ import {
   TransactionForBudgetFilter,
   ClaudeClient,
 } from "./clients/claude.js";
+import { logEvent } from "./logger.js";
 
 /**
  * Minimal transaction shape needed for budget labeling
@@ -37,17 +38,15 @@ export async function labelTransactionArrayForBudgets(
   budgets: Budget[],
   claudeClient?: ClaudeClient
 ): Promise<void> {
-  console.log(
-    `[BUDGET-LABELING] Labeling ${transactions.length} transactions for ${budgets.length} budgets`
-  );
+  logEvent("BUDGET-LABELING", "start", { transactionCount: transactions.length, budgetCount: budgets.length });
 
   if (transactions.length === 0) {
-    console.log("[BUDGET-LABELING] No transactions to label");
+    logEvent("BUDGET-LABELING", "no-transactions");
     return;
   }
 
   if (budgets.length === 0) {
-    console.log("[BUDGET-LABELING] No budgets defined, skipping");
+    logEvent("BUDGET-LABELING", "no-budgets-skipping");
     return;
   }
 
@@ -56,9 +55,7 @@ export async function labelTransactionArrayForBudgets(
 
   // For each budget, filter transactions using Claude
   for (const budget of budgets) {
-    console.log(
-      `[BUDGET-LABELING] Processing budget: ${budget.title} (${budget.id})`
-    );
+    logEvent("BUDGET-LABELING", "processing-budget", { budgetId: budget.id, budgetTitle: budget.title });
 
     // Prepare transactions for budget filter
     const txsForFilter: TransactionForBudgetFilter[] = transactions.map(
@@ -93,14 +90,9 @@ export async function labelTransactionArrayForBudgets(
         }
       }
 
-      console.log(
-        `[BUDGET-LABELING] Budget "${budget.title}": ${matchCount} matching transactions`
-      );
+      logEvent("BUDGET-LABELING", "budget-matches", { budgetId: budget.id, budgetTitle: budget.title, matchCount });
     } catch (error: any) {
-      console.error(
-        `[BUDGET-LABELING] Error filtering for budget ${budget.id}:`,
-        error.message
-      );
+      logEvent("BUDGET-LABELING", "filter-error", { budgetId: budget.id, error: error.message }, "error");
       // Continue with other budgets
     }
   }
@@ -114,9 +106,7 @@ export async function labelTransactionArrayForBudgets(
   await batchUpdateTransactionBudgets(updates);
 
   const txsWithBudgets = updates.filter((u) => u.budgetIds.length > 0).length;
-  console.log(
-    `[BUDGET-LABELING] Complete: ${txsWithBudgets}/${transactions.length} transactions labeled`
-  );
+  logEvent("BUDGET-LABELING", "complete", { labeledCount: txsWithBudgets, totalCount: transactions.length });
 }
 
 /**
@@ -128,20 +118,20 @@ export async function labelTransactionsForBudgets(
   budgets: Budget[],
   claudeClient?: ClaudeClient
 ): Promise<number> {
-  console.log(`[BUDGET-LABELING] Starting for user ${userId} with ${budgets.length} budgets`);
+  logEvent("BUDGET-LABELING", "starting-full-relabel", { userId, budgetCount: budgets.length });
 
   // Fetch all user transactions from database
   const allTransactions = await findTransactionsByUserId(userId);
 
-  console.log(`[BUDGET-LABELING] Processing ${allTransactions.length} transactions for ${budgets.length} budgets`);
+  logEvent("BUDGET-LABELING", "processing-all-transactions", { userId, transactionCount: allTransactions.length, budgetCount: budgets.length });
 
   if (allTransactions.length === 0) {
-    console.log("[BUDGET-LABELING] No transactions to label");
+    logEvent("BUDGET-LABELING", "no-transactions");
     return 0;
   }
 
   if (budgets.length === 0) {
-    console.log("[BUDGET-LABELING] No budgets defined, clearing all budget labels");
+    logEvent("BUDGET-LABELING", "no-budgets-clearing-labels");
 
     // Clear budget_ids for all transactions
     const updates = allTransactions.map((tx) => ({
@@ -158,7 +148,7 @@ export async function labelTransactionsForBudgets(
 
   // For each budget, filter transactions using Claude
   for (const budget of budgets) {
-    console.log(`[BUDGET-LABELING] Processing budget: ${budget.title} (${budget.id})`);
+    logEvent("BUDGET-LABELING", "processing-budget", { budgetId: budget.id, budgetTitle: budget.title });
 
     // Prepare transactions for budget filter
     const txsForFilter: TransactionForBudgetFilter[] = allTransactions.map((tx) => ({
@@ -191,9 +181,9 @@ export async function labelTransactionsForBudgets(
         }
       }
 
-      console.log(`[BUDGET-LABELING] Budget "${budget.title}": ${matchCount} matching transactions`);
+      logEvent("BUDGET-LABELING", "budget-matches", { budgetId: budget.id, budgetTitle: budget.title, matchCount });
     } catch (error: any) {
-      console.error(`[BUDGET-LABELING] Error filtering for budget ${budget.id}:`, error.message);
+      logEvent("BUDGET-LABELING", "filter-error", { budgetId: budget.id, error: error.message }, "error");
       // Continue with other budgets
     }
   }
@@ -207,7 +197,7 @@ export async function labelTransactionsForBudgets(
   await batchUpdateTransactionBudgets(updates);
 
   const txsWithBudgets = updates.filter((u) => u.budgetIds.length > 0).length;
-  console.log(`[BUDGET-LABELING] Complete: ${txsWithBudgets}/${allTransactions.length} transactions labeled`);
+  logEvent("BUDGET-LABELING", "complete", { labeledCount: txsWithBudgets, totalCount: allTransactions.length });
 
   return txsWithBudgets;
 }
@@ -221,13 +211,13 @@ export async function labelTransactionsForSingleBudget(
   budget: Budget,
   claudeClient?: ClaudeClient
 ): Promise<number> {
-  console.log(`[BUDGET-LABELING] Labeling transactions for single budget: ${budget.title}`);
+  logEvent("BUDGET-LABELING", "labeling-single-budget", { userId, budgetId: budget.id, budgetTitle: budget.title });
 
   // Fetch all user transactions from database
   const allTransactions = await findTransactionsByUserId(userId);
 
   if (allTransactions.length === 0) {
-    console.log("[BUDGET-LABELING] No transactions to label");
+    logEvent("BUDGET-LABELING", "no-transactions");
     return 0;
   }
 
@@ -289,10 +279,10 @@ export async function labelTransactionsForSingleBudget(
 
   if (changedUpdates.length > 0) {
     await batchUpdateTransactionBudgets(changedUpdates);
-    console.log(`[BUDGET-LABELING] Updated ${changedUpdates.length} transactions`);
+    logEvent("BUDGET-LABELING", "updated-transactions", { count: changedUpdates.length });
   }
 
-  console.log(`[BUDGET-LABELING] Budget "${budget.title}": ${matchingTxIds.size} matching transactions`);
+  logEvent("BUDGET-LABELING", "single-budget-complete", { budgetId: budget.id, budgetTitle: budget.title, matchCount: matchingTxIds.size });
 
   return matchingTxIds.size;
 }

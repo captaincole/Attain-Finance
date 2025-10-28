@@ -7,6 +7,7 @@
 import crypto from "crypto";
 import { getSupabase } from "../supabase.js";
 import { Tables } from "../database.types.js";
+import { logEvent } from "../../utils/logger.js";
 
 // Encryption configuration
 const ALGORITHM = "aes-256-gcm";
@@ -107,7 +108,7 @@ export async function upsertAccountConnection(
   environment: "sandbox" | "development" | "production",
   institutionName?: string
 ): Promise<void> {
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Upserting connection for user:", userId);
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "upserting-connection", { userId, itemId, environment, institutionName });
 
   const encryptedToken = encryptAccessToken(accessToken);
 
@@ -129,11 +130,11 @@ export async function upsertAccountConnection(
     );
 
   if (error) {
-    console.error("[REPO/ACCOUNT-CONNECTIONS] Upsert error:", error);
+    logEvent("REPO/ACCOUNT-CONNECTIONS", "upsert-error", { error: error.message }, "error");
     throw new Error(`Failed to save connection: ${error.message}`);
   }
 
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Connection saved successfully");
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "connection-saved", { userId, itemId });
 }
 
 /**
@@ -142,7 +143,7 @@ export async function upsertAccountConnection(
 export async function findAccountConnectionsByUserId(
   userId: string
 ): Promise<AccountConnection[]> {
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Fetching connections for user:", userId);
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "fetching-connections", { userId });
 
   const { data, error } = await getSupabase()
     .from("plaid_connections")
@@ -151,16 +152,16 @@ export async function findAccountConnectionsByUserId(
     .order("connected_at", { ascending: false });
 
   if (error) {
-    console.error("[REPO/ACCOUNT-CONNECTIONS] Query error:", error);
+    logEvent("REPO/ACCOUNT-CONNECTIONS", "query-error", { error: error.message }, "error");
     throw new Error(`Failed to fetch connections: ${error.message}`);
   }
 
   if (!data || data.length === 0) {
-    console.log("[REPO/ACCOUNT-CONNECTIONS] No connections found");
+    logEvent("REPO/ACCOUNT-CONNECTIONS", "no-connections-found", { userId });
     return [];
   }
 
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Found", data.length, "connections");
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "found-connections", { userId, count: data.length });
 
   // Decrypt all connections
   return data.map((row) => ({
@@ -180,7 +181,7 @@ export async function findAccountConnectionsByUserId(
  * Delete a connection by item ID
  */
 export async function deleteAccountConnectionByItemId(itemId: string): Promise<void> {
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Deleting connection:", itemId);
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "deleting-connection", { itemId });
 
   const { error } = await getSupabase()
     .from("plaid_connections")
@@ -188,18 +189,18 @@ export async function deleteAccountConnectionByItemId(itemId: string): Promise<v
     .eq("item_id", itemId);
 
   if (error) {
-    console.error("[REPO/ACCOUNT-CONNECTIONS] Delete error:", error);
+    logEvent("REPO/ACCOUNT-CONNECTIONS", "delete-error", { error: error.message }, "error");
     throw new Error(`Failed to delete connection: ${error.message}`);
   }
 
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Connection deleted successfully");
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "connection-deleted", { itemId });
 }
 
 /**
  * Delete all connections for a user
  */
 export async function deleteAllAccountConnectionsByUserId(userId: string): Promise<void> {
-  console.log("[REPO/ACCOUNT-CONNECTIONS] Deleting all connections for user:", userId);
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "deleting-all-connections", { userId });
 
   const { error } = await getSupabase()
     .from("plaid_connections")
@@ -207,9 +208,9 @@ export async function deleteAllAccountConnectionsByUserId(userId: string): Promi
     .eq("user_id", userId);
 
   if (error) {
-    console.error("[REPO/ACCOUNT-CONNECTIONS] Delete error:", error);
+    logEvent("REPO/ACCOUNT-CONNECTIONS", "delete-error", { error: error.message }, "error");
     throw new Error(`Failed to delete connections: ${error.message}`);
   }
 
-  console.log("[REPO/ACCOUNT-CONNECTIONS] All connections deleted successfully");
+  logEvent("REPO/ACCOUNT-CONNECTIONS", "all-connections-deleted", { userId });
 }
