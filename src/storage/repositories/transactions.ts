@@ -143,11 +143,13 @@ export async function findTransactionsByUserId(
   // Apply category filter (case-insensitive partial match)
   // Since categories are AI-generated and user-defined, we use fuzzy matching
   if (filters?.categories && filters.categories.length > 0) {
-    // Build OR condition for multiple category searches
+    // Build OR condition for categories using PostgREST syntax
     // PostgREST uses * as wildcard for ilike (not %)
     const categoryConditions = filters.categories
       .map((cat) => `custom_category.ilike.*${cat}*`)
       .join(",");
+
+    // Use .or() which creates: WHERE existing_filters AND (cat1 OR cat2 OR cat3)
     query = query.or(categoryConditions);
   }
 
