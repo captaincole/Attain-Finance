@@ -96,15 +96,26 @@ export async function deleteTransactions(
   logEvent("REPO/TRANSACTIONS", "deleted", { count: transactionIds.length });
 }
 
+export interface FindTransactionsFilters {
+  startDate?: string;
+  endDate?: string;
+  accountIds?: string[];
+  categories?: string[];
+  budgetId?: string;
+  pendingOnly?: boolean;
+  excludePending?: boolean;
+}
+
 /**
- * Get all transactions for a user within date range
+ * Get all transactions for a user within date range with optional filters
  */
 export async function findTransactionsByUserId(
   userId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  filters?: FindTransactionsFilters
 ): Promise<Transaction[]> {
-  logEvent("REPO/TRANSACTIONS", "fetching-user-transactions", { userId, startDate, endDate });
+  logEvent("REPO/TRANSACTIONS", "fetching-user-transactions", { userId, startDate, endDate, filters });
 
   let query = getSupabase()
     .from("transactions")
@@ -112,12 +123,43 @@ export async function findTransactionsByUserId(
     .eq("user_id", userId)
     .order("date", { ascending: false });
 
-  if (startDate) {
-    query = query.gte("date", startDate);
+  // Apply date filters (use filters object if provided, otherwise use direct parameters)
+  const effectiveStartDate = filters?.startDate || startDate;
+  const effectiveEndDate = filters?.endDate || endDate;
+
+  if (effectiveStartDate) {
+    query = query.gte("date", effectiveStartDate);
   }
 
-  if (endDate) {
-    query = query.lte("date", endDate);
+  if (effectiveEndDate) {
+    query = query.lte("date", effectiveEndDate);
+  }
+
+  // Apply account filter
+  if (filters?.accountIds && filters.accountIds.length > 0) {
+    query = query.in("account_id", filters.accountIds);
+  }
+
+  // Apply category filter (case-insensitive partial match)
+  // Since categories are AI-generated and user-defined, we use fuzzy matching
+  if (filters?.categories && filters.categories.length > 0) {
+    // Build OR condition for multiple category searches
+    const categoryConditions = filters.categories
+      .map((cat) => `custom_category.ilike.%${cat}%`)
+      .join(",");
+    query = query.or(categoryConditions);
+  }
+
+  // Apply budget filter
+  if (filters?.budgetId) {
+    query = query.contains("budget_ids", [filters.budgetId]);
+  }
+
+  // Apply pending status filter
+  if (filters?.pendingOnly) {
+    query = query.eq("pending", true);
+  } else if (filters?.excludePending) {
+    query = query.eq("pending", false);
   }
 
   const { data, error } = await query;

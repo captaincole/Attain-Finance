@@ -6,8 +6,11 @@ import { logToolEvent } from "../../utils/logger.js";
 interface GetTransactionsArgs {
   start_date?: string;
   end_date?: string;
-  account_filter?: string;
-  category_filter?: string;
+  account_ids?: string[];  // Array of account IDs to filter by
+  categories?: string[];   // Array of category names to filter by
+  budget_id?: string;      // Budget ID to filter by
+  pending_only?: boolean;  // Show only pending transactions
+  exclude_pending?: boolean; // Exclude pending transactions
 }
 
 // Storage for temporary transaction data (in-memory for MVP)
@@ -79,13 +82,25 @@ Please connect your account first by saying:
   })();
 
   // Fetch transactions from DATABASE (not Plaid)
-  const transactions = await findTransactionsByUserId(userId, startDate, endDate);
+  const transactions = await findTransactionsByUserId(userId, startDate, endDate, {
+    startDate,
+    endDate,
+    accountIds: args.account_ids,
+    categories: args.categories,
+    budgetId: args.budget_id,
+    pendingOnly: args.pending_only,
+    excludePending: args.exclude_pending,
+  });
 
   logToolEvent("get-transactions", "transactions-loaded", {
     userId,
     count: transactions.length,
     startDate,
     endDate,
+    accountFilter: args.account_ids ? `${args.account_ids.length} accounts` : "all accounts",
+    categoryFilter: args.categories ? `${args.categories.length} categories` : "all categories",
+    budgetFilter: args.budget_id || "no budget filter",
+    pendingFilter: args.pending_only ? "pending only" : args.exclude_pending ? "exclude pending" : "all",
   });
 
   if (transactions.length === 0) {
