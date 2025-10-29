@@ -144,8 +144,9 @@ export async function findTransactionsByUserId(
   // Since categories are AI-generated and user-defined, we use fuzzy matching
   if (filters?.categories && filters.categories.length > 0) {
     // Build OR condition for multiple category searches
+    // PostgREST uses * as wildcard for ilike (not %)
     const categoryConditions = filters.categories
-      .map((cat) => `custom_category.ilike.%${cat}%`)
+      .map((cat) => `custom_category.ilike.*${cat}*`)
       .join(",");
     query = query.or(categoryConditions);
   }
