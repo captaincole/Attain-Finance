@@ -3,7 +3,7 @@ import path from "path";
 import { Router } from "express";
 import { fileURLToPath } from "url";
 import { verifySignedToken } from "../../utils/signed-urls.js";
-import { userTransactionData } from "../../tools/categorization/get-transactions.js";
+import { userTransactionData } from "../../tools/transactions/get-transactions.js";
 import { logRouteEvent, serializeError } from "../../utils/logger.js";
 
 const router = Router();

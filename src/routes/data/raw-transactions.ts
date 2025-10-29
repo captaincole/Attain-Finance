@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifySignedToken } from "../../utils/signed-urls.js";
-import { userRawTransactionData } from "../../tools/categorization/get-raw-transactions.js";
+import { userRawTransactionData } from "../../tools/transactions/get-raw-transactions.js";
 
 const router = Router();
 
