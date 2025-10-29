@@ -26,6 +26,7 @@ import { TransactionSyncService } from "./transaction-sync.js";
 import { getSupabase } from "../storage/supabase.js";
 import { ClaudeClient } from "../utils/clients/claude.js";
 import { logServiceEvent, serializeError } from "../utils/logger.js";
+import { upsertHoldingsForAccount } from "../storage/repositories/investment-holdings.js";
 
 /**
  * Initiate account connection flow
@@ -185,6 +186,73 @@ export async function completeAccountConnection(
       logServiceEvent(
         "account-service",
         "background-sync-error",
+        { userId: session.userId, itemId, error: serializeError(error) },
+        "error"
+      );
+      // Error is logged but does not affect OAuth callback response
+    }
+  });
+
+  // Sync investment holdings in background if investment accounts detected
+  setImmediate(async () => {
+    try {
+      // Check if any accounts are investment type
+      const accountsResponse = await plaidClient.accountsGet({
+        access_token: accessToken,
+      });
+
+      const hasInvestmentAccounts = accountsResponse.data.accounts.some(
+        (acc) => acc.type === "investment"
+      );
+
+      if (!hasInvestmentAccounts) {
+        logServiceEvent("account-service", "no-investment-accounts", {
+          userId: session.userId,
+          itemId,
+        });
+        return;
+      }
+
+      logServiceEvent("account-service", "investment-sync-start", {
+        userId: session.userId,
+        itemId,
+      });
+
+      // Fetch holdings from Plaid
+      const holdingsResponse = await plaidClient.investmentsHoldingsGet({
+        access_token: accessToken,
+      });
+
+      // Store holdings for each investment account
+      for (const account of holdingsResponse.data.accounts) {
+        if (account.type === "investment") {
+          const accountHoldings = holdingsResponse.data.holdings.filter(
+            (h) => h.account_id === account.account_id
+          );
+
+          await upsertHoldingsForAccount(
+            session.userId,
+            account.account_id,
+            accountHoldings,
+            holdingsResponse.data.securities
+          );
+
+          logServiceEvent("account-service", "investment-holdings-stored", {
+            userId: session.userId,
+            accountId: account.account_id,
+            holdingsCount: accountHoldings.length,
+          });
+        }
+      }
+
+      logServiceEvent("account-service", "investment-sync-complete", {
+        userId: session.userId,
+        itemId,
+      });
+    } catch (error: any) {
+      logServiceEvent(
+        "account-service",
+        "investment-sync-error",
         { userId: session.userId, itemId, error: serializeError(error) },
         "error"
       );

@@ -15,6 +15,7 @@ export interface UserDataDeletionSummary {
   accountsDeleted: number;
   transactionsDeleted: number;
   syncStatesDeleted: number;
+  investmentHoldingsDeleted: number;
 }
 
 /**
@@ -85,7 +86,7 @@ export async function deleteAllUserData(
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
 
-  // Get account IDs first, then count sync states
+  // Get account IDs first, then count sync states and investment holdings
   const { data: userAccounts } = await supabase
     .from("accounts")
     .select("account_id")
@@ -93,13 +94,20 @@ export async function deleteAllUserData(
 
   const accountIds = userAccounts?.map((a) => a.account_id) || [];
   let syncStatesCount = 0;
+  let investmentHoldingsCount = 0;
 
   if (accountIds.length > 0) {
-    const { count } = await supabase
+    const { count: syncCount } = await supabase
       .from("account_sync_state")
       .select("*", { count: "exact", head: true })
       .in("account_id", accountIds);
-    syncStatesCount = count || 0;
+    syncStatesCount = syncCount || 0;
+
+    const { count: holdingsCount } = await supabase
+      .from("investment_holdings")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+    investmentHoldingsCount = holdingsCount || 0;
   }
 
   // Step 5: Delete plaid connections (triggers cascades)
@@ -119,7 +127,8 @@ export async function deleteAllUserData(
     userId,
     accounts: accountsCount || 0,
     transactions: transactionsCount || 0,
-    syncStates: syncStatesCount || 0
+    syncStates: syncStatesCount || 0,
+    investmentHoldings: investmentHoldingsCount || 0
   });
 
   const summary: UserDataDeletionSummary = {
@@ -131,6 +140,7 @@ export async function deleteAllUserData(
     accountsDeleted: accountsCount || 0,
     transactionsDeleted: transactionsCount || 0,
     syncStatesDeleted: syncStatesCount || 0,
+    investmentHoldingsDeleted: investmentHoldingsCount || 0,
   };
 
   logEvent("USER-DATA-CLEANUP", "deletion-complete", {
@@ -141,7 +151,8 @@ export async function deleteAllUserData(
     connectionsDeleted: summary.connectionsDeleted,
     accountsDeleted: summary.accountsDeleted,
     transactionsDeleted: summary.transactionsDeleted,
-    syncStatesDeleted: summary.syncStatesDeleted
+    syncStatesDeleted: summary.syncStatesDeleted,
+    investmentHoldingsDeleted: summary.investmentHoldingsDeleted
   });
 
   return summary;

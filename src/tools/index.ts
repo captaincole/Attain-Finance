@@ -10,6 +10,7 @@ import { getCategorizationTools } from "./categorization/index.js";
 import { getOpinionTools } from "./opinions/index.js";
 import { getBudgetTools } from "./budgets/index.js";
 import { getTransactionTools } from "./transactions/index.js";
+import { getInvestmentTools } from "./investments/index.js";
 import type { ToolDefinition } from "./types.js";
 import { logEvent, serializeError } from "../utils/logger.js";
 
@@ -23,6 +24,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
     ...getOpinionTools(),
     ...getBudgetTools(),
     ...getTransactionTools(),
+    ...getInvestmentTools(),
   ];
 
   // Register each tool with logging and error handling

@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -207,6 +202,83 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      investment_holdings: {
+        Row: {
+          account_id: string
+          close_price: number | null
+          close_price_as_of: string | null
+          cost_basis: number | null
+          created_at: string | null
+          id: string
+          institution_price: number
+          institution_price_as_of: string | null
+          institution_value: number
+          iso_currency_code: string | null
+          last_synced_at: string | null
+          quantity: number
+          security_id: string
+          security_name: string | null
+          security_subtype: string | null
+          security_type: string | null
+          ticker_symbol: string | null
+          unofficial_currency_code: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          close_price?: number | null
+          close_price_as_of?: string | null
+          cost_basis?: number | null
+          created_at?: string | null
+          id?: string
+          institution_price: number
+          institution_price_as_of?: string | null
+          institution_value: number
+          iso_currency_code?: string | null
+          last_synced_at?: string | null
+          quantity: number
+          security_id: string
+          security_name?: string | null
+          security_subtype?: string | null
+          security_type?: string | null
+          ticker_symbol?: string | null
+          unofficial_currency_code?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          close_price?: number | null
+          close_price_as_of?: string | null
+          cost_basis?: number | null
+          created_at?: string | null
+          id?: string
+          institution_price?: number
+          institution_price_as_of?: string | null
+          institution_value?: number
+          iso_currency_code?: string | null
+          last_synced_at?: string | null
+          quantity?: number
+          security_id?: string
+          security_name?: string | null
+          security_subtype?: string | null
+          security_type?: string | null
+          ticker_symbol?: string | null
+          unofficial_currency_code?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investment_holdings_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
       }
       opinions: {
         Row: {
@@ -516,3 +588,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
