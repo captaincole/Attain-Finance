@@ -52,7 +52,7 @@ export async function initiateAccountConnection(
     user: {
       client_user_id: userId,
     },
-    client_name: "Personal Finance MCP",
+    client_name: "Attain Finance",
     products: [Products.Assets],
     required_if_supported_products: [
       Products.Transactions,
@@ -404,7 +404,7 @@ export async function initiateAccountUpdate(
     user: {
       client_user_id: userId,
     },
-    client_name: "Personal Finance MCP",
+    client_name: "Attain Finance",
     access_token: connection.accessToken,
     country_codes: [CountryCode.Us],
     language: "en",

@@ -26,7 +26,7 @@ export function plaidLinkHandler(req: Request, res: Response) {
     <!DOCTYPE html>
     <html>
     <head>
-      <title>Connect Your Bank - Personal Finance MCP</title>
+      <title>Connect Your Bank - Attain Finance</title>
       <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
       <style>
         body {
