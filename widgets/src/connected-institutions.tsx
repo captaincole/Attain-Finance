@@ -11,6 +11,52 @@ interface Account {
   };
 }
 
+// Helper function to format currency with commas and dollar sign
+function formatCurrency(amount: number | undefined): string {
+  if (amount === undefined || amount === null) return "N/A";
+  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+// Helper function to get account type label
+function getAccountTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    'credit': 'Credit Cards',
+    'depository': 'Bank Accounts',
+    'investment': 'Investment Accounts',
+    'loan': 'Loans',
+    'other': 'Other Accounts'
+  };
+  return labels[type] || 'Other Accounts';
+}
+
+// Enhanced account interface with institution info
+interface AccountWithInstitution extends Account {
+  institutionName: string;
+}
+
+// Flatten all accounts across institutions and group by type
+function groupAllAccountsByType(institutions: Institution[]): Map<string, AccountWithInstitution[]> {
+  const grouped = new Map<string, AccountWithInstitution[]>();
+
+  institutions.forEach(institution => {
+    // Skip institutions with errors
+    if (institution.error) return;
+
+    institution.accounts.forEach(account => {
+      const type = account.type;
+      if (!grouped.has(type)) {
+        grouped.set(type, []);
+      }
+      grouped.get(type)!.push({
+        ...account,
+        institutionName: institution.institutionName
+      });
+    });
+  });
+
+  return grouped;
+}
+
 interface Institution {
   itemId: string;
   institutionName: string;
@@ -76,14 +122,45 @@ function ConnectedInstitutionsWidget() {
   const institutions = toolOutput.institutions || [];
   const totalAccounts = toolOutput.totalAccounts || 0;
 
+  // Check for any institutions with errors
+  const errorInstitutions = institutions.filter(inst => inst.error);
+
+  // Group all accounts by type (ignoring institution boundaries)
+  const accountsByType = groupAllAccountsByType(institutions);
+
+  // Find the most recent sync time across all institutions
+  const lastSyncedAt = institutions
+    .filter(inst => inst.lastSyncedAt)
+    .map(inst => new Date(inst.lastSyncedAt!))
+    .sort((a, b) => b.getTime() - a.getTime())[0];
+
   return (
     <div className="institutions-widget">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #e0e0e0' }}>
-        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>Connected Accounts</h3>
-        <div style={{ fontSize: '0.85rem', color: '#666' }}>{totalAccounts} total</div>
+      <div style={{ marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #e0e0e0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600' }}>Connected Accounts</h3>
+          <div style={{ fontSize: '0.85rem', color: '#666' }}>{totalAccounts} total</div>
+        </div>
+        {lastSyncedAt && (
+          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.25rem' }}>
+            Last updated {lastSyncedAt.toLocaleString()}
+          </div>
+        )}
       </div>
 
-      {institutions.length === 0 ? (
+      {/* Show error institutions first */}
+      {errorInstitutions.map((institution) => (
+        <div key={institution.itemId} style={{ marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '0.25rem' }}>
+            {institution.institutionName}
+          </div>
+          <div style={{ color: '#d32f2f', fontSize: '0.85rem', padding: '0.5rem 0' }}>
+            ⚠️ {institution.error}
+          </div>
+        </div>
+      ))}
+
+      {accountsByType.size === 0 ? (
         <div className="empty-state">
           <p>No institutions connected</p>
           <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
@@ -91,42 +168,32 @@ function ConnectedInstitutionsWidget() {
           </p>
         </div>
       ) : (
-        <div className="institutions-list">
-          {institutions.map((institution, instIndex) => (
-            <div key={institution.itemId}>
-              {instIndex > 0 && <div style={{ height: '1px', background: '#e0e0e0', margin: '0.75rem 0' }} />}
+        <div className="accounts-by-type">
+          {Array.from(accountsByType).map(([accountType, accounts], typeIndex) => (
+            <div key={accountType}>
+              {typeIndex > 0 && <div style={{ height: '1px', background: '#e0e0e0', margin: '0.75rem 0' }} />}
 
-              <div className="institution-section">
-                <div style={{ fontSize: '0.85rem', fontWeight: '600', color: '#666', marginBottom: '0.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>{institution.institutionName}</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>{institution.env}</span>
+              <div style={{ marginTop: typeIndex > 0 ? '1rem' : '0' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: '#888', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {getAccountTypeLabel(accountType)}
                 </div>
-                {institution.lastSyncedAt && (
-                  <div style={{ fontSize: '0.75rem', color: '#999', marginBottom: '0.5rem' }}>
-                    Last updated {new Date(institution.lastSyncedAt).toLocaleString()}
-                  </div>
-                )}
-
-                {institution.error ? (
-                  <div style={{ color: '#d32f2f', fontSize: '0.85rem', padding: '0.5rem 0' }}>
-                    ⚠️ {institution.error}
-                  </div>
-                ) : (
-                  <table style={{ width: '100%', fontSize: '0.9rem', borderCollapse: 'collapse' }}>
-                    <tbody>
-                      {institution.accounts.map((account, index) => (
-                        <tr key={index} style={{ borderBottom: index < institution.accounts.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
-                          <td style={{ padding: '0.4rem 0', textAlign: 'left' }}>
-                            {account.name}
-                          </td>
-                          <td style={{ padding: '0.4rem 0', textAlign: 'right', fontWeight: '500' }}>
-                            ${account.balances.current?.toFixed(2) || "N/A"}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
+                <table style={{ width: '100%', fontSize: '0.9rem', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {accounts.map((account, index) => (
+                      <tr key={index} style={{ borderBottom: index < accounts.length - 1 ? '1px solid #f0f0f0' : 'none' }}>
+                        <td style={{ padding: '0.4rem 0', textAlign: 'left' }}>
+                          <div>{account.name}</div>
+                          <div style={{ fontSize: '0.75rem', color: '#999', marginTop: '0.1rem' }}>
+                            {account.institutionName}
+                          </div>
+                        </td>
+                        <td style={{ padding: '0.4rem 0', textAlign: 'right', fontWeight: '500', verticalAlign: 'top' }}>
+                          {formatCurrency(account.balances.current)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           ))}

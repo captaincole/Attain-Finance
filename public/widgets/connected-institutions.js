@@ -23554,6 +23554,39 @@ var require_client = __commonJS({
 // src/connected-institutions.tsx
 var import_react = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
+function formatCurrency(amount) {
+  if (amount === void 0 || amount === null)
+    return "N/A";
+  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+function getAccountTypeLabel(type) {
+  const labels = {
+    "credit": "Credit Cards",
+    "depository": "Bank Accounts",
+    "investment": "Investment Accounts",
+    "loan": "Loans",
+    "other": "Other Accounts"
+  };
+  return labels[type] || "Other Accounts";
+}
+function groupAllAccountsByType(institutions) {
+  const grouped = /* @__PURE__ */ new Map();
+  institutions.forEach((institution) => {
+    if (institution.error)
+      return;
+    institution.accounts.forEach((account) => {
+      const type = account.type;
+      if (!grouped.has(type)) {
+        grouped.set(type, []);
+      }
+      grouped.get(type).push({
+        ...account,
+        institutionName: institution.institutionName
+      });
+    });
+  });
+  return grouped;
+}
 function useToolOutput() {
   return (0, import_react.useSyncExternalStore)(
     (onChange) => {
@@ -23585,7 +23618,10 @@ function ConnectedInstitutionsWidget() {
   }
   const institutions = toolOutput.institutions || [];
   const totalAccounts = toolOutput.totalAccounts || 0;
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "2px solid #e0e0e0" } }, /* @__PURE__ */ import_react.default.createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: "600" } }, "Connected Accounts"), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", color: "#666" } }, totalAccounts, " total")), institutions.length === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No institutions connected"), /* @__PURE__ */ import_react.default.createElement("p", { style: { fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" } }, 'Use "Connect my bank account" to get started')) : /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-list" }, institutions.map((institution, instIndex) => /* @__PURE__ */ import_react.default.createElement("div", { key: institution.itemId }, instIndex > 0 && /* @__PURE__ */ import_react.default.createElement("div", { style: { height: "1px", background: "#e0e0e0", margin: "0.75rem 0" } }), /* @__PURE__ */ import_react.default.createElement("div", { className: "institution-section" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", fontWeight: "600", color: "#666", marginBottom: "0.25rem", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ import_react.default.createElement("span", null, institution.institutionName), /* @__PURE__ */ import_react.default.createElement("span", { style: { fontSize: "0.75rem", fontWeight: "normal" } }, institution.env)), institution.lastSyncedAt && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#999", marginBottom: "0.5rem" } }, "Last updated ", new Date(institution.lastSyncedAt).toLocaleString()), institution.error ? /* @__PURE__ */ import_react.default.createElement("div", { style: { color: "#d32f2f", fontSize: "0.85rem", padding: "0.5rem 0" } }, "\u26A0\uFE0F ", institution.error) : /* @__PURE__ */ import_react.default.createElement("table", { style: { width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" } }, /* @__PURE__ */ import_react.default.createElement("tbody", null, institution.accounts.map((account, index) => /* @__PURE__ */ import_react.default.createElement("tr", { key: index, style: { borderBottom: index < institution.accounts.length - 1 ? "1px solid #f0f0f0" : "none" } }, /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "left" } }, account.name), /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "right", fontWeight: "500" } }, "$", account.balances.current?.toFixed(2) || "N/A"))))))))));
+  const errorInstitutions = institutions.filter((inst) => inst.error);
+  const accountsByType = groupAllAccountsByType(institutions);
+  const lastSyncedAt = institutions.filter((inst) => inst.lastSyncedAt).map((inst) => new Date(inst.lastSyncedAt)).sort((a, b) => b.getTime() - a.getTime())[0];
+  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "2px solid #e0e0e0" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ import_react.default.createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: "600" } }, "Connected Accounts"), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", color: "#666" } }, totalAccounts, " total")), lastSyncedAt && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#999", marginTop: "0.25rem" } }, "Last updated ", lastSyncedAt.toLocaleString())), errorInstitutions.map((institution) => /* @__PURE__ */ import_react.default.createElement("div", { key: institution.itemId, style: { marginBottom: "1rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", fontWeight: "600", color: "#666", marginBottom: "0.25rem" } }, institution.institutionName), /* @__PURE__ */ import_react.default.createElement("div", { style: { color: "#d32f2f", fontSize: "0.85rem", padding: "0.5rem 0" } }, "\u26A0\uFE0F ", institution.error))), accountsByType.size === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No institutions connected"), /* @__PURE__ */ import_react.default.createElement("p", { style: { fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" } }, 'Use "Connect my bank account" to get started')) : /* @__PURE__ */ import_react.default.createElement("div", { className: "accounts-by-type" }, Array.from(accountsByType).map(([accountType, accounts], typeIndex) => /* @__PURE__ */ import_react.default.createElement("div", { key: accountType }, typeIndex > 0 && /* @__PURE__ */ import_react.default.createElement("div", { style: { height: "1px", background: "#e0e0e0", margin: "0.75rem 0" } }), /* @__PURE__ */ import_react.default.createElement("div", { style: { marginTop: typeIndex > 0 ? "1rem" : "0" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.8rem", fontWeight: "600", color: "#888", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.5px" } }, getAccountTypeLabel(accountType)), /* @__PURE__ */ import_react.default.createElement("table", { style: { width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" } }, /* @__PURE__ */ import_react.default.createElement("tbody", null, accounts.map((account, index) => /* @__PURE__ */ import_react.default.createElement("tr", { key: index, style: { borderBottom: index < accounts.length - 1 ? "1px solid #f0f0f0" : "none" } }, /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "left" } }, /* @__PURE__ */ import_react.default.createElement("div", null, account.name), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#999", marginTop: "0.1rem" } }, account.institutionName)), /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "right", fontWeight: "500", verticalAlign: "top" } }, formatCurrency(account.balances.current)))))))))));
 }
 var root = document.getElementById("connected-institutions-root");
 if (root) {

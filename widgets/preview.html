@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Widget Preview - Personal Finance MCP</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: #f5f5f5;
+    }
+    .preview-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    .widget-selector {
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .widget-selector h1 {
+      margin: 0 0 10px 0;
+      font-size: 1.5rem;
+    }
+    .widget-selector select {
+      width: 100%;
+      padding: 8px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .mock-data-editor {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+    .mock-data-editor textarea {
+      width: 100%;
+      height: 150px;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 0.85rem;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .mock-data-editor button {
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .mock-data-editor button:hover {
+      background: #5568d3;
+    }
+    .error-display {
+      background: #ffebee;
+      color: #c62828;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      display: none;
+    }
+    #widget-root {
+      min-height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-container">
+    <div class="widget-selector">
+      <h1>Widget Preview</h1>
+      <select id="widget-select">
+        <option value="connected-institutions">Connected Institutions</option>
+        <option value="budget-list">Budget List</option>
+      </select>
+    </div>
+
+    <div class="mock-data-editor">
+      <label for="mock-data"><strong>Mock Data (JSON):</strong></label>
+      <textarea id="mock-data"></textarea>
+      <button id="update-data">Update Widget</button>
+    </div>
+
+    <div id="error-display" class="error-display"></div>
+
+    <div id="widget-root"></div>
+  </div>
+
+  <script type="module">
+    // Mock window.openai API
+    window.openai = {
+      toolOutput: null,
+      toolInput: null,
+      widgetState: null,
+      displayMode: 'inline',
+      maxHeight: 600,
+      theme: 'light',
+      locale: 'en-US',
+
+      setWidgetState: async (state) => {
+        console.log('setWidgetState called:', state);
+        window.openai.widgetState = state;
+        dispatchEvent(new CustomEvent('openai:set_globals', {
+          detail: { globals: { widgetState: state } }
+        }));
+      },
+
+      callTool: async (name, args) => {
+        console.log('callTool called:', name, args);
+        return { success: true };
+      },
+
+      sendFollowupTurn: async (params) => {
+        console.log('sendFollowupTurn called:', params);
+      },
+
+      requestDisplayMode: async (params) => {
+        console.log('requestDisplayMode called:', params);
+      }
+    };
+
+    // Default mock data for each widget
+    const mockDataTemplates = {
+      'connected-institutions': {
+        institutions: [
+          {
+            itemId: "item_123",
+            institutionName: "Chase Bank",
+            env: "✅ Production",
+            connectedAt: new Date("2024-01-15"),
+            lastSyncedAt: new Date().toISOString(),
+            accounts: [
+              {
+                name: "Chase Total Checking",
+                type: "depository",
+                subtype: "checking",
+                balances: { current: 5432.10 }
+              },
+              {
+                name: "Chase Savings",
+                type: "depository",
+                subtype: "savings",
+                balances: { current: 12750.50 }
+              },
+              {
+                name: "Chase Sapphire Reserve",
+                type: "credit",
+                subtype: "credit card",
+                balances: { current: -1200.75 }
+              }
+            ]
+          },
+          {
+            itemId: "item_456",
+            institutionName: "Vanguard",
+            env: "✅ Production",
+            connectedAt: new Date("2024-02-01"),
+            lastSyncedAt: new Date().toISOString(),
+            accounts: [
+              {
+                name: "Individual Brokerage",
+                type: "investment",
+                subtype: "brokerage",
+                balances: { current: 125000.00 }
+              },
+              {
+                name: "Roth IRA",
+                type: "investment",
+                subtype: "ira",
+                balances: { current: 87500.25 }
+              }
+            ]
+          },
+          {
+            itemId: "item_789",
+            institutionName: "American Express",
+            env: "✅ Production",
+            connectedAt: new Date("2024-01-20"),
+            lastSyncedAt: new Date().toISOString(),
+            accounts: [
+              {
+                name: "Amex Platinum",
+                type: "credit",
+                subtype: "credit card",
+                balances: { current: -3250.00 }
+              }
+            ]
+          }
+        ],
+        totalAccounts: 7
+      },
+      'budget-list': {
+        budgets: [
+          {
+            id: "budget_1",
+            title: "Groceries",
+            amount: 500,
+            period: "monthly",
+            spent: 342.50,
+            remaining: 157.50,
+            percentage: 69,
+            status: "under",
+            dateRange: { start: "2024-10-01", end: "2024-10-31" },
+            transactionCount: 15
+          },
+          {
+            id: "budget_2",
+            title: "Dining Out",
+            amount: 300,
+            period: "monthly",
+            spent: 278.00,
+            remaining: 22.00,
+            percentage: 93,
+            status: "near",
+            dateRange: { start: "2024-10-01", end: "2024-10-31" },
+            transactionCount: 8
+          },
+          {
+            id: "budget_3",
+            title: "Entertainment",
+            amount: 200,
+            period: "monthly",
+            spent: 235.00,
+            remaining: -35.00,
+            percentage: 118,
+            status: "over",
+            dateRange: { start: "2024-10-01", end: "2024-10-31" },
+            transactionCount: 6
+          }
+        ]
+      }
+    };
+
+    // Widget loading logic
+    let currentWidget = null;
+
+    async function loadWidget(widgetName) {
+      const errorDisplay = document.getElementById('error-display');
+      errorDisplay.style.display = 'none';
+
+      try {
+        // Clear previous widget
+        const root = document.getElementById('widget-root');
+        root.innerHTML = `<div id="${widgetName}-root"></div>`;
+
+        // Load mock data
+        const mockData = mockDataTemplates[widgetName];
+        window.openai.toolOutput = mockData;
+
+        // Update textarea
+        document.getElementById('mock-data').value = JSON.stringify(mockData, null, 2);
+
+        // Fire event to notify widget of new data
+        window.dispatchEvent(new CustomEvent('openai:set_globals', {
+          detail: { globals: { toolOutput: mockData } }
+        }));
+
+        // Dynamically load widget script
+        if (currentWidget) {
+          document.head.removeChild(currentWidget);
+        }
+
+        const script = document.createElement('script');
+        script.type = 'module';
+        // Server runs from project root, so path is /public/widgets/...
+        script.src = `/public/widgets/${widgetName}.js?t=${Date.now()}`;
+        script.onload = () => {
+          console.log(`Widget ${widgetName} loaded successfully`);
+        };
+        script.onerror = (error) => {
+          errorDisplay.textContent = `Failed to load widget: ${widgetName}.js. Make sure it's built (npm run build:all).`;
+          errorDisplay.style.display = 'block';
+        };
+
+        currentWidget = script;
+        document.head.appendChild(script);
+
+      } catch (error) {
+        errorDisplay.textContent = `Error: ${error.message}`;
+        errorDisplay.style.display = 'block';
+      }
+    }
+
+    // Update widget with custom data
+    function updateWidgetData() {
+      const errorDisplay = document.getElementById('error-display');
+      errorDisplay.style.display = 'none';
+
+      try {
+        const customData = JSON.parse(document.getElementById('mock-data').value);
+        window.openai.toolOutput = customData;
+
+        // Fire event to notify widget
+        window.dispatchEvent(new CustomEvent('openai:set_globals', {
+          detail: { globals: { toolOutput: customData } }
+        }));
+
+        console.log('Widget data updated:', customData);
+      } catch (error) {
+        errorDisplay.textContent = `Invalid JSON: ${error.message}`;
+        errorDisplay.style.display = 'block';
+      }
+    }
+
+    // Event listeners
+    document.getElementById('widget-select').addEventListener('change', (e) => {
+      loadWidget(e.target.value);
+    });
+
+    document.getElementById('update-data').addEventListener('click', updateWidgetData);
+
+    // Load default widget on page load
+    loadWidget('connected-institutions');
+  </script>
+</body>
+</html>
