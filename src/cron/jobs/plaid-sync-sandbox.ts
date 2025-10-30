@@ -1,9 +1,9 @@
 /**
- * Sync Transactions (Sandbox Only) Cron Job
- * Syncs transactions AND investment holdings from Plaid for users with SANDBOX connections only
+ * Plaid Sync (Sandbox Only) Cron Job
+ * Syncs all Plaid data (transactions, investments, balances) for users with SANDBOX connections only
  * Used for testing/development without affecting production data
  *
- * Manual Trigger: npm run cron:sync-transactions-sandbox
+ * Manual Trigger: npm run cron:plaid-sync-sandbox
  */
 
 import { createPlaidClient } from "../../utils/clients/plaid.js";
@@ -20,19 +20,19 @@ export interface CronJob {
   run(claudeClient?: ClaudeClient): Promise<void>;
 }
 
-export const syncTransactionsSandboxJob: CronJob = {
-  name: "sync-transactions-sandbox",
-  description: "Transaction and investment holdings sync for SANDBOX Plaid connections only (testing)",
+export const plaidSyncSandboxJob: CronJob = {
+  name: "plaid-sync-sandbox",
+  description: "Sync all Plaid data for SANDBOX connections only (testing)",
 
   async run(claudeClient?: ClaudeClient): Promise<void> {
     // Validate PLAID_ENV is set to sandbox
     if (process.env.PLAID_ENV === "production") {
       logEvent(
-        "CRON:sync-transactions-sandbox",
+        "CRON:plaid-sync-sandbox",
         "invalid-environment",
         {
           plaidEnv: process.env.PLAID_ENV,
-          message: "This job cannot run with PLAID_ENV=production. Use sync-transactions for production.",
+          message: "This job cannot run with PLAID_ENV=production. Use plaid-sync for production.",
         },
         "error"
       );
@@ -72,7 +72,7 @@ export const syncTransactionsSandboxJob: CronJob = {
         } catch (error: any) {
           // Log error but continue - don't fail entire job if investments fail
           logEvent(
-            "CRON:sync-transactions-sandbox",
+            "CRON:plaid-sync-sandbox",
             "investment-sync-error",
             {
               userId,

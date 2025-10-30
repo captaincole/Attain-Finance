@@ -1,9 +1,9 @@
 /**
- * Sync Transactions Cron Job
- * Syncs transactions AND investment holdings from Plaid for all users
+ * Plaid Sync Cron Job
+ * Syncs all Plaid data (transactions, investments, account balances) for all users
  *
  * Render Schedule: 0 8 * * * (midnight PST / 8am UTC)
- * Manual Trigger: npm run cron:sync-transactions
+ * Manual Trigger: npm run cron:plaid-sync
  */
 
 import { createPlaidClient } from "../../utils/clients/plaid.js";
@@ -20,19 +20,19 @@ export interface CronJob {
   run(claudeClient?: ClaudeClient): Promise<void>;
 }
 
-export const syncTransactionsJob: CronJob = {
-  name: "sync-transactions",
-  description: "Daily transaction and investment holdings sync from Plaid for all users",
+export const plaidSyncJob: CronJob = {
+  name: "plaid-sync",
+  description: "Sync all Plaid data (transactions, investments, balances) for all users",
 
   async run(claudeClient?: ClaudeClient): Promise<void> {
     // Validate PLAID_ENV is set to production
     if (process.env.PLAID_ENV !== "production") {
       logEvent(
-        "CRON:sync-transactions",
+        "CRON:plaid-sync",
         "invalid-environment",
         {
           plaidEnv: process.env.PLAID_ENV || "not set",
-          message: "This job requires PLAID_ENV=production. Use sync-transactions-sandbox for testing.",
+          message: "This job requires PLAID_ENV=production. Use plaid-sync-sandbox for testing.",
         },
         "error"
       );
@@ -72,7 +72,7 @@ export const syncTransactionsJob: CronJob = {
         } catch (error: any) {
           // Log error but continue - don't fail entire job if investments fail
           logEvent(
-            "CRON:sync-transactions",
+            "CRON:plaid-sync",
             "investment-sync-error",
             {
               userId,

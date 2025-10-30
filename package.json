@@ -18,8 +18,8 @@
     "reset-user": "tsx scripts/reset-user.ts",
     "cron": "node build/cron/runner.js",
     "cron:list": "npm run cron -- --list",
-    "cron:sync-transactions": "npm run cron -- sync-transactions",
-    "cron:sync-transactions-sandbox": "npm run cron -- sync-transactions-sandbox"
+    "cron:plaid-sync": "npm run cron -- plaid-sync",
+    "cron:plaid-sync-sandbox": "npm run cron -- plaid-sync-sandbox"
   },
   "files": [
     "build",

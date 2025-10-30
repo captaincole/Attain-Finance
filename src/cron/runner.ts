@@ -8,13 +8,13 @@
  *   npm run cron --list
  *
  * Examples:
- *   npm run cron sync-transactions
+ *   npm run cron plaid-sync
  *   npm run cron --list
  */
 
 import dotenv from "dotenv";
-import { syncTransactionsJob } from "./jobs/sync-transactions.js";
-import { syncTransactionsSandboxJob } from "./jobs/sync-transactions-sandbox.js";
+import { plaidSyncJob } from "./jobs/plaid-sync.js";
+import { plaidSyncSandboxJob } from "./jobs/plaid-sync-sandbox.js";
 import { logEvent, serializeError } from "../utils/logger.js";
 
 // Load environment variables
@@ -22,11 +22,11 @@ dotenv.config();
 
 // Registry of all available jobs
 const jobs = {
-  "sync-transactions": syncTransactionsJob,
-  "sync-transactions-sandbox": syncTransactionsSandboxJob,
+  "plaid-sync": plaidSyncJob,
+  "plaid-sync-sandbox": plaidSyncSandboxJob,
   // Future jobs:
-  // "sync-balances": syncBalancesJob,
-  // "process-recurring": processRecurringJob,
+  // "identity-sync": identitySyncJob,
+  // "liabilities-sync": liabilitiesSyncJob,
   // "cleanup-old-data": cleanupOldDataJob,
 };
 

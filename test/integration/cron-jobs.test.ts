@@ -8,8 +8,8 @@
 import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
-import { syncTransactionsJob } from "../../src/cron/jobs/sync-transactions.js";
-import { syncTransactionsSandboxJob } from "../../src/cron/jobs/sync-transactions-sandbox.js";
+import { plaidSyncJob } from "../../src/cron/jobs/plaid-sync.js";
+import { plaidSyncSandboxJob } from "../../src/cron/jobs/plaid-sync-sandbox.js";
 import {
   createTestSupabaseClient,
   cleanupTestUser,
@@ -55,7 +55,7 @@ describe("Cron Job Infrastructure Tests", () => {
     }) as any;
 
     try {
-      await syncTransactionsJob.run(mockClaudeClient);
+      await plaidSyncJob.run(mockClaudeClient);
       assert.fail("Should have exited with error");
     } catch (error: any) {
       // Verify process.exit was called with code 1
@@ -67,7 +67,7 @@ describe("Cron Job Infrastructure Tests", () => {
     }
   });
 
-  it("should run sync-transactions job with correct environment", async () => {
+  it("should run plaid-sync job with correct environment", async () => {
     // Set PLAID_ENV=production
     process.env.PLAID_ENV = "production";
 
@@ -88,7 +88,7 @@ describe("Cron Job Infrastructure Tests", () => {
     // Note: This will call the sync service, but we're just testing that the job runs
     // The actual sync may fail due to invalid access tokens, but that's expected in tests
     try {
-      await syncTransactionsJob.run(mockClaudeClient);
+      await plaidSyncJob.run(mockClaudeClient);
       // Job completed (may have logged errors for sync failures, but infrastructure worked)
     } catch (error: any) {
       // If the job threw an error, it's likely due to Plaid API failures (expected in tests)
@@ -97,8 +97,8 @@ describe("Cron Job Infrastructure Tests", () => {
     }
 
     // Verify job metadata
-    assert.equal(syncTransactionsJob.name, "sync-transactions");
-    assert(syncTransactionsJob.description.includes("Daily transaction"));
+    assert.equal(plaidSyncJob.name, "plaid-sync");
+    assert(plaidSyncJob.description.includes("Sync all Plaid data"));
   });
 
   it("should filter connections by environment (production vs sandbox)", async () => {
@@ -130,7 +130,7 @@ describe("Cron Job Infrastructure Tests", () => {
     process.env.PLAID_ENV = "production";
 
     try {
-      await syncTransactionsJob.run(mockClaudeClient);
+      await plaidSyncJob.run(mockClaudeClient);
     } catch (error: any) {
       console.log(
         "[TEST] Production job threw error (expected for test data):",
@@ -142,7 +142,7 @@ describe("Cron Job Infrastructure Tests", () => {
     process.env.PLAID_ENV = "sandbox";
 
     try {
-      await syncTransactionsSandboxJob.run(mockClaudeClient);
+      await plaidSyncSandboxJob.run(mockClaudeClient);
     } catch (error: any) {
       console.log("[TEST] Sandbox job threw error (expected for test data):", error.message);
     }
@@ -153,24 +153,24 @@ describe("Cron Job Infrastructure Tests", () => {
 
   it("should list all registered cron jobs", async () => {
     // Verify jobs are defined and exported
-    assert(syncTransactionsJob, "Production sync job should be defined");
-    assert(syncTransactionsSandboxJob, "Sandbox sync job should be defined");
+    assert(plaidSyncJob, "Production sync job should be defined");
+    assert(plaidSyncSandboxJob, "Sandbox sync job should be defined");
 
     // Verify job metadata
-    assert.equal(syncTransactionsJob.name, "sync-transactions");
-    assert.equal(syncTransactionsSandboxJob.name, "sync-transactions-sandbox");
+    assert.equal(plaidSyncJob.name, "plaid-sync");
+    assert.equal(plaidSyncSandboxJob.name, "plaid-sync-sandbox");
 
     // Verify job descriptions
-    assert(syncTransactionsJob.description.length > 0, "Job should have description");
+    assert(plaidSyncJob.description.length > 0, "Job should have description");
     assert(
-      syncTransactionsSandboxJob.description.length > 0,
+      plaidSyncSandboxJob.description.length > 0,
       "Job should have description"
     );
 
     // Verify job run functions exist
-    assert.equal(typeof syncTransactionsJob.run, "function", "Job should have run function");
+    assert.equal(typeof plaidSyncJob.run, "function", "Job should have run function");
     assert.equal(
-      typeof syncTransactionsSandboxJob.run,
+      typeof plaidSyncSandboxJob.run,
       "function",
       "Job should have run function"
     );

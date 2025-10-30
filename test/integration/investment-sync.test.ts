@@ -3,7 +3,8 @@
  * Tests the InvestmentSyncService with real local Supabase database
  */
 
-import { describe, test, beforeEach, afterEach, expect } from "@jest/globals";
+import { describe, it, beforeEach, afterEach } from "node:test";
+import assert from "node:assert";
 import { InvestmentSyncService } from "../../src/services/investment-sync.js";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import {
@@ -45,7 +46,7 @@ describe("Investment Sync Service", () => {
     await cleanupTestUser(supabase, testUserId);
   });
 
-  test("should sync investment holdings for investment accounts", async () => {
+  it("should sync investment holdings for investment accounts", async () => {
     // Setup: Get mock accounts and create them in database
     const accountsResponse = await mockPlaidClient.accountsGet({
       access_token: testAccessToken,
@@ -78,34 +79,34 @@ describe("Investment Sync Service", () => {
     const holdings = await getHoldingsByUserId(testUserId);
 
     // Should have 9 holdings total (4 from 401k + 5 from brokerage)
-    expect(holdings.length).toBeGreaterThan(0);
+    assert(holdings.length > 0);
 
     // Verify 401k holdings
     const acc401kHoldings = holdings.filter(
       (h) => h.account_id === "acc_401k_789"
     );
-    expect(acc401kHoldings.length).toBe(4); // VTSAX, VTIAX, VBTLX, USD cash
+    assert.equal(acc401kHoldings.length, 4); // VTSAX, VTIAX, VBTLX, USD cash
 
     // Verify brokerage holdings
     const brokerageHoldings = holdings.filter(
       (h) => h.account_id === "acc_brokerage_101"
     );
-    expect(brokerageHoldings.length).toBe(5); // AAPL, MSFT, TSLA, VTI, BTC
+    assert.equal(brokerageHoldings.length, 5); // AAPL, MSFT, TSLA, VTI, BTC
 
     // Verify holding data structure
     const appleHolding = holdings.find(
       (h) => h.ticker_symbol === "AAPL"
     );
-    expect(appleHolding).toBeDefined();
-    expect(appleHolding!.quantity).toBe(10.0);
-    expect(appleHolding!.institution_price).toBe(180.0);
-    expect(appleHolding!.institution_value).toBe(1800.0);
-    expect(appleHolding!.cost_basis).toBe(1500.0);
-    expect(appleHolding!.security_name).toBe("Apple Inc.");
-    expect(appleHolding!.security_type).toBe("equity");
+    assert(appleHolding);
+    assert.equal(appleHolding!.quantity, 10.0);
+    assert.equal(appleHolding!.institution_price, 180.0);
+    assert.equal(appleHolding!.institution_value, 1800.0);
+    assert.equal(appleHolding!.cost_basis, 1500.0);
+    assert.equal(appleHolding!.security_name, "Apple Inc.");
+    assert.equal(appleHolding!.security_type, "equity");
   });
 
-  test("should not sync holdings for non-investment accounts", async () => {
+  it("should not sync holdings for non-investment accounts", async () => {
     // Setup: Get mock accounts and create them in database
     const accountsResponse = await mockPlaidClient.accountsGet({
       access_token: testAccessToken,
@@ -143,11 +144,11 @@ describe("Investment Sync Service", () => {
       (h) => h.account_id === "acc_savings_456"
     );
 
-    expect(checkingHoldings.length).toBe(0);
-    expect(savingsHoldings.length).toBe(0);
+    assert.equal(checkingHoldings.length, 0);
+    assert.equal(savingsHoldings.length, 0);
   });
 
-  test("should update existing holdings on re-sync (upsert behavior)", async () => {
+  it("should update existing holdings on re-sync (upsert behavior)", async () => {
     // Setup: Get mock accounts and create them in database
     const accountsResponse = await mockPlaidClient.accountsGet({
       access_token: testAccessToken,
@@ -189,17 +190,17 @@ describe("Investment Sync Service", () => {
     const secondSyncHoldings = await getHoldingsByUserId(testUserId);
 
     // Verify: Same number of holdings (upserted, not duplicated)
-    expect(secondSyncHoldings.length).toBe(firstSyncCount);
+    assert.equal(secondSyncHoldings.length, firstSyncCount);
 
     // Verify: last_synced_at was updated
     const appleHolding = secondSyncHoldings.find(
       (h) => h.ticker_symbol === "AAPL"
     );
-    expect(appleHolding).toBeDefined();
-    expect(appleHolding!.last_synced_at).toBeDefined();
+    assert(appleHolding);
+    assert(appleHolding!.last_synced_at);
   });
 
-  test("should track sync state for investment accounts", async () => {
+  it("should track sync state for investment accounts", async () => {
     // Setup: Get mock accounts and create them in database
     const accountsResponse = await mockPlaidClient.accountsGet({
       access_token: testAccessToken,
@@ -230,23 +231,23 @@ describe("Investment Sync Service", () => {
 
     // Verify: Sync state was created and updated for investment accounts
     const acc401kState = await syncStateRepo.getSyncState("acc_401k_789");
-    expect(acc401kState).toBeDefined();
-    expect(acc401kState!.syncStatus).toBe("synced");
-    expect(acc401kState!.lastSyncedAt).toBeDefined();
-    expect(acc401kState!.holdingsCount).toBe(4); // 4 holdings in 401k
-    expect(acc401kState!.lastError).toBeNull();
+    assert(acc401kState);
+    assert.equal(acc401kState!.syncStatus, "synced");
+    assert(acc401kState!.lastSyncedAt);
+    assert.equal(acc401kState!.holdingsCount, 4); // 4 holdings in 401k
+    assert.equal(acc401kState!.lastError, null);
 
     const brokerageState = await syncStateRepo.getSyncState("acc_brokerage_101");
-    expect(brokerageState).toBeDefined();
-    expect(brokerageState!.syncStatus).toBe("synced");
-    expect(brokerageState!.holdingsCount).toBe(5); // 5 holdings in brokerage
+    assert(brokerageState);
+    assert.equal(brokerageState!.syncStatus, "synced");
+    assert.equal(brokerageState!.holdingsCount, 5); // 5 holdings in brokerage
 
     // Verify: No sync state for non-investment accounts
     const checkingState = await syncStateRepo.getSyncState("acc_checking_123");
-    expect(checkingState).toBeNull();
+    assert.equal(checkingState, null);
   });
 
-  test("should skip sync if no investment accounts exist", async () => {
+  it("should skip sync if no investment accounts exist", async () => {
     // Setup: Create connection with only depository accounts (no investments)
     const testUserIdNoInvestments = "test-no-investments";
     const testItemIdNoInvestments = "item-no-investments";
@@ -284,13 +285,13 @@ describe("Investment Sync Service", () => {
 
     // Verify: No holdings created
     const holdings = await getHoldingsByUserId(testUserIdNoInvestments);
-    expect(holdings.length).toBe(0);
+    assert.equal(holdings.length, 0);
 
     // Cleanup
     await cleanupTestUser(supabase, testUserIdNoInvestments);
   });
 
-  test("should handle errors gracefully per account", async () => {
+  it("should handle errors gracefully per account", async () => {
     // This test would require modifying the mock to throw errors
     // For now, we verify that the service completes even if one account fails
 
@@ -316,16 +317,16 @@ describe("Investment Sync Service", () => {
     await upsertAccounts(testUserId, testItemId, accounts);
 
     // Execute: Sync should complete even with potential errors
-    await expect(
-      investmentSyncService.syncConnectionInvestments({
+    await assert.doesNotReject(async () => {
+      await investmentSyncService.syncConnectionInvestments({
         itemId: testItemId,
         userId: testUserId,
         accessToken: testAccessToken,
-      })
-    ).resolves.not.toThrow();
+      });
+    });
 
     // Verify: Holdings were still synced
     const holdings = await getHoldingsByUserId(testUserId);
-    expect(holdings.length).toBeGreaterThan(0);
+    assert(holdings.length > 0);
   });
 });

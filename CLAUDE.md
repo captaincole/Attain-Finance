@@ -16,9 +16,9 @@ npm run sandbox:create   # Generate Plaid sandbox config
 npm run reset-user -- --userId=user_xxx  # Reset user data (testing only)
 
 # Cron Jobs
-npm run cron:list                        # List all cron jobs
-npm run cron:sync-transactions           # Sync all users (production)
-npm run cron:sync-transactions-sandbox   # Sync sandbox users only (testing)
+npm run cron:list                   # List all cron jobs
+npm run cron:plaid-sync             # Sync all Plaid data (production)
+npm run cron:plaid-sync-sandbox     # Sync sandbox users only (testing)
 
 # Git
 gh pr create             # Create pull request
@@ -402,10 +402,12 @@ Cron jobs use a structured pattern for reusability and maintainability:
 ```
 src/cron/
 ├── jobs/                 # Individual job definitions
-│   ├── sync-transactions.ts
-│   └── sync-transactions-sandbox.ts
+│   ├── plaid-sync.ts
+│   └── plaid-sync-sandbox.ts
 ├── services/            # Reusable sync services
-│   └── user-batch-sync.service.ts
+│   ├── user-batch-sync.service.ts
+│   ├── transaction-sync.service.ts
+│   └── investment-sync.service.ts
 ├── utils/              # Shared utilities
 │   └── cron-logger.ts
 └── runner.ts           # CLI entry point
@@ -413,17 +415,18 @@ src/cron/
 
 ### Available Jobs
 
-**sync-transactions** - Daily transaction and investment holdings sync from Plaid for all users
+**plaid-sync** - Sync all Plaid data (transactions, investments, balances) for all users
 - **Production Render Schedule**: `0 8 * * *` (midnight PST / 8am UTC)
-- **Manual Trigger**: `npm run cron:sync-transactions`
+- **Manual Trigger**: `npm run cron:plaid-sync`
 - **Syncs**:
   - Transactions for all accounts (using `/transactions/sync` with cursor-based pagination)
   - Investment holdings for investment accounts (using `/investments/holdings/get` full snapshot)
+  - Account balances refreshed automatically during sync
 - **Why Daily**: Transactions update frequently, and investment holdings need daily price updates
 
-**sync-transactions-sandbox** - Sandbox-only transaction and investment sync (for testing)
+**plaid-sync-sandbox** - Sandbox-only Plaid data sync (for testing)
 - **Production Render Schedule**: N/A (manual only)
-- **Manual Trigger**: `npm run cron:sync-transactions-sandbox`
+- **Manual Trigger**: `npm run cron:plaid-sync-sandbox`
 - **Syncs**: Only connections created with sandbox Plaid credentials
 - **Purpose**: Test sync infrastructure without affecting production data
 
@@ -487,7 +490,7 @@ mcp__render__list_logs({
 
 ```bash
 # Test with actual database (requires .env configured)
-npm run cron:sync-transactions-sandbox
+npm run cron:plaid-sync-sandbox
 
 # List all jobs
 npm run cron:list
