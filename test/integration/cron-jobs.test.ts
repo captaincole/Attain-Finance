@@ -98,7 +98,7 @@ describe("Cron Job Infrastructure Tests", () => {
 
     // Verify job metadata
     assert.equal(syncTransactionsJob.name, "sync-transactions");
-    assert(syncTransactionsJob.description.includes("Daily transaction sync"));
+    assert(syncTransactionsJob.description.includes("Daily transaction"));
   });
 
   it("should filter connections by environment (production vs sandbox)", async () => {

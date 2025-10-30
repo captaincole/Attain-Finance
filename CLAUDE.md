@@ -218,11 +218,23 @@ Fixes 400 errors caused by stateless instances.
 
 **Performance:** Database-backed approach is 99% faster than real-time API calls.
 
+### Investment Holdings Flow (Database-Backed)
+1. **OAuth Callback** - Initial holdings sync after connecting investment account
+2. **Daily Cron Sync** - Full snapshot refresh via `/investments/holdings/get`
+3. **get-investment-holdings** - Read from database (instant, no API calls)
+
+**Key Differences from Transactions:**
+- **Full Snapshot** - No cursor-based incremental sync (Plaid limitation)
+- **No Categorization** - Holdings don't need AI categorization
+- **Sync State Tracking** - Tracks `last_synced_at`, `holdings_count`, and errors per account
+
 ### Repository Pattern
 All database operations go through `src/storage/repositories/`:
 - `transactions.ts` - Transaction CRUD and queries
 - `account-connections.ts` - Plaid connection management
 - `budgets.ts` - Budget definitions
+- `investment-holdings.ts` - Investment holdings CRUD
+- `account-investment-sync-state.ts` - Investment sync state tracking
 
 ### Tool Design Pattern: Structured Data + AI Instructions
 
@@ -401,15 +413,19 @@ src/cron/
 
 ### Available Jobs
 
-**sync-transactions** - Daily transaction sync from Plaid for all users
+**sync-transactions** - Daily transaction and investment holdings sync from Plaid for all users
 - **Production Render Schedule**: `0 8 * * *` (midnight PST / 8am UTC)
 - **Manual Trigger**: `npm run cron:sync-transactions`
-- **Syncs**: All Plaid connections (sandbox, development, production)
+- **Syncs**:
+  - Transactions for all accounts (using `/transactions/sync` with cursor-based pagination)
+  - Investment holdings for investment accounts (using `/investments/holdings/get` full snapshot)
+- **Why Daily**: Transactions update frequently, and investment holdings need daily price updates
 
-**sync-transactions-sandbox** - Sandbox-only transaction sync (for testing)
+**sync-transactions-sandbox** - Sandbox-only transaction and investment sync (for testing)
 - **Production Render Schedule**: N/A (manual only)
 - **Manual Trigger**: `npm run cron:sync-transactions-sandbox`
 - **Syncs**: Only connections created with sandbox Plaid credentials
+- **Purpose**: Test sync infrastructure without affecting production data
 
 ### Creating New Cron Jobs
 

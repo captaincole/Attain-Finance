@@ -1,6 +1,6 @@
 /**
  * Sync Transactions (Sandbox Only) Cron Job
- * Syncs transactions from Plaid for users with SANDBOX connections only
+ * Syncs transactions AND investment holdings from Plaid for users with SANDBOX connections only
  * Used for testing/development without affecting production data
  *
  * Manual Trigger: npm run cron:sync-transactions-sandbox
@@ -9,6 +9,7 @@
 import { createPlaidClient } from "../../utils/clients/plaid.js";
 import { getSupabase } from "../../storage/supabase.js";
 import { TransactionSyncService } from "../../services/transaction-sync.js";
+import { InvestmentSyncService } from "../../services/investment-sync.js";
 import { UserBatchSyncService } from "../services/user-batch-sync.service.js";
 import { ClaudeClient } from "../../utils/clients/claude.js";
 import { logEvent } from "../../utils/logger.js";
@@ -21,7 +22,7 @@ export interface CronJob {
 
 export const syncTransactionsSandboxJob: CronJob = {
   name: "sync-transactions-sandbox",
-  description: "Transaction sync for SANDBOX Plaid connections only (testing)",
+  description: "Transaction and investment holdings sync for SANDBOX Plaid connections only (testing)",
 
   async run(claudeClient?: ClaudeClient): Promise<void> {
     // Validate PLAID_ENV is set to sandbox
@@ -45,17 +46,42 @@ export const syncTransactionsSandboxJob: CronJob = {
       supabase,
       claudeClient
     );
+    const investmentSyncService = new InvestmentSyncService(
+      plaidClient,
+      supabase
+    );
     const batchSyncService = new UserBatchSyncService();
 
     await batchSyncService.syncAllUsers({
       environment: "sandbox", // Only sync sandbox connections
       syncFn: async (userId, connection) => {
-        // Sync all accounts for this connection
+        // Sync transactions for all accounts
         await transactionSyncService.initiateSyncForConnection(
           connection.itemId,
           userId,
           connection.accessToken
         );
+
+        // Sync investment holdings for investment accounts
+        try {
+          await investmentSyncService.syncConnectionInvestments({
+            itemId: connection.itemId,
+            userId,
+            accessToken: connection.accessToken,
+          });
+        } catch (error: any) {
+          // Log error but continue - don't fail entire job if investments fail
+          logEvent(
+            "CRON:sync-transactions-sandbox",
+            "investment-sync-error",
+            {
+              userId,
+              itemId: connection.itemId,
+              error: error.message,
+            },
+            "warn"
+          );
+        }
       },
     });
   },

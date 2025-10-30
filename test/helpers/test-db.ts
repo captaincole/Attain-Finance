@@ -64,6 +64,7 @@ export async function cleanupTestUser(
 ): Promise<void> {
   // Delete in reverse order of dependencies (foreign keys)
   await supabase.from("transactions").delete().eq("user_id", userId);
+  await supabase.from("investment_holdings").delete().eq("user_id", userId);
   await supabase.from("account_sync_state").delete().eq("user_id", userId);
   await supabase.from("accounts").delete().eq("user_id", userId);
   await supabase.from("budgets").delete().eq("user_id", userId);
