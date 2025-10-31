@@ -228,6 +228,22 @@ Fixes 400 errors caused by stateless instances.
 - **No Categorization** - Holdings don't need AI categorization
 - **Sync State Tracking** - Tracks `last_synced_at`, `holdings_count`, and errors per account
 
+### Liabilities Flow (Database-Backed, On-Demand)
+1. **get-liabilities** - Fetches from Plaid on first call, then reads from database
+2. **Optional Type Filter** - Can filter by credit, mortgage, or student loans
+3. **Integrated with Account Balances** - Summary shown in `get-account-balances` widget
+
+**Key Features:**
+- **On-Demand Sync** - No automatic syncing (yet), fetches from Plaid when tool is called
+- **Three Liability Types** - Credit cards, mortgages, and student loans stored in separate tables
+- **Normalized Schema** - Shared account data in `accounts` table, liability-specific data in companion tables
+- **JSON Fields** - Complex nested structures (APRs, addresses, repayment plans) stored as JSONB
+
+**Database Tables:**
+- `liabilities_credit` - Credit card APRs, payment dates, minimum payments
+- `liabilities_mortgage` - Property address, interest rate, escrow, PMI
+- `liabilities_student` - Servicer info, repayment plans, disbursement dates
+
 ### Repository Pattern
 All database operations go through `src/storage/repositories/`:
 - `transactions.ts` - Transaction CRUD and queries
@@ -235,6 +251,7 @@ All database operations go through `src/storage/repositories/`:
 - `budgets.ts` - Budget definitions
 - `investment-holdings.ts` - Investment holdings CRUD
 - `account-investment-sync-state.ts` - Investment sync state tracking
+- `liabilities.ts` - Liabilities CRUD across three tables (credit, mortgage, student)
 
 ### Tool Design Pattern: Structured Data + AI Instructions
 

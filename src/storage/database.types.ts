@@ -34,6 +34,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_investment_sync_state: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          holdings_count: number | null
+          last_error: string | null
+          last_synced_at: string | null
+          sync_status: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          holdings_count?: number | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          sync_status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          holdings_count?: number | null
+          last_error?: string | null
+          last_synced_at?: string | null
+          sync_status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_investment_sync_state_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
       account_sync_state: {
         Row: {
           account_id: string
@@ -275,6 +313,264 @@ export type Database = {
             foreignKeyName: "investment_holdings_account_id_fkey"
             columns: ["account_id"]
             isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      liabilities_credit: {
+        Row: {
+          account_id: string
+          aprs: Json | null
+          created_at: string | null
+          id: string
+          is_overdue: boolean | null
+          last_payment_amount: number | null
+          last_payment_date: string | null
+          last_statement_balance: number | null
+          last_statement_issue_date: string | null
+          last_synced_at: string | null
+          minimum_payment_amount: number | null
+          next_payment_due_date: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          aprs?: Json | null
+          created_at?: string | null
+          id?: string
+          is_overdue?: boolean | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          last_statement_balance?: number | null
+          last_statement_issue_date?: string | null
+          last_synced_at?: string | null
+          minimum_payment_amount?: number | null
+          next_payment_due_date?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          aprs?: Json | null
+          created_at?: string | null
+          id?: string
+          is_overdue?: boolean | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          last_statement_balance?: number | null
+          last_statement_issue_date?: string | null
+          last_synced_at?: string | null
+          minimum_payment_amount?: number | null
+          next_payment_due_date?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liabilities_credit_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      liabilities_mortgage: {
+        Row: {
+          account_id: string
+          account_number: string | null
+          created_at: string | null
+          current_late_fee: number | null
+          escrow_balance: number | null
+          has_pmi: boolean | null
+          has_prepayment_penalty: boolean | null
+          id: string
+          interest_rate_percentage: number | null
+          interest_rate_type: string | null
+          last_payment_amount: number | null
+          last_payment_date: string | null
+          last_synced_at: string | null
+          loan_term: string | null
+          loan_type_description: string | null
+          maturity_date: string | null
+          next_monthly_payment: number | null
+          next_payment_due_date: string | null
+          origination_date: string | null
+          origination_principal_amount: number | null
+          past_due_amount: number | null
+          property_address: Json | null
+          updated_at: string | null
+          user_id: string
+          ytd_interest_paid: number | null
+          ytd_principal_paid: number | null
+        }
+        Insert: {
+          account_id: string
+          account_number?: string | null
+          created_at?: string | null
+          current_late_fee?: number | null
+          escrow_balance?: number | null
+          has_pmi?: boolean | null
+          has_prepayment_penalty?: boolean | null
+          id?: string
+          interest_rate_percentage?: number | null
+          interest_rate_type?: string | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          last_synced_at?: string | null
+          loan_term?: string | null
+          loan_type_description?: string | null
+          maturity_date?: string | null
+          next_monthly_payment?: number | null
+          next_payment_due_date?: string | null
+          origination_date?: string | null
+          origination_principal_amount?: number | null
+          past_due_amount?: number | null
+          property_address?: Json | null
+          updated_at?: string | null
+          user_id: string
+          ytd_interest_paid?: number | null
+          ytd_principal_paid?: number | null
+        }
+        Update: {
+          account_id?: string
+          account_number?: string | null
+          created_at?: string | null
+          current_late_fee?: number | null
+          escrow_balance?: number | null
+          has_pmi?: boolean | null
+          has_prepayment_penalty?: boolean | null
+          id?: string
+          interest_rate_percentage?: number | null
+          interest_rate_type?: string | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          last_synced_at?: string | null
+          loan_term?: string | null
+          loan_type_description?: string | null
+          maturity_date?: string | null
+          next_monthly_payment?: number | null
+          next_payment_due_date?: string | null
+          origination_date?: string | null
+          origination_principal_amount?: number | null
+          past_due_amount?: number | null
+          property_address?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          ytd_interest_paid?: number | null
+          ytd_principal_paid?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liabilities_mortgage_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
+            referencedRelation: "accounts"
+            referencedColumns: ["account_id"]
+          },
+        ]
+      }
+      liabilities_student: {
+        Row: {
+          account_id: string
+          account_number: string | null
+          created_at: string | null
+          disbursement_dates: Json | null
+          expected_payoff_date: string | null
+          guarantor: string | null
+          id: string
+          interest_rate_percentage: number | null
+          is_overdue: boolean | null
+          last_payment_amount: number | null
+          last_payment_date: string | null
+          last_statement_balance: number | null
+          last_statement_issue_date: string | null
+          last_synced_at: string | null
+          loan_name: string | null
+          loan_status: Json | null
+          minimum_payment_amount: number | null
+          next_payment_due_date: string | null
+          origination_date: string | null
+          origination_principal_amount: number | null
+          outstanding_interest_amount: number | null
+          payment_reference_number: string | null
+          repayment_plan: Json | null
+          sequence_number: string | null
+          servicer_address: Json | null
+          updated_at: string | null
+          user_id: string
+          ytd_interest_paid: number | null
+          ytd_principal_paid: number | null
+        }
+        Insert: {
+          account_id: string
+          account_number?: string | null
+          created_at?: string | null
+          disbursement_dates?: Json | null
+          expected_payoff_date?: string | null
+          guarantor?: string | null
+          id?: string
+          interest_rate_percentage?: number | null
+          is_overdue?: boolean | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          last_statement_balance?: number | null
+          last_statement_issue_date?: string | null
+          last_synced_at?: string | null
+          loan_name?: string | null
+          loan_status?: Json | null
+          minimum_payment_amount?: number | null
+          next_payment_due_date?: string | null
+          origination_date?: string | null
+          origination_principal_amount?: number | null
+          outstanding_interest_amount?: number | null
+          payment_reference_number?: string | null
+          repayment_plan?: Json | null
+          sequence_number?: string | null
+          servicer_address?: Json | null
+          updated_at?: string | null
+          user_id: string
+          ytd_interest_paid?: number | null
+          ytd_principal_paid?: number | null
+        }
+        Update: {
+          account_id?: string
+          account_number?: string | null
+          created_at?: string | null
+          disbursement_dates?: Json | null
+          expected_payoff_date?: string | null
+          guarantor?: string | null
+          id?: string
+          interest_rate_percentage?: number | null
+          is_overdue?: boolean | null
+          last_payment_amount?: number | null
+          last_payment_date?: string | null
+          last_statement_balance?: number | null
+          last_statement_issue_date?: string | null
+          last_synced_at?: string | null
+          loan_name?: string | null
+          loan_status?: Json | null
+          minimum_payment_amount?: number | null
+          next_payment_due_date?: string | null
+          origination_date?: string | null
+          origination_principal_amount?: number | null
+          outstanding_interest_amount?: number | null
+          payment_reference_number?: string | null
+          repayment_plan?: Json | null
+          sequence_number?: string | null
+          servicer_address?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          ytd_interest_paid?: number | null
+          ytd_principal_paid?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liabilities_student_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: true
             referencedRelation: "accounts"
             referencedColumns: ["account_id"]
           },

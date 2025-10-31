@@ -16,6 +16,7 @@ export interface UserDataDeletionSummary {
   transactionsDeleted: number;
   syncStatesDeleted: number;
   investmentHoldingsDeleted: number;
+  liabilitiesDeleted: number;
 }
 
 /**
@@ -86,7 +87,7 @@ export async function deleteAllUserData(
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId);
 
-  // Get account IDs first, then count sync states and investment holdings
+  // Get account IDs first, then count sync states, investment holdings, and liabilities
   const { data: userAccounts } = await supabase
     .from("accounts")
     .select("account_id")
@@ -95,6 +96,7 @@ export async function deleteAllUserData(
   const accountIds = userAccounts?.map((a) => a.account_id) || [];
   let syncStatesCount = 0;
   let investmentHoldingsCount = 0;
+  let liabilitiesCount = 0;
 
   if (accountIds.length > 0) {
     const { count: syncCount } = await supabase
@@ -108,6 +110,23 @@ export async function deleteAllUserData(
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId);
     investmentHoldingsCount = holdingsCount || 0;
+
+    // Count liabilities across all three tables
+    const [creditCount, mortgageCount, studentCount] = await Promise.all([
+      supabase
+        .from("liabilities_credit")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId),
+      supabase
+        .from("liabilities_mortgage")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId),
+      supabase
+        .from("liabilities_student")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId),
+    ]);
+    liabilitiesCount = (creditCount.count || 0) + (mortgageCount.count || 0) + (studentCount.count || 0);
   }
 
   // Step 5: Delete plaid connections (triggers cascades)
@@ -128,7 +147,8 @@ export async function deleteAllUserData(
     accounts: accountsCount || 0,
     transactions: transactionsCount || 0,
     syncStates: syncStatesCount || 0,
-    investmentHoldings: investmentHoldingsCount || 0
+    investmentHoldings: investmentHoldingsCount || 0,
+    liabilities: liabilitiesCount || 0
   });
 
   const summary: UserDataDeletionSummary = {
@@ -141,6 +161,7 @@ export async function deleteAllUserData(
     transactionsDeleted: transactionsCount || 0,
     syncStatesDeleted: syncStatesCount || 0,
     investmentHoldingsDeleted: investmentHoldingsCount || 0,
+    liabilitiesDeleted: liabilitiesCount || 0,
   };
 
   logEvent("USER-DATA-CLEANUP", "deletion-complete", {
@@ -152,7 +173,8 @@ export async function deleteAllUserData(
     accountsDeleted: summary.accountsDeleted,
     transactionsDeleted: summary.transactionsDeleted,
     syncStatesDeleted: summary.syncStatesDeleted,
-    investmentHoldingsDeleted: summary.investmentHoldingsDeleted
+    investmentHoldingsDeleted: summary.investmentHoldingsDeleted,
+    liabilitiesDeleted: summary.liabilitiesDeleted
   });
 
   return summary;

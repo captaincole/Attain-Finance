@@ -86,6 +86,10 @@ Please check your environment variables and try again.
 export async function getAccountBalancesHandler(userId: string) {
   const accounts = await getAccountsByUserId(userId);
 
+  // Get liability count for summary
+  const { getLiabilitiesByUserId } = await import("../../storage/repositories/liabilities.js");
+  const liabilityDetails = await getLiabilitiesByUserId(userId);
+
   if (accounts.length === 0) {
     return {
       content: [
@@ -185,6 +189,22 @@ To get started, say: "Connect my account"
 
   responseText += `**Net Worth:** $${netWorth.toFixed(2)}\n`;
 
+  // Add liability summary if any exist
+  if (liabilityDetails.length > 0) {
+    const creditCount = liabilityDetails.filter(l => l.type === "credit").length;
+    const mortgageCount = liabilityDetails.filter(l => l.type === "mortgage").length;
+    const studentCount = liabilityDetails.filter(l => l.type === "student").length;
+
+    responseText += `\n**Liabilities Detected:** ${liabilityDetails.length} (`;
+    const parts = [];
+    if (creditCount > 0) parts.push(`${creditCount} credit card${creditCount > 1 ? "s" : ""}`);
+    if (mortgageCount > 0) parts.push(`${mortgageCount} mortgage${mortgageCount > 1 ? "s" : ""}`);
+    if (studentCount > 0) parts.push(`${studentCount} student loan${studentCount > 1 ? "s" : ""}`);
+    responseText += parts.join(", ");
+    responseText += `)\n`;
+    responseText += `*For detailed liability information, say: "Show my liabilities"*\n`;
+  }
+
   // Add last synced info
   const oldestSync = accounts.reduce((oldest, account) => {
     const syncDate = new Date(account.last_synced_at);
@@ -241,6 +261,12 @@ To get started, say: "Connect my account"
         accountsByType,
         netWorth,
         lastSynced: oldestSync?.toISOString(),
+        liabilities: {
+          total: liabilityDetails.length,
+          credit: liabilityDetails.filter(l => l.type === "credit").length,
+          mortgage: liabilityDetails.filter(l => l.type === "mortgage").length,
+          student: liabilityDetails.filter(l => l.type === "student").length,
+        },
       },
     },
   };
