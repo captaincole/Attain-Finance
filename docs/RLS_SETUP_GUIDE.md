@@ -5,7 +5,7 @@ This guide outlines the Row Level Security (RLS) setup for the Personal Finance 
 ## Overview
 
 - **Migration 022** enables RLS on `public.transactions`, forces it for all roles, and defines per-user policies.
-- A helper function, `private.get_clerk_user_id()`, reads the Clerk session token (`auth.jwt()->>'sub'`) and returns the user ID. No header fallbacks remain.
+- The application now passes a Supabase-scoped JWT with every request. When the MCP client sends Clerk's opaque access token, the server generates a short-lived JWT (signed with `SUPABASE_JWT_SECRET`, `sub = userId`) before calling Supabase. If the client already provides a full JWT, it is forwarded as-is.
 - Service-role workloads, cron jobs, and tests that use the Supabase secret key continue to bypass RLS (policy + inherent bypass privileges).
 - RLS logging is turned on for missing headers or malformed payloads so that we can debug header propagation issues quickly.
 
@@ -27,7 +27,7 @@ Because RLS is forced, the helper must return a value for user-scoped requests o
 ## Client Usage Requirements
 
 Always obtain Supabase clients for user-scoped operations through `getSupabaseForUser(userId, { accessToken })`.  
-This helper injects the Clerk OAuth access token as the `Authorization` header (and still sets legacy headers for any remaining transitional flows):
+This helper ensures the `Authorization` header always carries a Supabase-valid JWT: if the caller supplies an opaque token, the helper signs a new JWT with `SUPABASE_JWT_SECRET` before instantiating the client. Legacy `x-user-id` headers remain for observability only.
 
 ```ts
 const supabase = getSupabaseForUser(userId, { accessToken: authInfo.token });
@@ -58,3 +58,4 @@ npm run test:integration
 - When debugging locally, you can set `SUPABASE_LOG_LEVEL=debug` in `docker-compose/dev` to capture the raised messages.
 - Future tables that adopt RLS should share the helper function. Consider moving common logic to a shared schema as rollout expands.
 - Legacy environments (older PostgREST) may expose headers via `request.header.<name>` GUCs; the helper checks both that format and the newer `request.headers` payload (object, array, or key/value pairs) to stay compatible.
+- The server requires `SUPABASE_JWT_SECRET` (matching the Supabase project's JWT secret) so it can mint resource-server tokens when Clerk only supplies opaque access tokens.

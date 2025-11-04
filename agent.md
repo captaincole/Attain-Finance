@@ -30,6 +30,7 @@
 
 ## Data & Storage
 - Supabase client (`src/storage/supabase.ts`) lazily instantiates using `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
+- `getSupabaseForUser()` always sends a Supabase-valid JWT: it forwards `authInfo.token` when it's already a JWT, otherwise signs a short-lived token with `SUPABASE_JWT_SECRET` (using the Clerk-verified user ID).
 - Repositories under `src/storage/repositories/` manage tables: `plaid_connections`, `accounts`, `account_sync_state`, `transactions`, etc.
 - Budgets module (`src/storage/budgets/`) calculates period windows, aggregates spending, matches transactions
 - Migrations in `supabase/migrations/`; append-only policy

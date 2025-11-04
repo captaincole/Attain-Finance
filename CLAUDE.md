@@ -65,6 +65,7 @@ gh pr create             # Create pull request
 - **Claude API calls are mocked via dependency injection** (no credits used)
 - **Plaid API calls are mocked via dependency injection** (no real connections)
 - All tests should pass with 0 API calls to external services
+- Supabase RLS expects a JWT: the server forwards Clerk tokens when they're already JWTs, otherwise it signs a new Supabase JWT with `SUPABASE_JWT_SECRET`. Make sure this env var is configured locally (`.env.test` already contains a value).
 
 **Test Organization:**
 ```

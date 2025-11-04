@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 import { Database } from "./database.types.js";
 import { logEvent } from "../utils/logger.js";
 
@@ -142,14 +143,18 @@ export function getSupabaseForUser(
   const url = requireEnv("SUPABASE_URL");
   const key = requireEnv("SUPABASE_PUBLISHABLE_KEY");
 
+  const { token: bearerToken, source: tokenSource } = resolveSupabaseToken(userId, accessToken);
+
+  if (userClients.has(userId)) {
+    return userClients.get(userId)!;
+  }
+
   const headers: Record<string, string> = {
     "x-user-id": userId,
     "X-User-Id": userId,
   };
 
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
-  }
+  headers.Authorization = `Bearer ${bearerToken}`;
 
   const client = createClient<Database>(url, key, {
     global: {
@@ -163,10 +168,42 @@ export function getSupabaseForUser(
 
   logEvent("SUPABASE", "create-user-client", {
     userId,
+    tokenSource,
     hasAccessToken: Boolean(accessToken),
   });
   userClients.set(userId, client);
   return client;
+}
+
+function resolveSupabaseToken(
+  userId: string,
+  accessToken?: string
+): { token: string; source: "provided" | "generated" } {
+  const looksLikeJwt = Boolean(accessToken && accessToken.split(".").length === 3);
+
+  if (looksLikeJwt && accessToken) {
+    return { token: accessToken, source: "provided" };
+  }
+
+  const jwtSecret = process.env.SUPABASE_JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error(
+      "SUPABASE_JWT_SECRET is required to generate Supabase access tokens. Please add it to your environment."
+    );
+  }
+
+  const token = jwt.sign(
+    {
+      sub: userId,
+      role: "authenticated",
+      iss: "personal-finance-mcp",
+      aud: "authenticated",
+    },
+    jwtSecret,
+    { expiresIn: "6h" }
+  );
+
+  return { token, source: "generated" };
 }
 
 /**
