@@ -89,6 +89,29 @@ function registerMcpRoutes(app: Express, server: McpServer) {
       }
       next();
     },
+    (req, _res, next) => {
+      const authHeader = req.headers.authorization;
+      let tokenInfo: Record<string, unknown> | undefined;
+
+      if (authHeader) {
+        const [scheme, token] = authHeader.split(" ");
+        const partCount = token ? token.split(".").length : 0;
+        tokenInfo = {
+          scheme,
+          hasToken: Boolean(token),
+          tokenLength: token?.length ?? 0,
+          tokenPartCount: partCount,
+          tokenPreview: token ? `${token.slice(0, 8)}...` : undefined,
+        };
+      }
+
+      logEvent("SERVER:MCP", "auth-header", {
+        hasAuthHeader: Boolean(authHeader),
+        tokenInfo,
+      });
+
+      next();
+    },
     mcpAuthClerk,
     streamableHttpHandler(server)
   );
