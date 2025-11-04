@@ -186,9 +186,9 @@ function resolveSupabaseToken(
   }
 
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
-  if (!jwtSecret) {
+  if (!jwtSecret || jwtSecret === "replace-with-your-supabase-jwt-secret") {
     throw new Error(
-      "SUPABASE_JWT_SECRET is required to generate Supabase access tokens. Please add it to your environment."
+      "SUPABASE_JWT_SECRET is required (set it to the value from Supabase Project Settings → API)."
     );
   }
 

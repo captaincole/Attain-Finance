@@ -73,9 +73,45 @@ The MCP server is what serves the entire application. The entrypoint for this se
 
 The important routes are threefold, the authentication routes, the tool routes, and the resource routes.
 
+## Authentication
+
+Authentication in this project is probably one of the most complicated things. There are two parts to the authentication system, the original Oauth 2.1 handshake with the AI client to established a connection, and the authentication with supabase to validate that the appropriate user is accessing only their own data. 
+
+### MCP Auth, DCR
+
+Our service strongly follows the patterns outlined here [MCP Auth Scheme](https://modelcontextprotocol.io/specification/draft/basic/authorization)
+
+The pattern is documented in the diagram that is in the link above, and involves multiple calls to URLs such as 
+
+`/.well-known/oauth-authorization-serve`
+
+You can see our implementation of it starts in `index.ts` here:
+
+```ts
+  registerMcpRoutes(app, server);
+  registerOauthDiscoveryRoutes(app); // Discovery Routes
+  registerDomainRoutes(app, plaidClient);
+  registerDataRoutes(app);
+  registerVisualizationRoutes(app);
+```
+
+Once the user and the users AI client is authenticated, that client now has a Clerk certifiable Oauth token, which it will pass with every request after, and we will catch and verify with our clerk middleware. 
+
+```ts
+  // index.ts
+  app.use(clerkMiddleware());
+  app.use(express.json());
+```
+
+We use Clerk as our authentication provider, because Supabase has yet to implement DCR. [See This Github Issue](https://github.com/orgs/supabase/discussions/38022#discussioncomment-14503663) - if this was available it could have greatly simplified our RLS architecture. 
+
+### Supabase Auth, Row Level Security
+
+To make sure that the user is only able to access the data that they are supposed to see, we have implemented RLS on certain tables. The customization we had to add to this is, because we don't have the full Clerk JWT, we can't use the pre built integration with Clerk and Supabase. Instead, we wrap the Clerk oauth token that we got in our own Supabase JWt so that it can provide userID to the db to verify access to the row. 
+
 ## Services
 
-We use three four party services
+We use four third party services
 
 1) Plaid - This is our connection to financial data. We have a sandbox user and account that you can connect to as well that is easier to run tests with. 
 2) Clerk - This is used to authenticate our users, and we went with this service specifically because it supports Oauth 2.1 Dynmaic Client Registration which is needed for a simple auth flow
