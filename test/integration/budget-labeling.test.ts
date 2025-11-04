@@ -13,6 +13,7 @@ import { findTransactionsByUserId } from "../../src/storage/repositories/transac
 import { createBudget, getBudgets, Budget } from "../../src/storage/budgets/budgets.js";
 import crypto from "crypto";
 import {
+  createTestSupabaseAdminClient,
   createTestSupabaseClient,
   cleanupTestUser,
   createTestConnection,
@@ -22,25 +23,27 @@ import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Budget Labeling Integration Tests", () => {
   const testUserId = "test-user-budget-labeling";
-  const supabase = createTestSupabaseClient(testUserId);
+  const adminSupabase = createTestSupabaseAdminClient();
+  const userSupabase = createTestSupabaseClient(testUserId);
   const mockClaudeClient = new MockClaudeClient();
 
   before(() => {
-    setSupabaseMock(supabase);
+    setSupabaseMock(userSupabase, { scope: "user", userId: testUserId });
+    setSupabaseMock(adminSupabase, { scope: "service" });
   });
 
   beforeEach(async () => {
-    await cleanupTestUser(supabase, testUserId);
+    await cleanupTestUser(adminSupabase, testUserId);
   });
 
   after(async () => {
-    await cleanupTestUser(supabase, testUserId);
+    await cleanupTestUser(adminSupabase, testUserId);
     resetSupabase();
   });
 
   it("should label transactions with matching budget IDs during sync", async () => {
     // Create test connection
-    await createTestConnection(supabase, {
+    await createTestConnection(adminSupabase, {
       itemId: "item_test_1",
       userId: testUserId,
       institutionName: "Test Bank",
@@ -70,7 +73,7 @@ describe("Budget Labeling Integration Tests", () => {
       },
     ];
 
-    await createTestTransactions(supabase, transactions);
+    await createTestTransactions(adminSupabase, transactions);
 
     // Create coffee budget (filter will match "Starbucks")
     const coffeeBudget = await createBudget({
@@ -98,12 +101,12 @@ describe("Budget Labeling Integration Tests", () => {
     await labelTransactionArrayForBudgets(
       transactionsForLabeling,
       [coffeeBudget],
-      supabase,
+      adminSupabase,
       mockClaudeClient
     );
 
     // Verify Starbucks transaction has budget_ids array with coffee budget ID
-    const updatedTransactions = await findTransactionsByUserId(testUserId, supabase);
+    const updatedTransactions = await findTransactionsByUserId(testUserId, userSupabase);
     const starbucksTransaction = updatedTransactions.find(
       (tx) => tx.transactionId === "tx_starbucks_1"
     );
@@ -128,7 +131,7 @@ describe("Budget Labeling Integration Tests", () => {
 
   it("should match transactions across multiple budgets", async () => {
     // Create test connection
-    await createTestConnection(supabase, {
+    await createTestConnection(adminSupabase, {
       itemId: "item_test_2",
       userId: testUserId,
       institutionName: "Test Bank",
@@ -158,7 +161,7 @@ describe("Budget Labeling Integration Tests", () => {
       },
     ];
 
-    await createTestTransactions(supabase, transactions);
+    await createTestTransactions(adminSupabase, transactions);
 
     // Create 3 budgets with overlapping filters
     const coffeeBudget = await createBudget({
@@ -208,12 +211,12 @@ describe("Budget Labeling Integration Tests", () => {
     await labelTransactionArrayForBudgets(
       transactionsForLabeling,
       [coffeeBudget, foodBudget, groceryBudget],
-      supabase,
+      adminSupabase,
       mockClaudeClient
     );
 
     // Verify Starbucks has 2 budget IDs (coffee + food)
-    const updatedTransactions = await findTransactionsByUserId(testUserId, supabase);
+    const updatedTransactions = await findTransactionsByUserId(testUserId, userSupabase);
     const starbucksTransaction = updatedTransactions.find(
       (tx) => tx.transactionId === "tx_starbucks_2"
     );
@@ -252,7 +255,7 @@ describe("Budget Labeling Integration Tests", () => {
 
   it("should handle transactions with no matching budgets", async () => {
     // Create test connection
-    await createTestConnection(supabase, {
+    await createTestConnection(adminSupabase, {
       itemId: "item_test_3",
       userId: testUserId,
       institutionName: "Test Bank",
@@ -272,7 +275,7 @@ describe("Budget Labeling Integration Tests", () => {
       },
     ];
 
-    await createTestTransactions(supabase, transactions);
+    await createTestTransactions(adminSupabase, transactions);
 
     // Create grocery budget (should NOT match gas)
     const groceryBudget = await createBudget({
@@ -300,12 +303,12 @@ describe("Budget Labeling Integration Tests", () => {
     await labelTransactionArrayForBudgets(
       transactionsForLabeling,
       [groceryBudget],
-      supabase,
+      adminSupabase,
       mockClaudeClient
     );
 
     // Verify gas transaction has empty budget_ids array
-    const updatedTransactions = await findTransactionsByUserId(testUserId, supabase);
+    const updatedTransactions = await findTransactionsByUserId(testUserId, userSupabase);
     const gasTransaction = updatedTransactions.find((tx) => tx.transactionId === "tx_gas_1");
 
     assert(gasTransaction, "Gas transaction should exist");
@@ -315,7 +318,7 @@ describe("Budget Labeling Integration Tests", () => {
 
   it("should use pre-labeled data in get-budgets query (performance test)", async () => {
     // Create test connection
-    await createTestConnection(supabase, {
+    await createTestConnection(adminSupabase, {
       itemId: "item_test_4",
       userId: testUserId,
       institutionName: "Test Bank",
@@ -347,7 +350,7 @@ describe("Budget Labeling Integration Tests", () => {
       })),
     ];
 
-    await createTestTransactions(supabase, transactions);
+    await createTestTransactions(adminSupabase, transactions);
 
     // Create coffee budget
     const coffeeBudget = await createBudget({
@@ -375,7 +378,7 @@ describe("Budget Labeling Integration Tests", () => {
     await labelTransactionArrayForBudgets(
       transactionsForLabeling,
       [coffeeBudget],
-      supabase,
+      adminSupabase,
       mockClaudeClient
     );
 
@@ -389,7 +392,7 @@ describe("Budget Labeling Integration Tests", () => {
     assert(budget, "Coffee budget should exist");
 
     // Query transactions using pre-labeled budget_ids column
-    const labeledTransactions = await findTransactionsByUserId(testUserId, supabase);
+    const labeledTransactions = await findTransactionsByUserId(testUserId, userSupabase);
     const matchingTransactions = labeledTransactions.filter((tx) =>
       tx.budgetIds?.includes(coffeeBudget.id)
     );

@@ -4,6 +4,7 @@
  */
 
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import {
@@ -67,7 +68,29 @@ export function createTestSupabaseClient(userId?: string): SupabaseClient {
     });
   }
 
-  return getSupabaseForUser(userId);
+  const jwtSecret =
+    process.env.SUPABASE_JWT_SECRET ||
+    "super-secret-jwt-token-with-at-least-32-characters-long";
+
+  const token = jwt.sign(
+    {
+      sub: userId,
+      role: "authenticated",
+      iss: "test-suite",
+      aud: "authenticated",
+    },
+    jwtSecret,
+    { expiresIn: "1h" }
+  );
+
+  return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 /**
@@ -94,7 +117,22 @@ export async function cleanupTestUser(
   await adminClient.from("liabilities_credit").delete().eq("user_id", userId);
   await adminClient.from("liabilities_mortgage").delete().eq("user_id", userId);
   await adminClient.from("liabilities_student").delete().eq("user_id", userId);
-  await adminClient.from("account_sync_state").delete().eq("user_id", userId);
+
+  const { data: userAccountIds, error: accountFetchError } = await adminClient
+    .from("accounts")
+    .select("account_id")
+    .eq("user_id", userId);
+
+  if (accountFetchError) {
+    throw new Error(`Failed to fetch accounts for cleanup: ${accountFetchError.message}`);
+  }
+
+  const accountIds = (userAccountIds ?? []).map((row) => row.account_id);
+
+  if (accountIds.length > 0) {
+    await adminClient.from("account_sync_state").delete().in("account_id", accountIds);
+  }
+
   await adminClient.from("accounts").delete().eq("user_id", userId);
   await adminClient.from("budgets").delete().eq("user_id", userId);
   await adminClient.from("categorization_prompts").delete().eq("user_id", userId);

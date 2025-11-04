@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "./database.types.js";
+import { logEvent } from "../utils/logger.js";
 
 type SupabaseEnvKey =
   | "SUPABASE_URL"
@@ -124,24 +125,35 @@ export function getSupabase(): SupabaseClient<Database> {
  * Create or return a user-scoped client that injects the x-user-id header.
  * Useful for any user-specific queries performed with the publishable key.
  */
-export function getSupabaseForUser(userId: string): SupabaseClient<Database> {
+export function getSupabaseForUser(
+  userId: string,
+  options?: { accessToken?: string }
+): SupabaseClient<Database> {
   if (!userId) {
     throw new Error("User ID is required to create a user-scoped Supabase client.");
   }
 
-  if (userClients.has(userId)) {
+  const accessToken = options?.accessToken;
+
+  if (userClients.has(userId) && !accessToken) {
     return userClients.get(userId)!;
   }
 
   const url = requireEnv("SUPABASE_URL");
   const key = requireEnv("SUPABASE_PUBLISHABLE_KEY");
 
+  const headers: Record<string, string> = {
+    "x-user-id": userId,
+    "X-User-Id": userId,
+  };
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
   const client = createClient<Database>(url, key, {
     global: {
-      headers: {
-        "x-user-id": userId,
-        "X-User-Id": userId,
-      },
+      headers,
     },
     auth: {
       autoRefreshToken: false,
@@ -149,6 +161,10 @@ export function getSupabaseForUser(userId: string): SupabaseClient<Database> {
     },
   });
 
+  logEvent("SUPABASE", "create-user-client", {
+    userId,
+    hasAccessToken: Boolean(accessToken),
+  });
   userClients.set(userId, client);
   return client;
 }

@@ -12,7 +12,7 @@ import { recategorizeAllTransactions } from "../../src/services/recategorization
 import { findTransactionsByUserId } from "../../src/storage/repositories/transactions.js";
 import { saveCustomRules, getCustomRules } from "../../src/storage/categorization/rules.js";
 import {
-  createTestSupabaseClient,
+  createTestSupabaseAdminClient,
   cleanupTestUser,
   createTestConnection,
   createTestTransactions,
@@ -21,7 +21,7 @@ import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Async Recategorization Integration Tests", () => {
   const testUserId = "test-user-recategorization";
-  const supabase = createTestSupabaseClient(testUserId);
+  const supabase = createTestSupabaseAdminClient();
   const mockClaudeClient = new MockClaudeClient();
 
   before(() => {

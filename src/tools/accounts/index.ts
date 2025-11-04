@@ -12,6 +12,7 @@ import {
 import { updateAccountLinkHandler } from "./update-account-link.js";
 import { getBaseUrl } from "../../utils/config.js";
 import type { ToolDefinition } from "../types.js";
+import { getSupabaseForUser } from "../../storage/supabase.js";
 
 export function getAccountTools(): ToolDefinition[] {
   return [
@@ -25,11 +26,13 @@ export function getAccountTools(): ToolDefinition[] {
       },
       handler: async (_args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
         const baseUrl = getBaseUrl();
+        getSupabaseForUser(userId, { accessToken });
         return connectAccountHandler(userId, baseUrl, plaidClient!);
       },
     },
@@ -51,10 +54,12 @@ export function getAccountTools(): ToolDefinition[] {
       },
       handler: async (_args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
+        getSupabaseForUser(userId, { accessToken });
         return getAccountBalancesHandler(userId);
       },
     },
@@ -74,11 +79,13 @@ export function getAccountTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
         const baseUrl = getBaseUrl();
+        getSupabaseForUser(userId, { accessToken });
         return updateAccountLinkHandler(userId, args.item_id, baseUrl, plaidClient!);
       },
     },
@@ -98,10 +105,12 @@ export function getAccountTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
+        getSupabaseForUser(userId, { accessToken });
         return disconnectAccountHandler(userId, args.item_id, plaidClient!);
       },
     },

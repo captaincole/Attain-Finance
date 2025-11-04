@@ -125,12 +125,13 @@ function getBudgetDateRange(
  */
 export async function getBudgetsHandler(
   userId: string,
-  args: GetBudgetsArgs
+  args: GetBudgetsArgs,
+  accessToken?: string
 ) {
   try {
     logToolEvent("get-budgets", "handler.start", { userId, args });
 
-    const supabaseClient = getSupabaseForUser(userId);
+    getSupabaseForUser(userId, { accessToken });
 
     // Check if user has connected accounts
     const connections = await findAccountConnectionsByUserId(userId);
@@ -138,6 +139,8 @@ export async function getBudgetsHandler(
       userId,
       connectionCount: connections.length,
     });
+
+    const supabaseClient = getSupabaseForUser(userId);
 
     if (connections.length === 0) {
       return {

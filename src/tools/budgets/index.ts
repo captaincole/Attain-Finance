@@ -9,6 +9,7 @@ import { updateBudgetRulesHandler } from "./update-budget-rules.js";
 import { getBudgetsHandler } from "./get-budgets.js";
 import { deleteBudgetHandler } from "./delete-budget.js";
 import { logToolEvent } from "../../utils/logger.js";
+import { getSupabaseForUser } from "../../storage/supabase.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getBudgetTools(): ToolDefinition[] {
@@ -45,13 +46,14 @@ export function getBudgetTools(): ToolDefinition[] {
           hasPlaidClient: !!plaidClient,
         });
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           logToolEvent("get-budgets", "missing-user-id", undefined, "error");
           throw new Error("User authentication required");
         }
 
         logToolEvent("get-budgets", "handler-invoke", { userId });
-        return getBudgetsHandler(userId, args);
+        return getBudgetsHandler(userId, args, accessToken);
       },
     },
     {
@@ -95,10 +97,12 @@ export function getBudgetTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
+        getSupabaseForUser(userId, { accessToken });
         return createBudgetHandler(userId, args);
       },
     },
@@ -150,10 +154,12 @@ export function getBudgetTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
+        getSupabaseForUser(userId, { accessToken });
         return updateBudgetRulesHandler(userId, args);
       },
     },
@@ -169,10 +175,12 @@ export function getBudgetTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
+        getSupabaseForUser(userId, { accessToken });
         return deleteBudgetHandler(userId, args);
       },
     },

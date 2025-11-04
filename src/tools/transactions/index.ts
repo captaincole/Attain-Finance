@@ -51,11 +51,12 @@ export function getTransactionTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
-        const supabaseClient = getSupabaseForUser(userId);
+        const supabaseClient = getSupabaseForUser(userId, { accessToken });
         const baseUrl = getBaseUrl();
         return getPlaidTransactionsHandler(userId, baseUrl, args, supabaseClient);
       },
@@ -79,6 +80,7 @@ export function getTransactionTools(): ToolDefinition[] {
       },
       handler: async (args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
+        const accessToken = authInfo?.token as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
