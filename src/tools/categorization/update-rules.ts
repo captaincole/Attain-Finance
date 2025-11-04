@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../../storage/database.types.js";
 import { saveCustomRules, getCustomRules } from "../../storage/categorization/rules.js";
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
 import { recategorizeAllTransactions } from "../../services/recategorization-service.js";
@@ -14,7 +16,8 @@ export interface UpdateCategorizationArgs {
  */
 export async function updateCategorizationRulesHandler(
   userId: string,
-  args: UpdateCategorizationArgs
+  args: UpdateCategorizationArgs,
+  supabaseClient: SupabaseClient<Database>
 ) {
   const { rules } = args;
 
@@ -46,7 +49,7 @@ ${(await getCustomRules(userId)) || "No custom rules set (using defaults)"}
     logToolEvent("update-categorization-rules", "rules-saved", { userId });
 
     // Check if there are transactions to recategorize
-    const allTransactions = await findTransactionsByUserId(userId);
+    const allTransactions = await findTransactionsByUserId(userId, supabaseClient);
 
     if (allTransactions.length === 0) {
       return {
@@ -74,7 +77,7 @@ You don't have any transactions yet. Run "Refresh transactions" to sync data fro
       transactionCount: allTransactions.length,
     });
     setImmediate(() => {
-      recategorizeAllTransactions(userId, rules.trim());
+      recategorizeAllTransactions(userId, rules.trim(), supabaseClient);
     });
 
     // Return immediately

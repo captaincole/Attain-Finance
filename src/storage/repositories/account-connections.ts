@@ -5,7 +5,7 @@
  */
 
 import crypto from "crypto";
-import { getSupabase } from "../supabase.js";
+import { getSupabaseServiceRole } from "../supabase.js";
 import { Tables } from "../database.types.js";
 import { logEvent } from "../../utils/logger.js";
 
@@ -112,7 +112,7 @@ export async function upsertAccountConnection(
 
   const encryptedToken = encryptAccessToken(accessToken);
 
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseServiceRole()
     .from("plaid_connections")
     .upsert(
       {
@@ -145,7 +145,7 @@ export async function findAccountConnectionsByUserId(
 ): Promise<AccountConnection[]> {
   logEvent("REPO/ACCOUNT-CONNECTIONS", "fetching-connections", { userId });
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("plaid_connections")
     .select("*")
     .eq("user_id", userId)
@@ -183,7 +183,7 @@ export async function findAccountConnectionsByUserId(
 export async function deleteAccountConnectionByItemId(itemId: string): Promise<void> {
   logEvent("REPO/ACCOUNT-CONNECTIONS", "deleting-connection", { itemId });
 
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseServiceRole()
     .from("plaid_connections")
     .delete()
     .eq("item_id", itemId);
@@ -202,7 +202,7 @@ export async function deleteAccountConnectionByItemId(itemId: string): Promise<v
 export async function deleteAllAccountConnectionsByUserId(userId: string): Promise<void> {
   logEvent("REPO/ACCOUNT-CONNECTIONS", "deleting-all-connections", { userId });
 
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseServiceRole()
     .from("plaid_connections")
     .delete()
     .eq("user_id", userId);

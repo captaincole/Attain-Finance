@@ -1,4 +1,6 @@
 import type { PlaidApi } from "plaid";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../storage/database.types.js";
 
 export interface ToolDefinition {
   name: string;
@@ -10,6 +12,7 @@ export interface ToolDefinition {
 
 export interface ToolHandlerDependencies {
   plaidClient?: PlaidApi;
+  supabaseClient?: SupabaseClient<Database>;
 }
 
 export type ToolHandler<Args = any> = (

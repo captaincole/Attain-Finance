@@ -17,9 +17,9 @@ import {
 } from "../helpers/test-db.js";
 
 describe("Plaid Tool Integration Tests", () => {
-  const supabase = createTestSupabaseClient();
-  let mockPlaidClient: any;
   const testUserId = "test-user-plaid";
+  const supabase = createTestSupabaseClient(testUserId);
+  let mockPlaidClient: any;
   const testBaseUrl = "http://localhost:3000";
 
   before(() => {

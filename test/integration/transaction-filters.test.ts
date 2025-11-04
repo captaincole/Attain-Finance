@@ -11,13 +11,15 @@ import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import { getPlaidTransactionsHandler } from "../../src/tools/transactions/get-transactions.js";
 import {
   createTestSupabaseClient,
+  createTestSupabaseAdminClient,
   cleanupTestUser,
   createTestConnection,
 } from "../helpers/test-db.js";
 
 describe("Transaction Filters Integration Tests", () => {
-  const supabase = createTestSupabaseClient();
   const testUserId = "test-user-tx-filters";
+  const supabase = createTestSupabaseClient(testUserId);
+  const adminSupabase = createTestSupabaseAdminClient();
   const baseUrl = "http://localhost:3000";
 
   /**
@@ -28,57 +30,15 @@ describe("Transaction Filters Integration Tests", () => {
    * - 3 pending, 4 confirmed
    */
   async function setupTestData() {
-    // Create connection
+    // Create connection (uses admin client internally)
     await createTestConnection(supabase, {
       itemId: "item_test",
       userId: testUserId,
       institutionName: "Test Bank",
     });
 
-    // Create 2 accounts
-    await supabase.from("accounts").insert([
-      {
-        account_id: "acc_checking",
-        user_id: testUserId,
-        item_id: "item_test",
-        name: "Checking",
-        type: "depository",
-        subtype: "checking",
-        current_balance: 1000,
-        last_synced_at: new Date().toISOString(),
-      },
-      {
-        account_id: "acc_savings",
-        user_id: testUserId,
-        item_id: "item_test",
-        name: "Savings",
-        type: "depository",
-        subtype: "savings",
-        current_balance: 5000,
-        last_synced_at: new Date().toISOString(),
-      },
-    ]);
-
-    // Create 2 budgets
-    await supabase.from("budgets").insert([
-      {
-        id: "budget_food",
-        user_id: testUserId,
-        name: "Food Budget",
-        rules: "category contains Food",
-        monthly_limit: 500,
-      },
-      {
-        id: "budget_transport",
-        user_id: testUserId,
-        name: "Transport Budget",
-        rules: "category contains Transport",
-        monthly_limit: 200,
-      },
-    ]);
-
     // Create 7 transactions with varied attributes
-    await supabase.from("transactions").insert([
+    const { error } = await adminSupabase.from("transactions").insert([
       // Checking account (2 transactions)
       {
         transaction_id: "tx_1",
@@ -173,6 +133,10 @@ describe("Transaction Filters Integration Tests", () => {
         budget_ids: null,
       },
     ]);
+
+    if (error) {
+      throw new Error(`Failed to insert test transactions: ${error.message}`);
+    }
   }
 
   before(() => {
@@ -182,6 +146,21 @@ describe("Transaction Filters Integration Tests", () => {
   beforeEach(async () => {
     await cleanupTestUser(supabase, testUserId);
     await setupTestData();
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("transaction_id")
+      .eq("user_id", testUserId);
+    if (error) {
+      throw new Error(`Failed to verify test transactions: ${error.message}`);
+    }
+    const { data: adminData, error: adminError } = await adminSupabase
+      .from("transactions")
+      .select("transaction_id")
+      .eq("user_id", testUserId);
+    if (adminError) {
+      throw new Error(`Admin verification failed: ${adminError.message}`);
+    }
+    console.log("[TEST] transactions inserted", data?.length || 0, "admin", adminData?.length || 0);
   });
 
   after(async () => {
@@ -193,7 +172,7 @@ describe("Transaction Filters Integration Tests", () => {
     // Filter by checking account only (should return 2 of 7 transactions)
     const result = await getPlaidTransactionsHandler(testUserId, baseUrl, {
       account_ids: ["acc_checking"],
-    });
+    }, supabase);
 
     assert(result.structuredContent, "Should have structured content");
     const transactions = result.structuredContent.transactions;
@@ -207,7 +186,7 @@ describe("Transaction Filters Integration Tests", () => {
     // Filter by Food & Transport categories (should return 5 of 7 transactions)
     const result = await getPlaidTransactionsHandler(testUserId, baseUrl, {
       categories: ["Food", "Transport"],
-    });
+    }, supabase);
 
     assert(result.structuredContent, "Should have structured content");
     const transactions = result.structuredContent.transactions;
@@ -229,7 +208,7 @@ describe("Transaction Filters Integration Tests", () => {
     // Filter by budget_food (should return 2 of 7 transactions)
     const result = await getPlaidTransactionsHandler(testUserId, baseUrl, {
       budget_id: "budget_food",
-    });
+    }, supabase);
 
     assert(result.structuredContent, "Should have structured content");
     const transactions = result.structuredContent.transactions;
@@ -242,7 +221,7 @@ describe("Transaction Filters Integration Tests", () => {
     // Filter for pending only (should return 3 of 7 transactions)
     const result = await getPlaidTransactionsHandler(testUserId, baseUrl, {
       pending_only: true,
-    });
+    }, supabase);
 
     assert(result.structuredContent, "Should have structured content");
     const transactions = result.structuredContent.transactions;
@@ -257,7 +236,7 @@ describe("Transaction Filters Integration Tests", () => {
     // Filter to exclude pending (should return 4 of 7 transactions)
     const result = await getPlaidTransactionsHandler(testUserId, baseUrl, {
       exclude_pending: true,
-    });
+    }, supabase);
 
     assert(result.structuredContent, "Should have structured content");
     const transactions = result.structuredContent.transactions;
@@ -274,7 +253,7 @@ describe("Transaction Filters Integration Tests", () => {
     const result = await getPlaidTransactionsHandler(testUserId, baseUrl, {
       account_ids: ["acc_checking"],
       categories: ["Food"],
-    });
+    }, supabase);
 
     assert(result.structuredContent, "Should have structured content");
     const transactions = result.structuredContent.transactions;

@@ -1,4 +1,6 @@
-import { getSupabase } from "../supabase.js";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseForUser, getSupabaseServiceRole } from "../supabase.js";
+import { Database } from "../database.types.js";
 
 export interface Account {
   id: string;
@@ -59,7 +61,7 @@ export async function upsertAccounts(
     updated_at: now,
   }));
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
   const { data, error } = await supabase
     .from("accounts")
     .upsert(accountsToUpsert, {
@@ -78,8 +80,11 @@ export async function upsertAccounts(
 /**
  * Get all accounts for a user across all connected institutions.
  */
-export async function getAccountsByUserId(userId: string): Promise<Account[]> {
-  const supabase = getSupabase();
+export async function getAccountsByUserId(
+  userId: string,
+  supabaseClient?: SupabaseClient<Database>
+): Promise<Account[]> {
+  const supabase = supabaseClient ?? getSupabaseForUser(userId);
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
@@ -98,9 +103,10 @@ export async function getAccountsByUserId(userId: string): Promise<Account[]> {
  */
 export async function getAccountsByItemId(
   userId: string,
-  itemId: string
+  itemId: string,
+  supabaseClient?: SupabaseClient<Database>
 ): Promise<Account[]> {
-  const supabase = getSupabase();
+  const supabase = supabaseClient ?? getSupabaseServiceRole();
   const { data, error } = await supabase
     .from("accounts")
     .select("*")

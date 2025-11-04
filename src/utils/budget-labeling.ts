@@ -3,6 +3,7 @@
  * Uses Claude API to determine which budgets each transaction matches
  */
 
+import { SupabaseClient } from "@supabase/supabase-js";
 import {
   findTransactionsByUserId,
   batchUpdateTransactionBudgets,
@@ -14,6 +15,7 @@ import {
   ClaudeClient,
 } from "./clients/claude.js";
 import { logEvent } from "./logger.js";
+import type { Database } from "../storage/database.types.js";
 
 /**
  * Minimal transaction shape needed for budget labeling
@@ -36,6 +38,7 @@ export interface TransactionForBudgetLabeling {
 export async function labelTransactionArrayForBudgets(
   transactions: TransactionForBudgetLabeling[],
   budgets: Budget[],
+  supabaseClient: SupabaseClient<Database>,
   claudeClient?: ClaudeClient
 ): Promise<void> {
   logEvent("BUDGET-LABELING", "start", { transactionCount: transactions.length, budgetCount: budgets.length });
@@ -103,7 +106,7 @@ export async function labelTransactionArrayForBudgets(
     budgetIds: Array.from(transactionBudgetMap.get(tx.transactionId) || []),
   }));
 
-  await batchUpdateTransactionBudgets(updates);
+  await batchUpdateTransactionBudgets(updates, supabaseClient);
 
   const txsWithBudgets = updates.filter((u) => u.budgetIds.length > 0).length;
   logEvent("BUDGET-LABELING", "complete", { labeledCount: txsWithBudgets, totalCount: transactions.length });
@@ -116,12 +119,13 @@ export async function labelTransactionArrayForBudgets(
 export async function labelTransactionsForBudgets(
   userId: string,
   budgets: Budget[],
+  supabaseClient: SupabaseClient<Database>,
   claudeClient?: ClaudeClient
 ): Promise<number> {
   logEvent("BUDGET-LABELING", "starting-full-relabel", { userId, budgetCount: budgets.length });
 
   // Fetch all user transactions from database
-  const allTransactions = await findTransactionsByUserId(userId);
+  const allTransactions = await findTransactionsByUserId(userId, supabaseClient);
 
   logEvent("BUDGET-LABELING", "processing-all-transactions", { userId, transactionCount: allTransactions.length, budgetCount: budgets.length });
 
@@ -139,7 +143,7 @@ export async function labelTransactionsForBudgets(
       budgetIds: [],
     }));
 
-    await batchUpdateTransactionBudgets(updates);
+    await batchUpdateTransactionBudgets(updates, supabaseClient);
     return allTransactions.length;
   }
 
@@ -194,7 +198,7 @@ export async function labelTransactionsForBudgets(
     budgetIds: Array.from(transactionBudgetMap.get(tx.transactionId) || []),
   }));
 
-  await batchUpdateTransactionBudgets(updates);
+  await batchUpdateTransactionBudgets(updates, supabaseClient);
 
   const txsWithBudgets = updates.filter((u) => u.budgetIds.length > 0).length;
   logEvent("BUDGET-LABELING", "complete", { labeledCount: txsWithBudgets, totalCount: allTransactions.length });
@@ -209,12 +213,13 @@ export async function labelTransactionsForBudgets(
 export async function labelTransactionsForSingleBudget(
   userId: string,
   budget: Budget,
+  supabaseClient: SupabaseClient<Database>,
   claudeClient?: ClaudeClient
 ): Promise<number> {
   logEvent("BUDGET-LABELING", "labeling-single-budget", { userId, budgetId: budget.id, budgetTitle: budget.title });
 
   // Fetch all user transactions from database
-  const allTransactions = await findTransactionsByUserId(userId);
+  const allTransactions = await findTransactionsByUserId(userId, supabaseClient);
 
   if (allTransactions.length === 0) {
     logEvent("BUDGET-LABELING", "no-transactions");
@@ -278,7 +283,7 @@ export async function labelTransactionsForSingleBudget(
   });
 
   if (changedUpdates.length > 0) {
-    await batchUpdateTransactionBudgets(changedUpdates);
+    await batchUpdateTransactionBudgets(changedUpdates, supabaseClient);
     logEvent("BUDGET-LABELING", "updated-transactions", { count: changedUpdates.length });
   }
 

@@ -10,6 +10,7 @@ import {
   markBudgetAsError,
 } from "../storage/budgets/budgets.js";
 import { labelTransactionsForSingleBudget } from "./budget-labeling.js";
+import { getSupabaseForUser } from "../storage/supabase.js";
 
 /**
  * Process a budget asynchronously (labels transactions in background)
@@ -23,22 +24,23 @@ export async function processBudgetAsync(
 
   try {
     // Mark as processing
-    await markBudgetAsProcessing(budget.id);
+    await markBudgetAsProcessing(userId, budget.id);
 
     // Label transactions (this is the slow part that uses Claude API)
-    const matchingCount = await labelTransactionsForSingleBudget(userId, budget);
+    const supabaseClient = getSupabaseForUser(userId);
+    const matchingCount = await labelTransactionsForSingleBudget(userId, budget, supabaseClient);
 
     console.log(`[BUDGET-WORKER] Labeling complete for ${budget.id}: ${matchingCount} transactions matched`);
 
     // Mark as ready
-    await markBudgetAsReady(budget.id);
+    await markBudgetAsReady(userId, budget.id);
 
     console.log(`[BUDGET-WORKER] Budget ${budget.id} processing complete`);
   } catch (error: any) {
     console.error(`[BUDGET-WORKER] Error processing budget ${budget.id}:`, error);
 
     // Mark as error
-    await markBudgetAsError(budget.id, error.message || "Unknown error");
+    await markBudgetAsError(userId, budget.id, error.message || "Unknown error");
   }
 }
 

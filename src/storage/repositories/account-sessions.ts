@@ -4,7 +4,7 @@
  * Manages temporary sessions for account connection flow
  */
 
-import { getSupabase } from "../supabase.js";
+import { getSupabaseServiceRole } from "../supabase.js";
 import { Tables } from "../database.types.js";
 import { logEvent } from "../../utils/logger.js";
 
@@ -35,7 +35,7 @@ export async function createAccountSession(
 ): Promise<AccountSession> {
   logEvent("REPO/ACCOUNT-SESSIONS", "creating-session", { sessionId, userId });
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("plaid_sessions")
     .insert({
       session_id: sessionId,
@@ -71,7 +71,7 @@ export async function findAccountSessionById(
 ): Promise<AccountSession | null> {
   logEvent("REPO/ACCOUNT-SESSIONS", "finding-session", { sessionId });
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("plaid_sessions")
     .select("*")
     .eq("session_id", sessionId)
@@ -104,7 +104,7 @@ export async function findAccountSessionById(
 export async function markAccountSessionCompleted(sessionId: string): Promise<void> {
   logEvent("REPO/ACCOUNT-SESSIONS", "marking-session-completed", { sessionId });
 
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseServiceRole()
     .from("plaid_sessions")
     .update({
       status: "completed",
@@ -129,7 +129,7 @@ export async function markAccountSessionFailed(
 ): Promise<void> {
   logEvent("REPO/ACCOUNT-SESSIONS", "marking-session-failed", { sessionId, errorMessage });
 
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseServiceRole()
     .from("plaid_sessions")
     .update({
       status: "failed",
@@ -153,7 +153,7 @@ export async function markAccountSessionFailed(
 export async function cancelPendingSessionsForUser(userId: string): Promise<number> {
   logEvent("REPO/ACCOUNT-SESSIONS", "cancelling-pending-sessions", { userId });
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("plaid_sessions")
     .update({
       status: "failed",
@@ -183,7 +183,7 @@ export async function cancelPendingSessionsForUser(userId: string): Promise<numb
 export async function deleteExpiredAccountSessions(): Promise<number> {
   logEvent("REPO/ACCOUNT-SESSIONS", "cleaning-up-expired-sessions");
 
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("plaid_sessions")
     .delete()
     .lt("expires_at", new Date().toISOString())

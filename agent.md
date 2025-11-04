@@ -29,7 +29,7 @@
 - Tool handlers return `_meta` plus `structuredContent` (account balances, budgets) so ChatGPT renders `connected-institutions` and `budget-list` widgets without additional calls
 
 ## Data & Storage
-- Supabase client (`src/storage/supabase.ts`) lazily instantiates using `SUPABASE_URL` + `SUPABASE_ANON_KEY`
+- Supabase client (`src/storage/supabase.ts`) lazily instantiates using `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
 - Repositories under `src/storage/repositories/` manage tables: `plaid_connections`, `accounts`, `account_sync_state`, `transactions`, etc.
 - Budgets module (`src/storage/budgets/`) calculates period windows, aggregates spending, matches transactions
 - Migrations in `supabase/migrations/`; append-only policy

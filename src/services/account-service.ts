@@ -24,7 +24,7 @@ import {
 } from "../storage/repositories/accounts.js";
 import { TransactionSyncService } from "./transaction-sync.js";
 import { InvestmentSyncService } from "./investment-sync.js";
-import { getSupabase } from "../storage/supabase.js";
+import { getSupabaseServiceRole } from "../storage/supabase.js";
 import { ClaudeClient } from "../utils/clients/claude.js";
 import { logServiceEvent, serializeError } from "../utils/logger.js";
 
@@ -176,7 +176,7 @@ export async function completeAccountConnection(
         userId: session.userId,
         itemId,
       });
-      const syncService = new TransactionSyncService(plaidClient, getSupabase(), claudeClient);
+      const syncService = new TransactionSyncService(plaidClient, getSupabaseServiceRole(), claudeClient);
       await syncService.initiateSyncForConnection(itemId, session.userId, accessToken);
       logServiceEvent("account-service", "background-sync-complete", {
         userId: session.userId,
@@ -201,7 +201,7 @@ export async function completeAccountConnection(
         userId: session.userId,
         itemId,
       });
-      const investmentSyncService = new InvestmentSyncService(plaidClient, getSupabase());
+      const investmentSyncService = new InvestmentSyncService(plaidClient, getSupabaseServiceRole());
       await investmentSyncService.syncConnectionInvestments({
         itemId,
         userId: session.userId,

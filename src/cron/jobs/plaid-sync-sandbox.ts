@@ -7,7 +7,7 @@
  */
 
 import { createPlaidClient } from "../../utils/clients/plaid.js";
-import { getSupabase } from "../../storage/supabase.js";
+import { getSupabaseServiceRole } from "../../storage/supabase.js";
 import { TransactionSyncService } from "../../services/transaction-sync.js";
 import { InvestmentSyncService } from "../../services/investment-sync.js";
 import { UserBatchSyncService } from "../services/user-batch-sync.service.js";
@@ -40,7 +40,7 @@ export const plaidSyncSandboxJob: CronJob = {
     }
 
     const plaidClient = createPlaidClient();
-    const supabase = getSupabase();
+    const supabase = getSupabaseServiceRole(); // Use service role to access all users' data
     const transactionSyncService = new TransactionSyncService(
       plaidClient,
       supabase,

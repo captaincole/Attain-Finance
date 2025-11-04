@@ -4,7 +4,7 @@
  * Handles user fetching, error isolation, and progress tracking
  */
 
-import { getSupabase } from "../../storage/supabase.js";
+import { getSupabaseServiceRole } from "../../storage/supabase.js";
 import {
   findAccountConnectionsByUserId,
   AccountConnection,
@@ -37,7 +37,7 @@ export class UserBatchSyncService {
   private async getAllUserIds(
     environment?: "sandbox" | "development" | "production"
   ): Promise<string[]> {
-    let query = getSupabase().from("plaid_connections").select("user_id");
+    let query = getSupabaseServiceRole().from("plaid_connections").select("user_id");
 
     // Filter by environment if specified
     if (environment) {

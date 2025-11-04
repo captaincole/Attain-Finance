@@ -21,10 +21,9 @@ import { upsertAccounts } from "../../src/storage/repositories/accounts.js";
 import { getLiabilitiesHandler } from "../../src/tools/liabilities/get-liabilities.js";
 
 describe("Liabilities Integration", () => {
-  const supabase = createTestSupabaseClient();
-  const mockPlaidClient = new MockPlaidClient() as any;
-
   const testUserId = "test-liabilities-user";
+  const supabase = createTestSupabaseClient(testUserId);
+  const mockPlaidClient = new MockPlaidClient() as any;
   const testItemId = "item-test-liabilities-123";
   const testAccessToken = `access-test-${testItemId}`;
 

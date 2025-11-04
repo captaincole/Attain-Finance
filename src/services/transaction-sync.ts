@@ -37,6 +37,7 @@ interface TransactionSyncOptions {
 
 export class TransactionSyncService {
   private syncStateRepo: AccountSyncStateRepository;
+  private supabase: SupabaseClient;
   private claudeClient?: ClaudeClient;
 
   constructor(
@@ -44,6 +45,7 @@ export class TransactionSyncService {
     supabase: SupabaseClient,
     claudeClient?: ClaudeClient
   ) {
+    this.supabase = supabase;
     this.syncStateRepo = new AccountSyncStateRepository(supabase);
     this.claudeClient = claudeClient;
   }
@@ -206,7 +208,7 @@ export class TransactionSyncService {
         // Upsert both added and modified transactions to database
         const allTransactions = [...addedForDb, ...modifiedForDb];
         if (allTransactions.length > 0) {
-          await upsertTransactions(allTransactions);
+          await upsertTransactions(allTransactions, this.supabase);
 
           // Track these transactions for budget labeling later
           allSyncedTransactions.push(
@@ -231,7 +233,7 @@ export class TransactionSyncService {
           });
 
           const transactionIds = removed.map((tx) => tx.transaction_id);
-          await deleteTransactions(transactionIds);
+          await deleteTransactions(transactionIds, this.supabase);
 
           logServiceEvent("transaction-sync", "remove-transactions-complete", {
             accountId,
@@ -282,6 +284,7 @@ export class TransactionSyncService {
             await labelTransactionArrayForBudgets(
               allSyncedTransactions,
               budgets,
+              this.supabase,
               this.claudeClient
             );
           } else {

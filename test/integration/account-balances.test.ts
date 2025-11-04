@@ -16,8 +16,8 @@ import {
 } from "../helpers/test-db.js";
 
 describe("Account Balances Integration Tests", () => {
-  const supabase = createTestSupabaseClient();
   const testUserId = "test-user-accounts";
+  const supabase = createTestSupabaseClient(testUserId);
 
   before(() => {
     setSupabaseMock(supabase);

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { getPlaidTransactionsHandler } from "./get-transactions.js";
 import { getRawTransactionsHandler } from "./get-raw-transactions.js";
 import { getBaseUrl } from "../../utils/config.js";
+import { getSupabaseForUser } from "../../storage/supabase.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getTransactionTools(): ToolDefinition[] {
@@ -48,14 +49,15 @@ export function getTransactionTools(): ToolDefinition[] {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, _deps) => {
+      handler: async (args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
+        const supabaseClient = getSupabaseForUser(userId);
         const baseUrl = getBaseUrl();
-        return getPlaidTransactionsHandler(userId, baseUrl, args);
+        return getPlaidTransactionsHandler(userId, baseUrl, args, supabaseClient);
       },
     },
     {

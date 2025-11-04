@@ -6,14 +6,24 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import {
+  getSupabaseEnvironment,
+  getSupabaseForUser,
+  getSupabaseServiceRole,
+} from "../../src/storage/supabase.js";
 
 // Load test environment variables
 dotenv.config({ path: ".env.test" });
 
-// Verify required env vars
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-  throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env.test");
+let supabaseEnv: ReturnType<typeof getSupabaseEnvironment>;
+try {
+  supabaseEnv = getSupabaseEnvironment();
+} catch (error: any) {
+  throw new Error(`Supabase test configuration error: ${error.message}`);
 }
+
+const { url: SUPABASE_URL, publishableKey: SUPABASE_PUBLISHABLE_KEY, secretKey: SUPABASE_SECRET_KEY } =
+  supabaseEnv;
 
 if (!process.env.ENCRYPTION_KEY) {
   throw new Error("Missing ENCRYPTION_KEY in .env.test");
@@ -46,34 +56,50 @@ export interface TestTransaction {
 }
 
 /**
- * Create a Supabase client for testing
+ * Create a Supabase client for testing (optionally user-scoped)
+ * Uses the publishable key and can include the user header when provided.
+ * Use this when testing user-facing operations.
  */
-export function createTestSupabaseClient(): SupabaseClient {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_ANON_KEY!
-  );
+export function createTestSupabaseClient(userId?: string): SupabaseClient {
+  if (!userId) {
+    return createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+
+  return getSupabaseForUser(userId);
 }
 
 /**
- * Clean up all test data for a specific user
+ * Create a Supabase admin client for testing.
+ * Uses the service-role key for full access — primarily for setup/teardown.
+ */
+export function createTestSupabaseAdminClient(): SupabaseClient {
+  return getSupabaseServiceRole();
+}
+
+/**
+ * Clean up all test data for a specific user using the admin client.
  */
 export async function cleanupTestUser(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   userId: string
 ): Promise<void> {
+  // Use admin client for cleanup
+  const adminClient = createTestSupabaseAdminClient();
+
   // Delete in reverse order of dependencies (foreign keys)
-  await supabase.from("transactions").delete().eq("user_id", userId);
-  await supabase.from("investment_holdings").delete().eq("user_id", userId);
-  await supabase.from("liabilities_credit").delete().eq("user_id", userId);
-  await supabase.from("liabilities_mortgage").delete().eq("user_id", userId);
-  await supabase.from("liabilities_student").delete().eq("user_id", userId);
-  await supabase.from("account_sync_state").delete().eq("user_id", userId);
-  await supabase.from("accounts").delete().eq("user_id", userId);
-  await supabase.from("budgets").delete().eq("user_id", userId);
-  await supabase.from("categorization_prompts").delete().eq("user_id", userId);
-  await supabase.from("plaid_connections").delete().eq("user_id", userId);
-  await supabase.from("plaid_sessions").delete().eq("user_id", userId);
+  await adminClient.from("transactions").delete().eq("user_id", userId);
+  await adminClient.from("investment_holdings").delete().eq("user_id", userId);
+  await adminClient.from("liabilities_credit").delete().eq("user_id", userId);
+  await adminClient.from("liabilities_mortgage").delete().eq("user_id", userId);
+  await adminClient.from("liabilities_student").delete().eq("user_id", userId);
+  await adminClient.from("account_sync_state").delete().eq("user_id", userId);
+  await adminClient.from("accounts").delete().eq("user_id", userId);
+  await adminClient.from("budgets").delete().eq("user_id", userId);
+  await adminClient.from("categorization_prompts").delete().eq("user_id", userId);
+  await adminClient.from("plaid_connections").delete().eq("user_id", userId);
+  await adminClient.from("plaid_sessions").delete().eq("user_id", userId);
 }
 
 /**
@@ -99,12 +125,16 @@ function encryptTestAccessToken(accessToken: string): string {
 /**
  * Create a test Plaid connection
  * Uses upsert to avoid duplicate key errors from previous test runs
+ * Relies on the admin client so no permissions block the insert.
  */
 export async function createTestConnection(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   connection: TestConnection
 ): Promise<void> {
-  const { error } = await supabase.from("plaid_connections").upsert({
+  // Use admin client for test data creation
+  const adminClient = createTestSupabaseAdminClient();
+
+  const { error } = await adminClient.from("plaid_connections").upsert({
     item_id: connection.itemId,
     user_id: connection.userId,
     access_token_encrypted: encryptTestAccessToken(`test-access-token-${connection.itemId}`),
@@ -118,13 +148,16 @@ export async function createTestConnection(
 }
 
 /**
- * Create test transactions
+ * Create test transactions using the admin client for unrestricted inserts.
  */
 export async function createTestTransactions(
-  supabase: SupabaseClient,
+  _supabase: SupabaseClient,
   transactions: TestTransaction[]
 ): Promise<void> {
-  const { error } = await supabase.from("transactions").insert(transactions);
+  // Use admin client for test data creation
+  const adminClient = createTestSupabaseAdminClient();
+
+  const { error } = await adminClient.from("transactions").insert(transactions);
 
   if (error) {
     throw new Error(`Failed to create test transactions: ${error.message}`);

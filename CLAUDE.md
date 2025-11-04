@@ -322,7 +322,8 @@ serverInternal._requestHandlers.set("tools/list", async (request) => {
 
 **Required:**
 - `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` - OAuth authentication
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY` - Database
+- `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` - Database access for user-scoped flows
+- `SUPABASE_SECRET_KEY` - Database admin access for background jobs
 - `ENCRYPTION_KEY` - AES-256 key for Plaid tokens (64-char hex)
 - `JWT_SECRET` - Signed download URLs (64-char hex)
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` - Plaid API

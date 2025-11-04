@@ -3,7 +3,7 @@
  * Database operations for investment holdings from Plaid Investments API
  */
 
-import { getSupabase } from "../supabase.js";
+import { getSupabaseServiceRole } from "../supabase.js";
 import type { Database } from "../database.types.js";
 import type { Holding, Security } from "plaid";
 
@@ -34,7 +34,7 @@ export async function upsertHoldingsForAccount(
     return; // No holdings to upsert
   }
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   // Create security lookup map for fast access
   const securityMap = new Map(securities.map(s => [s.security_id, s]));
@@ -86,7 +86,7 @@ export async function upsertHoldingsForAccount(
 export async function getHoldingsByUserId(
   userId: string
 ): Promise<InvestmentHoldingWithAccount[]> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const { data, error } = await supabase
     .from("investment_holdings")
@@ -120,7 +120,7 @@ export async function getHoldingsByAccountId(
   userId: string,
   accountId: string
 ): Promise<InvestmentHoldingRow[]> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const { data, error } = await supabase
     .from("investment_holdings")
@@ -141,7 +141,7 @@ export async function getHoldingsByAccountId(
  * @param accountId - Plaid account_id
  */
 export async function deleteHoldingsByAccountId(accountId: string): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const { error } = await supabase
     .from("investment_holdings")
@@ -158,7 +158,7 @@ export async function deleteHoldingsByAccountId(accountId: string): Promise<void
  * @param userId - User ID
  */
 export async function deleteHoldingsByUserId(userId: string): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const { error } = await supabase
     .from("investment_holdings")

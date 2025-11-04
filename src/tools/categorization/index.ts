@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { updateCategorizationRulesHandler } from "./update-rules.js";
+import { getSupabaseForUser } from "../../storage/supabase.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getCategorizationTools(): ToolDefinition[] {
@@ -20,13 +21,14 @@ export function getCategorizationTools(): ToolDefinition[] {
       options: {
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (args, { authInfo }, _deps) => {
+      handler: async (args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");
         }
 
-        return updateCategorizationRulesHandler(userId, args);
+        const supabaseClient = getSupabaseForUser(userId);
+        return updateCategorizationRulesHandler(userId, args, supabaseClient);
       },
     },
   ];

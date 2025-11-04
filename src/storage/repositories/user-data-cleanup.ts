@@ -3,7 +3,7 @@
  * Functions for deleting all user data (testing/development only)
  */
 
-import { getSupabase } from "../supabase.js";
+import { getSupabaseServiceRole } from "../supabase.js";
 import { logEvent } from "../../utils/logger.js";
 
 export interface UserDataDeletionSummary {
@@ -32,7 +32,7 @@ export interface UserDataDeletionSummary {
 export async function deleteAllUserData(
   userId: string
 ): Promise<UserDataDeletionSummary> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   logEvent("USER-DATA-CLEANUP", "starting-deletion", { userId });
 
@@ -195,7 +195,7 @@ export async function getUserDataSummary(userId: string): Promise<{
   budgetCount: number;
   ruleCount: number;
 }> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const [connections, accounts, transactions, budgets, rules] =
     await Promise.all([

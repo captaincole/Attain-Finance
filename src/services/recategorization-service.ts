@@ -4,6 +4,8 @@
  * Uses fire-and-forget pattern similar to transaction sync
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../storage/database.types.js";
 import { findTransactionsByUserId, updateTransactionCategories } from "../storage/repositories/transactions.js";
 import {
   categorizeTransactions,
@@ -19,13 +21,14 @@ import { logServiceEvent, serializeError } from "../utils/logger.js";
 export async function recategorizeAllTransactions(
   userId: string,
   rules: string,
+  supabaseClient: SupabaseClient<Database>,
   claudeClient?: ClaudeClient
 ): Promise<void> {
   logServiceEvent("recategorization", "start", { userId });
 
   try {
     // Fetch all transactions for user
-    const allTransactions = await findTransactionsByUserId(userId);
+    const allTransactions = await findTransactionsByUserId(userId, supabaseClient);
 
     if (allTransactions.length === 0) {
       logServiceEvent("recategorization", "no-transactions", { userId });
@@ -67,7 +70,7 @@ export async function recategorizeAllTransactions(
     });
 
     // Update all transactions in database
-    await updateTransactionCategories(updates);
+    await updateTransactionCategories(updates, supabaseClient);
 
     logServiceEvent("recategorization", "complete", {
       userId,

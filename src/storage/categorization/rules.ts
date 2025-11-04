@@ -1,4 +1,4 @@
-import { getSupabase } from "../supabase.js";
+import { getSupabaseForUser } from "../supabase.js";
 import { Tables } from "../database.types.js";
 import { logServiceEvent, serializeError } from "../../utils/logger.js";
 
@@ -13,7 +13,7 @@ export type CategorizationPrompt = Tables<"categorization_prompts">;
  * @returns Custom rules text or null if not set
  */
 export async function getCustomRules(userId: string): Promise<string | null> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseForUser(userId)
     .from("categorization_prompts")
     .select("custom_rules")
     .eq("user_id", userId)
@@ -40,7 +40,7 @@ export async function saveCustomRules(
   userId: string,
   customRules: string
 ): Promise<void> {
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseForUser(userId)
     .from("categorization_prompts")
     .upsert(
       {
@@ -66,7 +66,7 @@ export async function saveCustomRules(
  * @param userId - Clerk user ID
  */
 export async function deleteCustomRules(userId: string): Promise<void> {
-  const { error } = await getSupabase()
+  const { error } = await getSupabaseForUser(userId)
     .from("categorization_prompts")
     .delete()
     .eq("user_id", userId);

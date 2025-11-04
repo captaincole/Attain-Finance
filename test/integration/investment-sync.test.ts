@@ -17,15 +17,14 @@ import { upsertAccounts } from "../../src/storage/repositories/accounts.js";
 import { AccountInvestmentSyncStateRepository } from "../../src/storage/repositories/account-investment-sync-state.js";
 
 describe("Investment Sync Service", () => {
-  const supabase = createTestSupabaseClient();
+  const testUserId = "test-investment-sync-user";
+  const supabase = createTestSupabaseClient(testUserId);
   const mockPlaidClient = new MockPlaidClient() as any;
   const investmentSyncService = new InvestmentSyncService(
     mockPlaidClient,
     supabase
   );
   const syncStateRepo = new AccountInvestmentSyncStateRepository(supabase);
-
-  const testUserId = "test-investment-sync-user";
   const testItemId = "item-test-investment-123";
   const testAccessToken = `access-test-${testItemId}`;
 

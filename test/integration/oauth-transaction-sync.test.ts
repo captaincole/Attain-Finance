@@ -6,7 +6,6 @@
 import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert";
 import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
 import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import { MockClaudeClient } from "../mocks/claude-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
@@ -14,17 +13,10 @@ import { completeAccountConnection } from "../../src/services/account-service.js
 import { getAccountsByItemId } from "../../src/storage/repositories/accounts.js";
 import { findTransactionsByUserId } from "../../src/storage/repositories/transactions.js";
 import { AccountSyncStateRepository } from "../../src/storage/repositories/account-sync-state.js";
+import { createTestSupabaseClient, cleanupTestUser } from "../helpers/test-db.js";
 
 // Load test environment variables
 dotenv.config({ path: ".env.test" });
-
-// Verify required env vars
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-  throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env.test");
-}
-if (!process.env.ENCRYPTION_KEY) {
-  throw new Error("Missing ENCRYPTION_KEY in .env.test");
-}
 
 describe("OAuth Transaction Sync Integration Test", () => {
   let mockPlaidClient: any;
@@ -36,10 +28,7 @@ describe("OAuth Transaction Sync Integration Test", () => {
 
   before(() => {
     // Create real Supabase client for local testing
-    supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!
-    );
+    supabase = createTestSupabaseClient(testUserId);
     setSupabaseMock(supabase);
 
     // Mock Plaid client (still using mock to avoid API calls)
@@ -53,28 +42,12 @@ describe("OAuth Transaction Sync Integration Test", () => {
   });
 
   beforeEach(async () => {
-    // Clean up test data between tests
-    await supabase.from("transactions").delete().eq("user_id", testUserId);
-    await supabase.from("account_sync_state").delete().eq("user_id", testUserId);
-    await supabase.from("accounts").delete().eq("user_id", testUserId);
-    await supabase.from("plaid_connections").delete().eq("user_id", testUserId);
-    await supabase.from("plaid_sessions").delete().eq("user_id", testUserId);
+    await cleanupTestUser(supabase, testUserId);
   });
 
   after(async () => {
-    // Final cleanup after all tests
-    await supabase.from("transactions").delete().eq("user_id", testUserId);
-    await supabase.from("account_sync_state").delete().eq("user_id", testUserId);
-    await supabase.from("accounts").delete().eq("user_id", testUserId);
-    await supabase.from("plaid_connections").delete().eq("user_id", testUserId);
-    await supabase.from("plaid_sessions").delete().eq("user_id", testUserId);
-
-    // Also clean up error test data
-    await supabase.from("transactions").delete().eq("user_id", "error-user");
-    await supabase.from("account_sync_state").delete().eq("user_id", "error-user");
-    await supabase.from("accounts").delete().eq("user_id", "error-user");
-    await supabase.from("plaid_connections").delete().eq("user_id", "error-user");
-    await supabase.from("plaid_sessions").delete().eq("user_id", "error-user");
+    await cleanupTestUser(supabase, testUserId);
+    await cleanupTestUser(supabase, "error-user");
 
     resetSupabase();
   });
@@ -164,7 +137,7 @@ describe("OAuth Transaction Sync Integration Test", () => {
     }
 
     // Step 6: Verify transactions were stored in database
-    const transactions = await findTransactionsByUserId(userId);
+    const transactions = await findTransactionsByUserId(userId, supabase);
     assert(
       transactions.length > 0,
       "Should have stored transactions in database"

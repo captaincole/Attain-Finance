@@ -31,13 +31,13 @@ ALTER TABLE budgets ADD COLUMN processing_error TEXT;
 
 ```typescript
 // Mark budget as processing
-await markBudgetAsProcessing(budgetId);
+await markBudgetAsProcessing(userId, budgetId);
 
 // Mark as ready (success)
-await markBudgetAsReady(budgetId);
+await markBudgetAsReady(userId, budgetId);
 
 // Mark as error (failed)
-await markBudgetAsError(budgetId, errorMessage);
+await markBudgetAsError(userId, budgetId, errorMessage);
 ```
 
 ### 2. Background Worker ([src/utils/budget-processing-worker.ts](../src/utils/budget-processing-worker.ts))
@@ -47,9 +47,9 @@ await markBudgetAsError(budgetId, errorMessage);
 startBudgetProcessing(userId, budget);
 
 // This runs in background:
-// 1. markBudgetAsProcessing()
+// 1. markBudgetAsProcessing(userId, budget.id)
 // 2. labelTransactionsForSingleBudget() <- Claude API call
-// 3. markBudgetAsReady() or markBudgetAsError()
+// 3. markBudgetAsReady(userId, budget.id) or markBudgetAsError(userId, budget.id, error)
 ```
 
 ### 3. Tool Updates

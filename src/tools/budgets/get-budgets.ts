@@ -3,6 +3,7 @@ import { getBudgets, getBudgetById, Budget } from "../../storage/budgets/budgets
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByBudgetId } from "../../storage/repositories/transactions.js";
 import { logToolEvent } from "../../utils/logger.js";
+import { getSupabaseForUser } from "../../storage/supabase.js";
 
 // Input schema for get-budgets tool
 export const GetBudgetsArgsSchema = z.object({
@@ -129,6 +130,8 @@ export async function getBudgetsHandler(
   try {
     logToolEvent("get-budgets", "handler.start", { userId, args });
 
+    const supabaseClient = getSupabaseForUser(userId);
+
     // Check if user has connected accounts
     const connections = await findAccountConnectionsByUserId(userId);
     logToolEvent("get-budgets", "handler.connections-loaded", {
@@ -231,6 +234,7 @@ export async function getBudgetsHandler(
         const matchingTransactions = await findTransactionsByBudgetId(
           userId,
           budget.id,
+          supabaseClient,
           start.toISOString().split("T")[0],
           end.toISOString().split("T")[0]
         );

@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "../../storage/database.types.js";
 import { generateSignedUrl } from "../../utils/signed-urls.js";
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
@@ -50,7 +52,8 @@ function convertTransactionsToCSV(transactions: any[]): string {
 export async function getPlaidTransactionsHandler(
   userId: string,
   baseUrl: string,
-  args: GetTransactionsArgs
+  args: GetTransactionsArgs,
+  supabaseClient: SupabaseClient<Database>
 ) {
   // Check if user has connections
   const connections = await findAccountConnectionsByUserId(userId);
@@ -82,7 +85,7 @@ Please connect your account first by saying:
   })();
 
   // Fetch transactions from DATABASE (not Plaid)
-  const transactions = await findTransactionsByUserId(userId, startDate, endDate, {
+  const transactions = await findTransactionsByUserId(userId, supabaseClient, startDate, endDate, {
     startDate,
     endDate,
     accountIds: args.account_ids,

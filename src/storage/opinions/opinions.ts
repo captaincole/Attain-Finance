@@ -5,7 +5,7 @@
  * Opinions are text prompts that guide AI analysis using specific methodologies.
  */
 
-import { getSupabase } from "../supabase.js";
+import { getSupabaseServiceRole } from "../supabase.js";
 
 export interface Opinion {
   id: string;
@@ -22,7 +22,7 @@ export interface Opinion {
  * Get a specific opinion by ID
  */
 export async function getOpinionById(opinionId: string): Promise<Opinion | null> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("opinions" as any)
     .select("*")
     .eq("id", opinionId)
@@ -43,7 +43,7 @@ export async function getOpinionById(opinionId: string): Promise<Opinion | null>
  * Get all opinions for a specific tool
  */
 export async function getOpinionsByTool(toolName: string): Promise<Opinion[]> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("opinions" as any)
     .select("*")
     .eq("tool_name", toolName)
@@ -61,7 +61,7 @@ export async function getOpinionsByTool(toolName: string): Promise<Opinion[]> {
  * Get all available opinions (for browsing)
  */
 export async function getAllOpinions(): Promise<Opinion[]> {
-  const { data, error } = await getSupabase()
+  const { data, error } = await getSupabaseServiceRole()
     .from("opinions" as any)
     .select("*")
     .order("tool_name", { ascending: true })

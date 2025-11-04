@@ -1,4 +1,4 @@
-import { getSupabase } from "../supabase.js";
+import { getSupabaseForUser } from "../supabase.js";
 import { Tables, TablesInsert, TablesUpdate } from "../database.types.js";
 import { logServiceEvent, serializeError } from "../../utils/logger.js";
 
@@ -12,7 +12,7 @@ export type BudgetUpdate = TablesUpdate<"budgets">;
 export async function getBudgets(userId: string): Promise<Budget[]> {
   let supabase;
   try {
-    supabase = getSupabase();
+    supabase = getSupabaseForUser(userId);
   } catch (err: any) {
     logServiceEvent("budgets-repository", "supabase-client-error", { userId, error: serializeError(err) }, "error");
     throw err;
@@ -50,7 +50,7 @@ export async function getBudgetById(
 ): Promise<Budget | null> {
   let supabase;
   try {
-    supabase = getSupabase();
+    supabase = getSupabaseForUser(userId);
   } catch (err: any) {
     logServiceEvent("budgets-repository", "supabase-client-error", { userId, budgetId, error: serializeError(err) }, "error");
     throw err;
@@ -87,7 +87,7 @@ export async function getBudgetById(
  * Create a new budget
  */
 export async function createBudget(budget: BudgetInsert): Promise<Budget> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseForUser(budget.user_id);
   const { data, error } = await supabase
     .from("budgets")
     .insert(budget)
@@ -109,7 +109,7 @@ export async function updateBudget(
   budgetId: string,
   updates: Omit<BudgetUpdate, "id" | "user_id">
 ): Promise<Budget> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseForUser(userId);
   const { data, error } = await supabase
     .from("budgets")
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -132,7 +132,7 @@ export async function deleteBudget(
   userId: string,
   budgetId: string
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseForUser(userId);
 
   const { error } = await supabase
     .from("budgets")
@@ -151,9 +151,10 @@ export async function deleteBudget(
  * Update budget processing status to "processing"
  */
 export async function markBudgetAsProcessing(
+  userId: string,
   budgetId: string
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseForUser(userId);
 
   const { error } = await supabase
     .from("budgets")
@@ -162,7 +163,8 @@ export async function markBudgetAsProcessing(
       processing_completed_at: null,
       processing_error: null,
     })
-    .eq("id", budgetId);
+    .eq("id", budgetId)
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Failed to mark budget as processing: ${error.message}`);
@@ -175,9 +177,10 @@ export async function markBudgetAsProcessing(
  * Update budget processing status to "ready" (success)
  */
 export async function markBudgetAsReady(
+  userId: string,
   budgetId: string
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseForUser(userId);
 
   const { error } = await supabase
     .from("budgets")
@@ -186,7 +189,8 @@ export async function markBudgetAsReady(
       processing_completed_at: new Date().toISOString(),
       processing_error: null,
     })
-    .eq("id", budgetId);
+    .eq("id", budgetId)
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Failed to mark budget as ready: ${error.message}`);
@@ -199,10 +203,11 @@ export async function markBudgetAsReady(
  * Update budget processing status to "error"
  */
 export async function markBudgetAsError(
+  userId: string,
   budgetId: string,
   errorMessage: string
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseForUser(userId);
 
   const { error } = await supabase
     .from("budgets")
@@ -211,7 +216,8 @@ export async function markBudgetAsError(
       processing_completed_at: new Date().toISOString(),
       processing_error: errorMessage,
     })
-    .eq("id", budgetId);
+    .eq("id", budgetId)
+    .eq("user_id", userId);
 
   if (error) {
     throw new Error(`Failed to mark budget as error: ${error.message}`);

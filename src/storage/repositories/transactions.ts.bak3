@@ -4,6 +4,7 @@
  */
 
 import { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabase } from "../supabase.js";
 import { Database, Tables } from "../database.types.js";
 import { logEvent } from "../../utils/logger.js";
 
@@ -59,7 +60,7 @@ export async function upsertTransactions(
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabaseClient
+  const { error } = await client
     .from("transactions")
     .upsert(rows, {
       onConflict: "transaction_id",
@@ -89,7 +90,9 @@ export async function deleteTransactions(
 
   logEvent("REPO/TRANSACTIONS", "deleting", { count: transactionIds.length });
 
-  const { error } = await supabaseClient
+  // Use injected client directly
+
+  const { error } = await client
     .from("transactions")
     .delete()
     .in("transaction_id", transactionIds);
@@ -117,14 +120,15 @@ export interface FindTransactionsFilters {
  */
 export async function findTransactionsByUserId(
   userId: string,
-  supabaseClient: SupabaseClient<Database>,
   startDate?: string,
   endDate?: string,
-  filters?: FindTransactionsFilters
+  filters?: FindTransactionsFilters,
+  supabaseClient: SupabaseClient<Database>
 ): Promise<Transaction[]> {
   logEvent("REPO/TRANSACTIONS", "fetching-user-transactions", { userId, startDate, endDate, filters });
 
-  let query = supabaseClient
+  // Use injected client directly
+  let query = client
     .from("transactions")
     .select("*")
     .eq("user_id", userId)
@@ -190,13 +194,14 @@ export async function findTransactionsByUserId(
 export async function findTransactionsByBudgetId(
   userId: string,
   budgetId: string,
-  supabaseClient: SupabaseClient<Database>,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  supabaseClient: SupabaseClient<Database>
 ): Promise<Transaction[]> {
   logEvent("REPO/TRANSACTIONS", "fetching-budget-transactions", { userId, budgetId, startDate, endDate });
 
-  let query = supabaseClient
+  // Use injected client directly
+  let query = client
     .from("transactions")
     .select("*")
     .eq("user_id", userId)
@@ -232,7 +237,8 @@ export async function findUncategorizedTransactions(
 ): Promise<Transaction[]> {
   logEvent("REPO/TRANSACTIONS", "fetching-uncategorized", { userId });
 
-  const { data, error } = await supabaseClient
+  // Use injected client directly
+  const { data, error } = await client
     .from("transactions")
     .select("*")
     .eq("user_id", userId)
@@ -258,8 +264,9 @@ export async function updateTransactionCategories(
 ): Promise<void> {
   logEvent("REPO/TRANSACTIONS", "updating-categories", { count: updates.length });
 
+  // Use injected client directly
   const promises = updates.map((update) =>
-    supabaseClient
+    client
       .from("transactions")
       .update({
         custom_category: update.customCategory,
@@ -290,7 +297,8 @@ export async function updateTransactionBudgets(
   budgetIds: string[],
   supabaseClient: SupabaseClient<Database>
 ): Promise<void> {
-  const { error } = await supabaseClient
+  // Use injected client directly
+  const { error } = await client
     .from("transactions")
     .update({
       budget_ids: budgetIds,
@@ -309,13 +317,12 @@ export async function updateTransactionBudgets(
  * Update budget associations for multiple transactions (batch operation)
  */
 export async function batchUpdateTransactionBudgets(
-  updates: { transactionId: string; budgetIds: string[] }[],
-  supabaseClient: SupabaseClient<Database>
+  updates: { transactionId: string; budgetIds: string[] }[]
 ): Promise<void> {
   logEvent("REPO/TRANSACTIONS", "batch-updating-budgets", { count: updates.length });
 
   const promises = updates.map((update) =>
-    updateTransactionBudgets(update.transactionId, update.budgetIds, supabaseClient)
+    updateTransactionBudgets(update.transactionId, update.budgetIds)
   );
 
   await Promise.all(promises);
@@ -332,7 +339,8 @@ export async function deleteTransactionsByUserId(
 ): Promise<void> {
   logEvent("REPO/TRANSACTIONS", "deleting-user-transactions", { userId });
 
-  const { error } = await supabaseClient
+  // Use injected client directly
+  const { error } = await client
     .from("transactions")
     .delete()
     .eq("user_id", userId);
@@ -354,7 +362,8 @@ export async function deleteTransactionsByItemId(
 ): Promise<void> {
   logEvent("REPO/TRANSACTIONS", "deleting-item-transactions", { itemId });
 
-  const { error } = await supabaseClient
+  // Use injected client directly
+  const { error} = await client
     .from("transactions")
     .delete()
     .eq("item_id", itemId);

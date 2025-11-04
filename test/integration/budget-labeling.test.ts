@@ -21,9 +21,9 @@ import {
 import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Budget Labeling Integration Tests", () => {
-  const supabase = createTestSupabaseClient();
-  const mockClaudeClient = new MockClaudeClient();
   const testUserId = "test-user-budget-labeling";
+  const supabase = createTestSupabaseClient(testUserId);
+  const mockClaudeClient = new MockClaudeClient();
 
   before(() => {
     setSupabaseMock(supabase);
@@ -95,10 +95,15 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [coffeeBudget], mockClaudeClient);
+    await labelTransactionArrayForBudgets(
+      transactionsForLabeling,
+      [coffeeBudget],
+      supabase,
+      mockClaudeClient
+    );
 
     // Verify Starbucks transaction has budget_ids array with coffee budget ID
-    const updatedTransactions = await findTransactionsByUserId(testUserId);
+    const updatedTransactions = await findTransactionsByUserId(testUserId, supabase);
     const starbucksTransaction = updatedTransactions.find(
       (tx) => tx.transactionId === "tx_starbucks_1"
     );
@@ -203,11 +208,12 @@ describe("Budget Labeling Integration Tests", () => {
     await labelTransactionArrayForBudgets(
       transactionsForLabeling,
       [coffeeBudget, foodBudget, groceryBudget],
+      supabase,
       mockClaudeClient
     );
 
     // Verify Starbucks has 2 budget IDs (coffee + food)
-    const updatedTransactions = await findTransactionsByUserId(testUserId);
+    const updatedTransactions = await findTransactionsByUserId(testUserId, supabase);
     const starbucksTransaction = updatedTransactions.find(
       (tx) => tx.transactionId === "tx_starbucks_2"
     );
@@ -291,10 +297,15 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [groceryBudget], mockClaudeClient);
+    await labelTransactionArrayForBudgets(
+      transactionsForLabeling,
+      [groceryBudget],
+      supabase,
+      mockClaudeClient
+    );
 
     // Verify gas transaction has empty budget_ids array
-    const updatedTransactions = await findTransactionsByUserId(testUserId);
+    const updatedTransactions = await findTransactionsByUserId(testUserId, supabase);
     const gasTransaction = updatedTransactions.find((tx) => tx.transactionId === "tx_gas_1");
 
     assert(gasTransaction, "Gas transaction should exist");
@@ -361,7 +372,12 @@ describe("Budget Labeling Integration Tests", () => {
       pending: tx.pending,
     }));
 
-    await labelTransactionArrayForBudgets(transactionsForLabeling, [coffeeBudget], mockClaudeClient);
+    await labelTransactionArrayForBudgets(
+      transactionsForLabeling,
+      [coffeeBudget],
+      supabase,
+      mockClaudeClient
+    );
 
     // Query using pre-labeled data (fast query using budget_ids column)
     const startTime = Date.now();
@@ -373,7 +389,7 @@ describe("Budget Labeling Integration Tests", () => {
     assert(budget, "Coffee budget should exist");
 
     // Query transactions using pre-labeled budget_ids column
-    const labeledTransactions = await findTransactionsByUserId(testUserId);
+    const labeledTransactions = await findTransactionsByUserId(testUserId, supabase);
     const matchingTransactions = labeledTransactions.filter((tx) =>
       tx.budgetIds?.includes(coffeeBudget.id)
     );

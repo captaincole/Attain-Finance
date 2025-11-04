@@ -4,7 +4,7 @@
  * Supports credit cards, mortgages, and student loans
  */
 
-import { getSupabase } from "../supabase.js";
+import { getSupabaseServiceRole } from "../supabase.js";
 import type { Database } from "../database.types.js";
 import type {
   CreditCardLiability,
@@ -36,7 +36,7 @@ export async function upsertCreditLiabilities(
   accountId: string,
   creditData: CreditCardLiability
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const creditToInsert: CreditLiabilityInsert = {
     user_id: userId,
@@ -72,7 +72,7 @@ export async function upsertMortgageLiabilities(
   accountId: string,
   mortgageData: MortgageLiability
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const mortgageToInsert: MortgageLiabilityInsert = {
     user_id: userId,
@@ -122,7 +122,7 @@ export async function upsertStudentLiabilities(
   accountId: string,
   studentData: StudentLoan
 ): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   const studentToInsert: StudentLiabilityInsert = {
     user_id: userId,
@@ -183,7 +183,7 @@ export async function getLiabilitiesByUserId(
   userId: string,
   type?: "credit" | "mortgage" | "student"
 ): Promise<LiabilityWithAccount[]> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
   const results: LiabilityWithAccount[] = [];
 
   // Fetch credit card liabilities
@@ -277,7 +277,7 @@ export async function getLiabilitiesByUserId(
  * Delete all liabilities for an account (used when disconnecting)
  */
 export async function deleteLiabilitiesByAccountId(accountId: string): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   // Delete from all three tables
   const creditDelete = supabase
@@ -316,7 +316,7 @@ export async function deleteLiabilitiesByAccountId(accountId: string): Promise<v
  * Delete all liabilities for a user (used in cleanup/testing)
  */
 export async function deleteLiabilitiesByUserId(userId: string): Promise<void> {
-  const supabase = getSupabase();
+  const supabase = getSupabaseServiceRole();
 
   // Delete from all three tables
   const creditDelete = supabase

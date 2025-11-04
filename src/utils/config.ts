@@ -2,6 +2,11 @@
  * Environment configuration and constants
  */
 
+import {
+  getSupabasePublishableKey,
+  getSupabaseUrl,
+} from "../storage/supabase.js";
+
 export const CONFIG = {
   baseUrl: process.env.BASE_URL || "http://localhost:3000",
   port: process.env.PORT || 3000,
@@ -18,8 +23,12 @@ export const CONFIG = {
   },
 
   supabase: {
-    url: process.env.SUPABASE_URL || "",
-    anonKey: process.env.SUPABASE_ANON_KEY || "",
+    get url(): string {
+      return getSupabaseUrl();
+    },
+    get publishableKey(): string {
+      return getSupabasePublishableKey();
+    },
   },
 
   encryption: {

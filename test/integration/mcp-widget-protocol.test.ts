@@ -27,8 +27,8 @@ import { createTestSupabaseClient, cleanupTestUser } from "../helpers/test-db.js
 import { app } from "../../src/index.js";
 
 describe("MCP Widget Protocol (OpenAI Extensions)", () => {
-  const supabase = createTestSupabaseClient();
   const testUserId = "test-user-widget-protocol";
+  const supabase = createTestSupabaseClient(testUserId);
 
   before(() => {
     setSupabaseMock(supabase);

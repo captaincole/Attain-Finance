@@ -20,9 +20,9 @@ import {
 import { MockClaudeClient } from "../mocks/claude-mock.js";
 
 describe("Async Recategorization Integration Tests", () => {
-  const supabase = createTestSupabaseClient();
-  const mockClaudeClient = new MockClaudeClient();
   const testUserId = "test-user-recategorization";
+  const supabase = createTestSupabaseClient(testUserId);
+  const mockClaudeClient = new MockClaudeClient();
 
   before(() => {
     setSupabaseMock(supabase);
@@ -54,14 +54,14 @@ describe("Async Recategorization Integration Tests", () => {
 
     // Run recategorization - should complete quickly without errors
     const startTime = Date.now();
-    await recategorizeAllTransactions(testUserId, customRules, mockClaudeClient);
+    await recategorizeAllTransactions(testUserId, customRules, supabase, mockClaudeClient);
     const duration = Date.now() - startTime;
 
     // Should return immediately (no API calls)
     assert(duration < 1000, `Should complete quickly for empty list, took ${duration}ms`);
 
     // Verify no transactions were created
-    const transactions = await findTransactionsByUserId(testUserId);
+    const transactions = await findTransactionsByUserId(testUserId, supabase);
     assert.equal(transactions.length, 0, "No transactions should exist");
   });
 
@@ -89,7 +89,7 @@ describe("Async Recategorization Integration Tests", () => {
     // Run recategorization with invalid API key - should not throw
     let errorThrown = false;
     try {
-      await recategorizeAllTransactions(testUserId, "test rules", mockClaudeClient);
+      await recategorizeAllTransactions(testUserId, "test rules", supabase, mockClaudeClient);
     } catch (error) {
       errorThrown = true;
     }
@@ -117,7 +117,7 @@ describe("Async Recategorization Integration Tests", () => {
     // Measure response time
     const startTime = Date.now();
     // Start the recategorization (will fail due to invalid API key, but that's expected)
-    const promise = recategorizeAllTransactions(testUserId, "test rules", mockClaudeClient);
+    const promise = recategorizeAllTransactions(testUserId, "test rules", supabase, mockClaudeClient);
 
     // We're not testing that it returns immediately here - we're testing that it runs
     // The fire-and-forget pattern is demonstrated in the update-rules handler,
@@ -131,7 +131,7 @@ describe("Async Recategorization Integration Tests", () => {
     console.log(`[INFO] Recategorization attempt completed in ${duration}ms (expected to fail due to invalid API key)`);
 
     // Verify transactions still exist
-    const retrievedTransactions = await findTransactionsByUserId(testUserId);
+    const retrievedTransactions = await findTransactionsByUserId(testUserId, supabase);
     assert.equal(retrievedTransactions.length, 3, "Transactions should still exist after failed recategorization");
   });
 });
