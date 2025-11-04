@@ -66,6 +66,20 @@ Here is the setup I've been using to run manual testing locally.
 
 You can do the same thing locally to test with OpenAI, but you need to use ngrok to expose you local port, as OpenAI isn't running locally. I haven't tried this though...
 
+### Sandbox Accounts
+
+We have setup plaid with sandbox accounts for testing the plaid integration. There are two accounts, one includes some real credit card transactions from September, which you should use for a fake chase account setup. 
+
+Username: custom_andrew
+password: pass_good
+2fa: 1234
+
+And the normal Plaid Sandbox user
+
+Username: user_good
+Password: pass_good
+2FA: 1234
+
 
 ## Architecture 
 
