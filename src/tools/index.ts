@@ -37,8 +37,10 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
       inputSchema,
       options,
       async (args: any, context: any) => {
+        const userId = context?.authInfo?.extra?.userId as string | undefined;
         logEvent(`TOOL:${name}`, "invoked", {
           args,
+          userId,
           hasAuthInfo: Boolean(context?.authInfo),
         });
 
@@ -48,11 +50,12 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
 
           // Log response metadata (but not full content to avoid spam)
           if (result._meta) {
-            logEvent(`TOOL:${name}`, "response-meta", { _meta: result._meta });
+            logEvent(`TOOL:${name}`, "response-meta", { _meta: result._meta, userId });
           }
           if (result.structuredContent) {
             logEvent(`TOOL:${name}`, "response-structured-content", {
               keys: Object.keys(result.structuredContent),
+              userId,
             });
           }
 
@@ -62,7 +65,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
           logEvent(
             `TOOL:${name}`,
             "error",
-            { error: serializeError(error) },
+            { error: serializeError(error), userId },
             "error"
           );
 

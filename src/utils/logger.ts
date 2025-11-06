@@ -13,15 +13,54 @@ interface LogOptions {
 }
 
 /**
+ * Safely extract a user ID preview from log data
+ */
+function getUserIdPreview(data?: Record<string, unknown>): string | undefined {
+  if (!data) {
+    return undefined;
+  }
+
+  const candidateKeys = ["userId", "user_id", "userID"];
+  for (const key of candidateKeys) {
+    const value = data[key];
+    if (typeof value === "string" && value.length > 0) {
+      return value.slice(0, 5);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Clone and normalize log data with user ID preview
+ */
+function sanitizeLogData(data?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!data || Object.keys(data).length === 0) {
+    return data;
+  }
+
+  const sanitized: Record<string, unknown> = { ...data };
+  const userIdPreview = getUserIdPreview(data);
+
+  if (userIdPreview) {
+    sanitized.userId = userIdPreview;
+  }
+
+  return sanitized;
+}
+
+/**
  * Serialize data for consistent log output
  */
 function formatData(data?: Record<string, unknown>): string {
-  if (!data || Object.keys(data).length === 0) {
+  const sanitized = sanitizeLogData(data);
+
+  if (!sanitized || Object.keys(sanitized).length === 0) {
     return "";
   }
 
   try {
-    return ` ${JSON.stringify(data)}`;
+    return ` ${JSON.stringify(sanitized)}`;
   } catch (error) {
     return ` {"serializationError":"${(error as Error).message}"}`;
   }
