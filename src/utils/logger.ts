@@ -24,7 +24,10 @@ function getUserIdPreview(data?: Record<string, unknown>): string | undefined {
   for (const key of candidateKeys) {
     const value = data[key];
     if (typeof value === "string" && value.length > 0) {
-      return value.slice(0, 5);
+      const normalized = value.startsWith("user_") ? value.slice(5) : value;
+      if (normalized.length > 0) {
+        return normalized.slice(0, 5);
+      }
     }
   }
 
