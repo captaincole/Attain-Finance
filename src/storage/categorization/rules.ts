@@ -1,4 +1,4 @@
-import { getSupabaseForUser } from "../supabase.js";
+import { withUserSupabaseRetry } from "../supabase.js";
 import { Tables } from "../database.types.js";
 import { logServiceEvent, serializeError } from "../../utils/logger.js";
 
@@ -13,22 +13,24 @@ export type CategorizationPrompt = Tables<"categorization_prompts">;
  * @returns Custom rules text or null if not set
  */
 export async function getCustomRules(userId: string): Promise<string | null> {
-  const { data, error } = await getSupabaseForUser(userId)
-    .from("categorization_prompts")
-    .select("custom_rules")
-    .eq("user_id", userId)
-    .single();
+  return withUserSupabaseRetry(userId, async (client) => {
+    const { data, error } = await client
+      .from("categorization_prompts")
+      .select("custom_rules")
+      .eq("user_id", userId)
+      .single();
 
-  if (error) {
-    // User doesn't have custom rules yet - this is normal
-    if (error.code === "PGRST116") {
-      return null;
+    if (error) {
+      if (error.code === "PGRST116") {
+        return null;
+      }
+
+      logServiceEvent("categorization-rules", "fetch-error", { userId, error: serializeError(error) }, "error");
+      throw new Error(`Failed to fetch categorization rules: ${error.message}`);
     }
-    logServiceEvent("categorization-rules", "fetch-error", { userId, error: serializeError(error) }, "error");
-    throw new Error(`Failed to fetch categorization rules: ${error.message}`);
-  }
 
-  return data?.custom_rules || null;
+    return data?.custom_rules || null;
+  });
 }
 
 /**
@@ -40,23 +42,25 @@ export async function saveCustomRules(
   userId: string,
   customRules: string
 ): Promise<void> {
-  const { error } = await getSupabaseForUser(userId)
-    .from("categorization_prompts")
-    .upsert(
-      {
-        user_id: userId,
-        custom_rules: customRules,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id",
-      }
-    );
+  await withUserSupabaseRetry(userId, async (client) => {
+    const { error } = await client
+      .from("categorization_prompts")
+      .upsert(
+        {
+          user_id: userId,
+          custom_rules: customRules,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        }
+      );
 
-  if (error) {
-    logServiceEvent("categorization-rules", "save-error", { userId, error: serializeError(error) }, "error");
-    throw new Error(`Failed to save categorization rules: ${error.message}`);
-  }
+    if (error) {
+      logServiceEvent("categorization-rules", "save-error", { userId, error: serializeError(error) }, "error");
+      throw new Error(`Failed to save categorization rules: ${error.message}`);
+    }
+  });
 
   logServiceEvent("categorization-rules", "saved", { userId });
 }
@@ -66,15 +70,17 @@ export async function saveCustomRules(
  * @param userId - Clerk user ID
  */
 export async function deleteCustomRules(userId: string): Promise<void> {
-  const { error } = await getSupabaseForUser(userId)
-    .from("categorization_prompts")
-    .delete()
-    .eq("user_id", userId);
+  await withUserSupabaseRetry(userId, async (client) => {
+    const { error } = await client
+      .from("categorization_prompts")
+      .delete()
+      .eq("user_id", userId);
 
-  if (error) {
-    logServiceEvent("categorization-rules", "delete-error", { userId, error: serializeError(error) }, "error");
-    throw new Error(`Failed to delete categorization rules: ${error.message}`);
-  }
+    if (error) {
+      logServiceEvent("categorization-rules", "delete-error", { userId, error: serializeError(error) }, "error");
+      throw new Error(`Failed to delete categorization rules: ${error.message}`);
+    }
+  });
 
   logServiceEvent("categorization-rules", "deleted", { userId });
 }

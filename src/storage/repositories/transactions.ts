@@ -6,6 +6,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database, Tables } from "../database.types.js";
 import { logEvent } from "../../utils/logger.js";
+import { withUserSupabaseRetry } from "../supabase.js";
 
 export type TransactionRow = Tables<"transactions">;
 
@@ -190,37 +191,49 @@ export async function findTransactionsByUserId(
 export async function findTransactionsByBudgetId(
   userId: string,
   budgetId: string,
-  supabaseClient: SupabaseClient<Database>,
-  startDate?: string,
-  endDate?: string
+  options?: {
+    supabaseClient?: SupabaseClient<Database>;
+    startDate?: string;
+    endDate?: string;
+  }
 ): Promise<Transaction[]> {
-  logEvent("REPO/TRANSACTIONS", "fetching-budget-transactions", { userId, budgetId, startDate, endDate });
+  const { supabaseClient, startDate, endDate } = options ?? {};
 
-  let query = supabaseClient
-    .from("transactions")
-    .select("*")
-    .eq("user_id", userId)
-    .contains("budget_ids", [budgetId])
-    .order("date", { ascending: false });
+  const executeQuery = async (client: SupabaseClient<Database>) => {
+    logEvent("REPO/TRANSACTIONS", "fetching-budget-transactions", { userId, budgetId, startDate, endDate });
 
-  if (startDate) {
-    query = query.gte("date", startDate);
+    let query = client
+      .from("transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .contains("budget_ids", [budgetId])
+      .order("date", { ascending: false });
+
+    if (startDate) {
+      query = query.gte("date", startDate);
+    }
+
+    if (endDate) {
+      query = query.lte("date", endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      logEvent("REPO/TRANSACTIONS", "query-error", { error: error.message }, "error");
+      throw new Error(`Failed to fetch budget transactions: ${error.message}`);
+    }
+
+    logEvent("REPO/TRANSACTIONS", "found-budget-transactions", { count: data?.length || 0 });
+
+    return (data || []).map(rowToTransaction);
+  };
+
+  if (supabaseClient) {
+    return executeQuery(supabaseClient);
   }
 
-  if (endDate) {
-    query = query.lte("date", endDate);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    logEvent("REPO/TRANSACTIONS", "query-error", { error: error.message }, "error");
-    throw new Error(`Failed to fetch budget transactions: ${error.message}`);
-  }
-
-  logEvent("REPO/TRANSACTIONS", "found-budget-transactions", { count: data?.length || 0 });
-
-  return (data || []).map(rowToTransaction);
+  return withUserSupabaseRetry(userId, executeQuery);
 }
 
 /**

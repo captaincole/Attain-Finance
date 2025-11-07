@@ -27,6 +27,12 @@ export interface UserSyncOptions {
    * If specified, only syncs connections from this environment
    */
   environment?: "sandbox" | "development" | "production";
+
+  /**
+   * Whether to fail the entire job when any user sync fails (default: true)
+   * Set to false in tests to avoid process.exit side effects.
+   */
+  failOnError?: boolean;
 }
 
 export class UserBatchSyncService {
@@ -111,7 +117,7 @@ export class UserBatchSyncService {
    * Handles error isolation, stats tracking, and logging
    */
   async syncAllUsers(options: UserSyncOptions): Promise<void> {
-    const { syncFn, environment } = options;
+    const { syncFn, environment, failOnError = true } = options;
 
     if (environment) {
       logEvent("CRON:batch-sync", "filter-environment", { environment });
@@ -148,7 +154,7 @@ export class UserBatchSyncService {
     );
 
     // Exit with error code if any users failed
-    if (result.failedItems > 0) {
+    if (result.failedItems > 0 && failOnError) {
       process.exit(1);
     }
   }

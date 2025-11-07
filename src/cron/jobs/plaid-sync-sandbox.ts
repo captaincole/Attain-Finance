@@ -54,6 +54,7 @@ export const plaidSyncSandboxJob: CronJob = {
 
     await batchSyncService.syncAllUsers({
       environment: "sandbox", // Only sync sandbox connections
+      failOnError: process.env.NODE_ENV !== "test",
       syncFn: async (userId, connection) => {
         // Sync transactions for all accounts
         await transactionSyncService.initiateSyncForConnection(

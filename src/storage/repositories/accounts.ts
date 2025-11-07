@@ -1,5 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseForUser, getSupabaseServiceRole } from "../supabase.js";
+import { getSupabaseServiceRole, withUserSupabaseRetry } from "../supabase.js";
 import { Database } from "../database.types.js";
 
 export interface Account {
@@ -84,18 +84,23 @@ export async function getAccountsByUserId(
   userId: string,
   supabaseClient?: SupabaseClient<Database>
 ): Promise<Account[]> {
-  const supabase = supabaseClient ?? getSupabaseForUser(userId);
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+  return withUserSupabaseRetry(
+    userId,
+    async (client) => {
+      const { data, error } = await client
+        .from("accounts")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true });
 
-  if (error) {
-    throw new Error(`Failed to fetch accounts: ${error.message}`);
-  }
+      if (error) {
+        throw new Error(`Failed to fetch accounts: ${error.message}`);
+      }
 
-  return data as Account[];
+      return (data as Account[]) ?? [];
+    },
+    { supabaseClient }
+  );
 }
 
 /**

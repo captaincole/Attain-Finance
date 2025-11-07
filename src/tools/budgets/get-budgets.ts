@@ -3,7 +3,6 @@ import { getBudgets, getBudgetById, Budget } from "../../storage/budgets/budgets
 import { findAccountConnectionsByUserId } from "../../storage/repositories/account-connections.js";
 import { findTransactionsByBudgetId } from "../../storage/repositories/transactions.js";
 import { logToolEvent } from "../../utils/logger.js";
-import { getSupabaseForUser } from "../../storage/supabase.js";
 
 // Input schema for get-budgets tool
 export const GetBudgetsArgsSchema = z.object({
@@ -123,15 +122,9 @@ function getBudgetDateRange(
  * Get Budgets Tool Handler
  * Fetches user budgets with current spending status from pre-labeled transactions
  */
-export async function getBudgetsHandler(
-  userId: string,
-  args: GetBudgetsArgs,
-  accessToken?: string
-) {
+export async function getBudgetsHandler(userId: string, args: GetBudgetsArgs) {
   try {
     logToolEvent("get-budgets", "handler.start", { userId, args });
-
-    getSupabaseForUser(userId, { accessToken });
 
     // Check if user has connected accounts
     const connections = await findAccountConnectionsByUserId(userId);
@@ -139,8 +132,6 @@ export async function getBudgetsHandler(
       userId,
       connectionCount: connections.length,
     });
-
-    const supabaseClient = getSupabaseForUser(userId);
 
     if (connections.length === 0) {
       return {
@@ -234,13 +225,10 @@ export async function getBudgetsHandler(
         );
 
         // Fetch PRE-LABELED transactions from database (NO AI call)
-        const matchingTransactions = await findTransactionsByBudgetId(
-          userId,
-          budget.id,
-          supabaseClient,
-          start.toISOString().split("T")[0],
-          end.toISOString().split("T")[0]
-        );
+        const matchingTransactions = await findTransactionsByBudgetId(userId, budget.id, {
+          startDate: start.toISOString().split("T")[0],
+          endDate: end.toISOString().split("T")[0],
+        });
 
         console.log(
           `[GET-BUDGETS] Budget "${budget.title}": ${matchingTransactions.length} matching transactions`

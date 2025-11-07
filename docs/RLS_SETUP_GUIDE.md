@@ -5,7 +5,7 @@ This guide outlines the Row Level Security (RLS) setup for the Personal Finance 
 ## Overview
 
 - **Migration 022** enables RLS on `public.transactions`, forces it for all roles, and defines per-user policies.
-- The application now passes a Supabase-scoped JWT with every request. When the MCP client sends Clerk's opaque access token, the server generates a short-lived JWT (signed with `SUPABASE_JWT_SECRET`, `sub = userId`) before calling Supabase. If the client already provides a full JWT, it is forwarded as-is.
+- The application now passes a Supabase-scoped JWT with every request. The server always generates a short-lived JWT (signed with `SUPABASE_JWT_SECRET`, `sub = userId`) before calling Supabase, even if Clerk provided an opaque access token.
 - Service-role workloads, cron jobs, and tests that use the Supabase secret key continue to bypass RLS (policy + inherent bypass privileges).
 - RLS logging is turned on for missing headers or malformed payloads so that we can debug header propagation issues quickly.
 
@@ -26,11 +26,11 @@ Because RLS is forced, the helper must return a value for user-scoped requests o
 
 ## Client Usage Requirements
 
-Always obtain Supabase clients for user-scoped operations through `getSupabaseForUser(userId, { accessToken })`.  
-This helper ensures the `Authorization` header always carries a Supabase-valid JWT: if the caller supplies an opaque token, the helper signs a new JWT with `SUPABASE_JWT_SECRET` before instantiating the client. Legacy `x-user-id` headers remain for observability only.
+Always obtain Supabase clients for user-scoped operations through `getSupabaseForUser(userId)`.  
+This helper signs a Supabase-valid JWT with `SUPABASE_JWT_SECRET`, injects the `Authorization` header, and caches the client until the token is near expiration. Legacy `x-user-id` headers remain for observability only.
 
 ```ts
-const supabase = getSupabaseForUser(userId, { accessToken: authInfo.token });
+const supabase = getSupabaseForUser(userId);
 const { data, error } = await supabase
   .from("transactions")
   .select("*")

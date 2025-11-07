@@ -54,6 +54,7 @@ export const plaidSyncJob: CronJob = {
 
     await batchSyncService.syncAllUsers({
       environment: "production", // Only sync production connections
+      failOnError: process.env.NODE_ENV !== "test",
       syncFn: async (userId, connection) => {
         // Sync transactions for all accounts
         await transactionSyncService.initiateSyncForConnection(

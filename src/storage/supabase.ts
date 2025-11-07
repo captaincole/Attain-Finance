@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import jwt from "jsonwebtoken";
+import jwt, { JwtPayload } from "jsonwebtoken";
 import { Database } from "./database.types.js";
 import { logEvent } from "../utils/logger.js";
 
@@ -16,10 +16,66 @@ interface SupabaseEnvironment {
   secretKey: string;
 }
 
+interface CachedUserClient {
+  client: SupabaseClient<Database>;
+  expiresAt?: number;
+}
+
+interface GeneratedUserToken {
+  token: string;
+  expiresAt?: number;
+}
+
+const TOKEN_REFRESH_BUFFER_MS = 60 * 1000;
+
 const envCache = new Map<SupabaseEnvKey, string>();
 let publishableClient: SupabaseClient<Database> | null = null;
 let serviceClient: SupabaseClient<Database> | null = null;
-const userClients = new Map<string, SupabaseClient<Database>>();
+const userClients = new Map<string, CachedUserClient>();
+
+function isCacheEntryExpired(entry: CachedUserClient): boolean {
+  if (!entry.expiresAt || !Number.isFinite(entry.expiresAt)) {
+    return false;
+  }
+
+  return entry.expiresAt - TOKEN_REFRESH_BUFFER_MS <= Date.now();
+}
+
+function getCachedUserClient(userId: string): CachedUserClient | undefined {
+  const cached = userClients.get(userId);
+
+  if (!cached) {
+    return undefined;
+  }
+
+  if (isCacheEntryExpired(cached)) {
+    userClients.delete(userId);
+    return undefined;
+  }
+
+  return cached;
+}
+
+function cacheUserClient(
+  userId: string,
+  client: SupabaseClient<Database>,
+  expiresAt?: number
+) {
+  userClients.set(userId, { client, expiresAt });
+}
+
+function decodeTokenExpiration(token: string): number | undefined {
+  try {
+    const decoded = jwt.decode(token) as JwtPayload | null;
+    if (decoded && typeof decoded.exp === "number") {
+      return decoded.exp * 1000;
+    }
+  } catch {
+    // ignore decode failures and fall back to undefined
+  }
+
+  return undefined;
+}
 
 /**
  * Internal helper to load and cache environment variables.
@@ -93,7 +149,7 @@ export function setSupabaseMock(
     if (!options?.userId) {
       throw new Error("userId is required when setting a user-scoped Supabase mock.");
     }
-    userClients.set(options.userId, mockInstance);
+    cacheUserClient(options.userId, mockInstance, Number.POSITIVE_INFINITY);
     return;
   }
 
@@ -126,28 +182,20 @@ export function getSupabase(): SupabaseClient<Database> {
  * Create or return a user-scoped client that injects the x-user-id header.
  * Useful for any user-specific queries performed with the publishable key.
  */
-export function getSupabaseForUser(
-  userId: string,
-  options?: { accessToken?: string }
-): SupabaseClient<Database> {
+export function getSupabaseForUser(userId: string): SupabaseClient<Database> {
   if (!userId) {
     throw new Error("User ID is required to create a user-scoped Supabase client.");
   }
 
-  const accessToken = options?.accessToken;
-
-  if (userClients.has(userId) && !accessToken) {
-    return userClients.get(userId)!;
+  const cachedClient = getCachedUserClient(userId);
+  if (cachedClient) {
+    return cachedClient.client;
   }
 
   const url = requireEnv("SUPABASE_URL");
   const key = requireEnv("SUPABASE_PUBLISHABLE_KEY");
 
-  const { token: bearerToken, source: tokenSource } = resolveSupabaseToken(userId, accessToken);
-
-  if (userClients.has(userId)) {
-    return userClients.get(userId)!;
-  }
+  const { token: bearerToken, expiresAt } = generateUserSupabaseToken(userId);
 
   const headers: Record<string, string> = {
     "x-user-id": userId,
@@ -168,23 +216,82 @@ export function getSupabaseForUser(
 
   logEvent("SUPABASE", "create-user-client", {
     userId,
-    tokenSource,
-    hasAccessToken: Boolean(accessToken),
+    tokenSource: "generated",
+    expiresAt,
   });
-  userClients.set(userId, client);
+
+  cacheUserClient(userId, client, expiresAt);
+
   return client;
 }
 
-function resolveSupabaseToken(
-  userId: string,
-  accessToken?: string
-): { token: string; source: "provided" | "generated" } {
-  const looksLikeJwt = Boolean(accessToken && accessToken.split(".").length === 3);
+export function invalidateSupabaseUserClient(userId: string) {
+  userClients.delete(userId);
+}
 
-  if (looksLikeJwt && accessToken) {
-    return { token: accessToken, source: "provided" };
+export function refreshSupabaseUserClient(userId: string): SupabaseClient<Database> {
+  invalidateSupabaseUserClient(userId);
+  return getSupabaseForUser(userId);
+}
+
+export async function withUserSupabaseRetry<T>(
+  userId: string,
+  operation: (client: SupabaseClient<Database>) => Promise<T>,
+  options?: { supabaseClient?: SupabaseClient<Database> }
+): Promise<T> {
+  const providedClient = options?.supabaseClient;
+  const initialClient = providedClient ?? getSupabaseForUser(userId);
+
+  try {
+    return await operation(initialClient);
+  } catch (error) {
+    if (providedClient || !isJwtExpiredError(error)) {
+      throw error;
+    }
+
+    logEvent("SUPABASE", "refresh-user-client", {
+      userId,
+      reason: extractErrorMessage(error),
+    });
+
+    const refreshedClient = refreshSupabaseUserClient(userId);
+    return operation(refreshedClient);
+  }
+}
+
+function extractErrorMessage(error: unknown): string | undefined {
+  if (!error) {
+    return undefined;
   }
 
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "object" && "message" in error) {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string") {
+      return maybeMessage;
+    }
+  }
+
+  return undefined;
+}
+
+function isJwtExpiredError(error: unknown): boolean {
+  const message = extractErrorMessage(error);
+  if (!message) {
+    return false;
+  }
+
+  return message.toLowerCase().includes("jwt expired");
+}
+
+function generateUserSupabaseToken(userId: string): GeneratedUserToken {
   const jwtSecret = process.env.SUPABASE_JWT_SECRET;
   if (!jwtSecret || jwtSecret === "replace-with-your-supabase-jwt-secret") {
     throw new Error(
@@ -203,7 +310,10 @@ function resolveSupabaseToken(
     { expiresIn: "6h" }
   );
 
-  return { token, source: "generated" };
+  return {
+    token,
+    expiresAt: decodeTokenExpiration(token),
+  };
 }
 
 /**
