@@ -129,16 +129,13 @@ function injectWidgetMetadata(server: McpServer) {
       // The MCP SDK doesn't include _meta from options by default, so we must inject it manually
       // Note: We reference WIDGET_META constants to stay DRY with tool definitions
       result.tools = result.tools.map((tool: any) => {
-        if (tool.name === "get-account-balances") {
-          return { ...tool, _meta: WIDGET_META.accountBalances };
+        if (tool.name === "financial-summary") {
+          return { ...tool, _meta: WIDGET_META.financialSummary };
         }
-        if (tool.name === "get-budgets") {
-          return { ...tool, _meta: WIDGET_META.budgetList };
+        if (tool.name === "get-account-status") {
+          return { ...tool, _meta: WIDGET_META.accountStatus };
         }
-        if (tool.name === "create-budget") {
-          return { ...tool, _meta: WIDGET_META.budgetList };
-        }
-        if (tool.name === "update-budget-rules") {
+        if (tool.name === "get-budgets" || tool.name === "create-budget" || tool.name === "update-budget-rules") {
           return { ...tool, _meta: WIDGET_META.budgetList };
         }
         return tool;

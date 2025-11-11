@@ -1083,7 +1083,7 @@ var require_react_development = __commonJS({
           }
           return dispatcher.useContext(Context);
         }
-        function useState(initialState) {
+        function useState2(initialState) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useState(initialState);
         }
@@ -1886,7 +1886,7 @@ var require_react_development = __commonJS({
         exports.useMemo = useMemo;
         exports.useReducer = useReducer;
         exports.useRef = useRef;
-        exports.useState = useState;
+        exports.useState = useState2;
         exports.useSyncExternalStore = useSyncExternalStore2;
         exports.useTransition = useTransition;
         exports.version = ReactVersion;
@@ -2382,9 +2382,9 @@ var require_react_dom_development = __commonJS({
         if (typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ !== "undefined" && typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart === "function") {
           __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(new Error());
         }
-        var React2 = require_react();
+        var React3 = require_react();
         var Scheduler = require_scheduler();
-        var ReactSharedInternals = React2.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
+        var ReactSharedInternals = React3.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED;
         var suppressWarning = false;
         function setSuppressWarning(newSuppressWarning) {
           {
@@ -3989,7 +3989,7 @@ var require_react_dom_development = __commonJS({
           {
             if (props.value == null) {
               if (typeof props.children === "object" && props.children !== null) {
-                React2.Children.forEach(props.children, function(child) {
+                React3.Children.forEach(props.children, function(child) {
                   if (child == null) {
                     return;
                   }
@@ -23551,41 +23551,40 @@ var require_client = __commonJS({
   }
 });
 
-// src/connected-institutions.tsx
-var import_react = __toESM(require_react(), 1);
+// src/account-status.tsx
+var import_react2 = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
+
+// src/shared/widget-utils.ts
+var import_react = __toESM(require_react(), 1);
 function formatCurrency(amount) {
-  if (amount === void 0 || amount === null)
-    return "N/A";
-  return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-function getAccountTypeLabel(type) {
-  const labels = {
-    "credit": "Credit Cards",
-    "depository": "Bank Accounts",
-    "investment": "Investment Accounts",
-    "loan": "Loans",
-    "other": "Other Accounts"
-  };
-  return labels[type] || "Other Accounts";
-}
-function groupAllAccountsByType(institutions) {
-  const grouped = /* @__PURE__ */ new Map();
-  institutions.forEach((institution) => {
-    if (institution.error)
-      return;
-    institution.accounts.forEach((account) => {
-      const type = account.type;
-      if (!grouped.has(type)) {
-        grouped.set(type, []);
-      }
-      grouped.get(type).push({
-        ...account,
-        institutionName: institution.institutionName
-      });
-    });
+  if (amount === void 0 || amount === null || Number.isNaN(amount)) {
+    return "$0.00";
+  }
+  return amount.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
   });
-  return grouped;
+}
+function formatRelativeTime(date) {
+  if (!date)
+    return "\u2014";
+  const now = /* @__PURE__ */ new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / (1e3 * 60));
+  if (diffMinutes < 1)
+    return "just now";
+  if (diffMinutes < 60)
+    return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24)
+    return `${diffHours} hr${diffHours > 1 ? "s" : ""} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7)
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+  return date.toLocaleDateString();
 }
 function useToolOutput() {
   return (0, import_react.useSyncExternalStore)(
@@ -23606,26 +23605,116 @@ function useToolOutput() {
     },
     () => window.openai?.toolOutput ?? null,
     () => null
-    // Server-side rendering fallback
   );
 }
-function ConnectedInstitutionsWidget() {
-  const toolOutput = useToolOutput();
-  console.log("=== Widget Render ===");
-  console.log("toolOutput:", toolOutput);
-  if (toolOutput === null) {
-    return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { className: "loading-state", style: { padding: "2rem", textAlign: "center", color: "#666" } }, /* @__PURE__ */ import_react.default.createElement("p", null, "Loading...")));
-  }
-  const institutions = toolOutput.institutions || [];
-  const totalAccounts = toolOutput.totalAccounts || 0;
-  const errorInstitutions = institutions.filter((inst) => inst.error);
-  const accountsByType = groupAllAccountsByType(institutions);
-  const lastSyncedAt = institutions.filter((inst) => inst.lastSyncedAt).map((inst) => new Date(inst.lastSyncedAt)).sort((a, b) => b.getTime() - a.getTime())[0];
-  return /* @__PURE__ */ import_react.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react.default.createElement("div", { style: { marginBottom: "1rem", paddingBottom: "0.5rem", borderBottom: "2px solid #e0e0e0" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ import_react.default.createElement("h3", { style: { margin: 0, fontSize: "1rem", fontWeight: "600" } }, "Connected Accounts"), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", color: "#666" } }, totalAccounts, " total")), lastSyncedAt && /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#999", marginTop: "0.25rem" } }, "Last updated ", lastSyncedAt.toLocaleString())), errorInstitutions.map((institution) => /* @__PURE__ */ import_react.default.createElement("div", { key: institution.itemId, style: { marginBottom: "1rem" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.85rem", fontWeight: "600", color: "#666", marginBottom: "0.25rem" } }, institution.institutionName), /* @__PURE__ */ import_react.default.createElement("div", { style: { color: "#d32f2f", fontSize: "0.85rem", padding: "0.5rem 0" } }, "\u26A0\uFE0F ", institution.error))), accountsByType.size === 0 ? /* @__PURE__ */ import_react.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react.default.createElement("p", null, "No institutions connected"), /* @__PURE__ */ import_react.default.createElement("p", { style: { fontSize: "0.9rem", color: "#666", marginTop: "0.5rem" } }, 'Use "Connect my bank account" to get started')) : /* @__PURE__ */ import_react.default.createElement("div", { className: "accounts-by-type" }, Array.from(accountsByType).map(([accountType, accounts], typeIndex) => /* @__PURE__ */ import_react.default.createElement("div", { key: accountType }, typeIndex > 0 && /* @__PURE__ */ import_react.default.createElement("div", { style: { height: "1px", background: "#e0e0e0", margin: "0.75rem 0" } }), /* @__PURE__ */ import_react.default.createElement("div", { style: { marginTop: typeIndex > 0 ? "1rem" : "0" } }, /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.8rem", fontWeight: "600", color: "#888", marginBottom: "0.4rem", textTransform: "uppercase", letterSpacing: "0.5px" } }, getAccountTypeLabel(accountType)), /* @__PURE__ */ import_react.default.createElement("table", { style: { width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" } }, /* @__PURE__ */ import_react.default.createElement("tbody", null, accounts.map((account, index) => /* @__PURE__ */ import_react.default.createElement("tr", { key: index, style: { borderBottom: index < accounts.length - 1 ? "1px solid #f0f0f0" : "none" } }, /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "left" } }, /* @__PURE__ */ import_react.default.createElement("div", null, account.name), /* @__PURE__ */ import_react.default.createElement("div", { style: { fontSize: "0.75rem", color: "#999", marginTop: "0.1rem" } }, account.institutionName)), /* @__PURE__ */ import_react.default.createElement("td", { style: { padding: "0.4rem 0", textAlign: "right", fontWeight: "500", verticalAlign: "top" } }, formatCurrency(account.balances.current)))))))))));
+function getFallbackNextSteps() {
+  return [
+    {
+      id: "connect-account",
+      label: "Connect Account",
+      kind: "tool",
+      tool: "connect-account",
+      toolArgs: {},
+      variant: "primary"
+    },
+    {
+      id: "analyze-spending",
+      label: "Analyze Spending",
+      kind: "prompt",
+      prompt: "Analyze my recent spending and highlight anything unusual.",
+      variant: "secondary"
+    },
+    {
+      id: "add-advisor",
+      label: "Add an Advisor",
+      kind: "prompt",
+      prompt: "Walk me through how to invite my financial advisor into this workspace.",
+      variant: "secondary"
+    }
+  ];
 }
-var root = document.getElementById("connected-institutions-root");
+function normalizeNextSteps(steps) {
+  const list = steps && steps.length > 0 ? steps : getFallbackNextSteps();
+  return list.map((step) => ({
+    variant: step.variant ?? (step.id === "connect-account" ? "primary" : "secondary"),
+    ...step
+  }));
+}
+
+// src/account-status.tsx
+function getAccountTypeLabel(type) {
+  const labels = {
+    credit: "Credit Cards",
+    depository: "Bank Accounts",
+    investment: "Investments",
+    loan: "Loans",
+    other: "Other Accounts"
+  };
+  return labels[type] || "Other Accounts";
+}
+function groupAccountsByType(institutions) {
+  const grouped = /* @__PURE__ */ new Map();
+  institutions.forEach((institution) => {
+    institution.accounts.forEach((account) => {
+      if (!grouped.has(account.type)) {
+        grouped.set(account.type, []);
+      }
+      grouped.get(account.type).push({
+        ...account,
+        institutionName: institution.institutionName
+      });
+    });
+  });
+  return grouped;
+}
+function AccountStatusWidget() {
+  const toolOutput = useToolOutput();
+  const [pendingActionId, setPendingActionId] = (0, import_react2.useState)(null);
+  if (toolOutput === null) {
+    return /* @__PURE__ */ import_react2.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "loading-state", style: { padding: "2rem", textAlign: "center", color: "#666" } }, /* @__PURE__ */ import_react2.default.createElement("p", null, "Loading...")));
+  }
+  const institutions = toolOutput.institutions ?? [];
+  const accountsByType = groupAccountsByType(institutions);
+  const totalAccounts = toolOutput.totalAccounts ?? toolOutput.summary?.totalAccounts ?? institutions.reduce((sum, institution) => sum + institution.accounts.length, 0);
+  const lastSynced = toolOutput.summary?.lastSynced ? new Date(toolOutput.summary.lastSynced) : institutions.map((inst) => inst.lastSyncedAt ? new Date(inst.lastSyncedAt) : null).filter((date) => Boolean(date)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
+  const accountNextSteps = normalizeNextSteps(toolOutput.dashboard?.accounts?.nextSteps);
+  const errorInstitutions = institutions.filter(
+    (inst) => (inst.status === "error" || inst.errorMessage) && inst.errorMessage
+  );
+  async function handleNextStepClick(step) {
+    if (pendingActionId)
+      return;
+    setPendingActionId(step.id);
+    try {
+      const openaiBridge = window.openai;
+      if (step.kind === "tool" && step.tool && openaiBridge?.callTool) {
+        await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
+      } else if (step.kind === "prompt" && step.prompt && openaiBridge?.sendFollowupTurn) {
+        await openaiBridge.sendFollowupTurn({ prompt: step.prompt });
+      }
+    } finally {
+      setPendingActionId(null);
+    }
+  }
+  function renderNextSteps(steps) {
+    if (!steps.length)
+      return null;
+    return /* @__PURE__ */ import_react2.default.createElement("div", { className: "next-steps-row next-steps-accounts" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "next-steps-grid" }, steps.map((step) => /* @__PURE__ */ import_react2.default.createElement(
+      "button",
+      {
+        key: `accounts-${step.id}`,
+        className: `next-step-pill ${step.variant ?? "secondary"}${pendingActionId === step.id ? " loading" : ""}`,
+        onClick: () => handleNextStepClick(step),
+        disabled: !!pendingActionId
+      },
+      /* @__PURE__ */ import_react2.default.createElement("span", null, step.label)
+    ))));
+  }
+  return /* @__PURE__ */ import_react2.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react2.default.createElement("section", { className: "accounts-card" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "section-header" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "tool-badge muted" }, "Account Status"), /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("h3", null, "Accounts"), /* @__PURE__ */ import_react2.default.createElement("span", null, totalAccounts, " connected")), lastSynced && /* @__PURE__ */ import_react2.default.createElement("span", { className: "updated-pill" }, "Updated ", formatRelativeTime(lastSynced))), totalAccounts > 0 ? /* @__PURE__ */ import_react2.default.createElement("div", { className: "accounts-by-type" }, Array.from(accountsByType).map(([accountType, accounts], idx) => /* @__PURE__ */ import_react2.default.createElement("div", { key: accountType, className: "account-type-block" }, idx > 0 && /* @__PURE__ */ import_react2.default.createElement("div", { className: "divider" }), /* @__PURE__ */ import_react2.default.createElement("div", { className: "account-type-label" }, getAccountTypeLabel(accountType)), /* @__PURE__ */ import_react2.default.createElement("table", { className: "account-type-table" }, /* @__PURE__ */ import_react2.default.createElement("tbody", null, accounts.map((account, index) => /* @__PURE__ */ import_react2.default.createElement("tr", { key: `${account.name}-${index}` }, /* @__PURE__ */ import_react2.default.createElement("td", null, /* @__PURE__ */ import_react2.default.createElement("div", { className: "account-name" }, account.name), /* @__PURE__ */ import_react2.default.createElement("div", { className: "account-meta" }, account.institutionName)), /* @__PURE__ */ import_react2.default.createElement("td", { className: "account-balance" }, account.balances.current !== void 0 ? formatCurrency(account.balances.current) : "N/A")))))))) : /* @__PURE__ */ import_react2.default.createElement("div", { className: "empty-state" }, /* @__PURE__ */ import_react2.default.createElement("p", null, "No institutions connected"), /* @__PURE__ */ import_react2.default.createElement("p", { style: { fontSize: "0.9rem", color: "#475569", marginTop: "0.5rem" } }, 'Use "Connect my account" to get started.')), errorInstitutions.length > 0 && /* @__PURE__ */ import_react2.default.createElement("div", { className: "connection-alert" }, /* @__PURE__ */ import_react2.default.createElement("strong", null, "Connections to fix"), /* @__PURE__ */ import_react2.default.createElement("ul", null, errorInstitutions.map((institution) => /* @__PURE__ */ import_react2.default.createElement("li", { key: institution.itemId }, institution.institutionName, ": ", institution.errorMessage)))), renderNextSteps(accountNextSteps)));
+}
+var root = document.getElementById("account-status-root");
 if (root) {
-  (0, import_client.createRoot)(root).render(/* @__PURE__ */ import_react.default.createElement(ConnectedInstitutionsWidget, null));
+  (0, import_client.createRoot)(root).render(/* @__PURE__ */ import_react2.default.createElement(AccountStatusWidget, null));
 }
 /*! Bundled license information:
 

@@ -576,6 +576,39 @@ export type Database = {
           },
         ]
       }
+      net_worth_snapshots: {
+        Row: {
+          assets_total: number
+          created_at: string | null
+          id: string
+          liabilities_total: number
+          net_worth_amount: number
+          snapshot_date: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          assets_total: number
+          created_at?: string | null
+          id?: string
+          liabilities_total: number
+          net_worth_amount: number
+          snapshot_date: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          assets_total?: number
+          created_at?: string | null
+          id?: string
+          liabilities_total?: number
+          net_worth_amount?: number
+          snapshot_date?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       opinions: {
         Row: {
           author: string

@@ -40,10 +40,15 @@ export const CONFIG = {
   },
 
   widgets: {
-    connectedInstitutions: {
-      uri: "ui://widget/connected-institutions.html",
-      name: "Connected Institutions Widget",
-      description: "Interactive cards showing connected financial institutions with account balances",
+    financialSummary: {
+      uri: "ui://widget/financial-summary.html",
+      name: "Financial Summary Widget",
+      description: "Net worth overview with assets, liabilities, and weekly trend",
+    },
+    accountStatus: {
+      uri: "ui://widget/account-status.html",
+      name: "Account Status Widget",
+      description: "Connected institution list with balances and connection health",
     },
     budgetList: {
       uri: "ui://widget/budget-list.html",

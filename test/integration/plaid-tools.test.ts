@@ -9,7 +9,7 @@ import { MockPlaidClient } from "../mocks/plaid-mock.js";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import {
   connectAccountHandler,
-  getAccountBalancesHandler,
+  getAccountStatusHandler,
 } from "../../src/tools/accounts/handlers.js";
 import {
   createTestSupabaseClient,
@@ -64,7 +64,7 @@ describe("Plaid Tool Integration Tests", () => {
     );
 
     // Then check the status
-    const result = await getAccountBalancesHandler(testUserId);
+    const result = await getAccountStatusHandler(testUserId);
 
     // Verify response structure
     assert(result.content, "Response should have content");

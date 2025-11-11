@@ -9,7 +9,7 @@ ChatGPT is not calling `resources/list` during MCP initialization, preventing wi
 ## Symptoms
 
 1. ✅ Server advertises `resources` capability in `initialize` response
-2. ✅ Widget resource registered: `ui://widget/connected-institutions.html`
+2. ✅ Widget resources registered: `ui://widget/financial-summary.html` and `ui://widget/account-status.html`
 3. ✅ Tool returns `_meta["openai/outputTemplate"]` correctly
 4. ✅ Widget files built and deployed to `public/widgets/`
 5. ❌ **ChatGPT never calls `resources/list`** during initialization
@@ -80,7 +80,7 @@ ChatGPT is not calling `resources/list` during MCP initialization, preventing wi
       "totalAccounts": 3
     },
     "_meta": {
-      "openai/outputTemplate": "ui://widget/connected-institutions.html"
+      "openai/outputTemplate": "ui://widget/financial-summary.html"
     }
   }
 }
@@ -216,7 +216,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 **Our Implementation:**
 ```typescript
-server.resource("connected-institutions-widget", "ui://widget/...", {}, async () => ({
+server.resource("financial-summary-widget", "ui://widget/...", {}, async () => ({
   contents: [{ uri, mimeType: "text/html+skybridge", text: html, _meta }]
 }));
 ```
@@ -239,7 +239,7 @@ server.resource("connected-institutions-widget", "ui://widget/...", {}, async ()
 **Our Implementation:**
 ```typescript
 {
-  "openai/outputTemplate": "ui://widget/connected-institutions.html",
+  "openai/outputTemplate": "ui://widget/financial-summary.html",
   "openai/toolInvocation/invoking": "Loading...",
   "openai/toolInvocation/invoked": "Loaded"
   // Missing: openai/widgetAccessible
@@ -321,7 +321,7 @@ Check Vercel logs for ANY request with "template" in the method name during init
 ```json
 {
   "_meta": {
-    "openai/outputTemplate": "ui://widget/connected-institutions.html",
+    "openai/outputTemplate": "ui://widget/financial-summary.html",
     "openai/widgetAccessible": true,
     "openai/resultCanProduceWidget": true
   }

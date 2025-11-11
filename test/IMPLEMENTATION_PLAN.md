@@ -599,7 +599,7 @@ describe("Account Balances Integration Tests", () => {
     assert(result._meta, "Should have widget metadata");
     assert.equal(
       result._meta["openai/outputTemplate"],
-      "ui://widget/connected-institutions.html"
+      "ui://widget/financial-summary.html"
     );
     assert(result.structuredContent, "Should have structured content for widget");
     assert(result.structuredContent.institutions, "Should have institutions array");

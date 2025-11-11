@@ -45,10 +45,21 @@ export const createServer = (plaidClient: PlaidApi) => {
  * Register widget resources for ChatGPT integration
  */
 function registerWidgetResources(server: McpServer) {
-  // Connected Institutions Widget Config
-  const connectedInstitutionsUri = CONFIG.widgets.connectedInstitutions.uri;
-  const connectedInstitutionsMeta = {
-    "openai/widgetDescription": CONFIG.widgets.connectedInstitutions.description,
+  // Financial Summary Widget Config
+  const financialSummaryUri = CONFIG.widgets.financialSummary.uri;
+  const financialSummaryMeta = {
+    "openai/widgetDescription": CONFIG.widgets.financialSummary.description,
+    "openai/widgetPrefersBorder": true,
+    "openai/widgetCSP": {
+      connect_domains: [],
+      resource_domains: [CONFIG.baseUrl]
+    }
+  };
+
+  // Account Status Widget Config
+  const accountStatusUri = CONFIG.widgets.accountStatus.uri;
+  const accountStatusMeta = {
+    "openai/widgetDescription": CONFIG.widgets.accountStatus.description,
     "openai/widgetPrefersBorder": true,
     "openai/widgetCSP": {
       connect_domains: [],
@@ -67,13 +78,23 @@ function registerWidgetResources(server: McpServer) {
     }
   };
 
-  // Generate Connected Institutions widget HTML
-  function getConnectedInstitutionsHTML(): string {
+  // Generate Financial Summary widget HTML
+  function getFinancialSummaryHTML(): string {
     const baseUrl = getBaseUrl();
     return `
-<div id="connected-institutions-root"></div>
+<div id="financial-summary-root"></div>
 <link rel="stylesheet" href="${baseUrl}/widgets/connected-institutions.css">
-<script type="module" src="${baseUrl}/widgets/connected-institutions.js"></script>
+<script type="module" src="${baseUrl}/widgets/financial-summary.js"></script>
+    `.trim();
+  }
+
+  // Generate Account Status widget HTML
+  function getAccountStatusHTML(): string {
+    const baseUrl = getBaseUrl();
+    return `
+<div id="account-status-root"></div>
+<link rel="stylesheet" href="${baseUrl}/widgets/connected-institutions.css">
+<script type="module" src="${baseUrl}/widgets/account-status.js"></script>
     `.trim();
   }
 
@@ -92,11 +113,18 @@ function registerWidgetResources(server: McpServer) {
 
     const resources: any[] = [
       {
-        uri: connectedInstitutionsUri,
-        name: CONFIG.widgets.connectedInstitutions.name,
-        description: CONFIG.widgets.connectedInstitutions.description,
+        uri: financialSummaryUri,
+        name: CONFIG.widgets.financialSummary.name,
+        description: CONFIG.widgets.financialSummary.description,
         mimeType: "text/html+skybridge",
-        _meta: connectedInstitutionsMeta
+        _meta: financialSummaryMeta
+      },
+      {
+        uri: accountStatusUri,
+        name: CONFIG.widgets.accountStatus.name,
+        description: CONFIG.widgets.accountStatus.description,
+        mimeType: "text/html+skybridge",
+        _meta: accountStatusMeta
       },
       {
         uri: budgetListUri,
@@ -121,15 +149,33 @@ function registerWidgetResources(server: McpServer) {
     const uri = request.params.uri;
     logServiceEvent("widgets", "resources-read-request", { uri });
 
-    // Handle Connected Institutions widget
-    if (uri === connectedInstitutionsUri) {
+    if (uri === financialSummaryUri) {
       const result = {
         contents: [
           {
-            uri: connectedInstitutionsUri,
+            uri: financialSummaryUri,
             mimeType: "text/html+skybridge",
-            text: getConnectedInstitutionsHTML(),
-            _meta: connectedInstitutionsMeta
+            text: getFinancialSummaryHTML(),
+            _meta: financialSummaryMeta
+          }
+        ]
+      };
+      logServiceEvent("widgets", "resources-read-response", {
+        uri,
+        mimeType: "text/html+skybridge",
+        hasText: true,
+      });
+      return result;
+    }
+
+    if (uri === accountStatusUri) {
+      const result = {
+        contents: [
+          {
+            uri: accountStatusUri,
+            mimeType: "text/html+skybridge",
+            text: getAccountStatusHTML(),
+            _meta: accountStatusMeta
           }
         ]
       };
@@ -171,11 +217,18 @@ function registerWidgetResources(server: McpServer) {
     const result = {
       resourceTemplates: [
         {
-          uriTemplate: connectedInstitutionsUri,
-          name: CONFIG.widgets.connectedInstitutions.name,
-          description: CONFIG.widgets.connectedInstitutions.description,
+          uriTemplate: financialSummaryUri,
+          name: CONFIG.widgets.financialSummary.name,
+          description: CONFIG.widgets.financialSummary.description,
           mimeType: "text/html+skybridge",
-          _meta: connectedInstitutionsMeta
+          _meta: financialSummaryMeta
+        },
+        {
+          uriTemplate: accountStatusUri,
+          name: CONFIG.widgets.accountStatus.name,
+          description: CONFIG.widgets.accountStatus.description,
+          mimeType: "text/html+skybridge",
+          _meta: accountStatusMeta
         },
         {
           uriTemplate: budgetListUri,

@@ -136,6 +136,7 @@ export async function cleanupTestUser(
   await adminClient.from("accounts").delete().eq("user_id", userId);
   await adminClient.from("budgets").delete().eq("user_id", userId);
   await adminClient.from("categorization_prompts").delete().eq("user_id", userId);
+  await adminClient.from("net_worth_snapshots").delete().eq("user_id", userId);
   await adminClient.from("plaid_connections").delete().eq("user_id", userId);
   await adminClient.from("plaid_sessions").delete().eq("user_id", userId);
 }

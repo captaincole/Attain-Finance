@@ -26,7 +26,7 @@
 - `registerWidgetResources()` (`src/create-server.ts`) answers `resources/list`/`resources/read` with HTML that loads built assets from `public/widgets/…`; keep `CONFIG.baseUrl` accurate so scripts resolve
 - Build widget bundles via `cd widgets && npm run build:all`; output checked into `public/widgets/*.js` and `public/widgets/*.css`
 - Tool metadata injected post-registration by `injectWidgetMetadata()` (`src/tools/index.ts`), which wraps `tools/list` to add `_meta.openai/outputTemplate`, widget accessibility flags, and status copy
-- Tool handlers return `_meta` plus `structuredContent` (account balances, budgets) so ChatGPT renders `connected-institutions` and `budget-list` widgets without additional calls
+- Tool handlers return `_meta` plus `structuredContent` (financial summary, account status, budgets) so ChatGPT renders the appropriate widgets without additional calls
 
 ## Data & Storage
 - Supabase client (`src/storage/supabase.ts`) lazily instantiates using `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`

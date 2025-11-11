@@ -1,6 +1,6 @@
 /**
- * Integration test for get-account-balances tool
- * Tests account balance retrieval, net worth calculation, and widget metadata
+ * Integration tests for financial-summary + get-account-status tools
+ * Validates net worth calculations, account list rendering, and widget structured content
  *
  * NOTE: Uses real local Supabase database, no mocks
  */
@@ -8,16 +8,22 @@
 import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
-import { getAccountBalancesHandler } from "../../src/tools/accounts/handlers.js";
+import {
+  getAccountStatusHandler,
+  getFinancialSummaryHandler,
+} from "../../src/tools/accounts/handlers.js";
 import {
   createTestSupabaseClient,
+  createTestSupabaseAdminClient,
   cleanupTestUser,
   createTestConnection,
 } from "../helpers/test-db.js";
+import type { Database } from "../../src/storage/database.types.js";
 
-describe("Account Balances Integration Tests", () => {
+describe("Account Dashboard Tool Integration Tests", () => {
   const testUserId = "test-user-accounts";
   const supabase = createTestSupabaseClient(testUserId);
+  const adminClient = createTestSupabaseAdminClient();
 
   before(() => {
     setSupabaseMock(supabase);
@@ -32,15 +38,17 @@ describe("Account Balances Integration Tests", () => {
     resetSupabase();
   });
 
-  it("should return error when no accounts connected", async () => {
-    const result = await getAccountBalancesHandler(testUserId);
+  it("financial summary should prompt to connect when no accounts exist", async () => {
+    const result = await getFinancialSummaryHandler(testUserId);
 
-    // Verify error message
-    assert(result.content[0].text.includes("No Accounts Found"));
+    assert(result.content[0].text.includes("Financial Summary"));
+    assert(result.content[0].text.includes("No connected accounts yet."));
     assert(result.content[0].text.includes("Connect my account"));
+    assert.equal(result.structuredContent.view, "financial-summary");
+    assert(result.structuredContent.dashboard.hero, "Hero data should exist even for empty state");
   });
 
-  it("should fetch and return account balances with proper formatting", async () => {
+  it("financial summary should calculate net worth and trend data", async () => {
     // Create test connection
     await createTestConnection(supabase, {
       itemId: "item_test_1",
@@ -49,7 +57,7 @@ describe("Account Balances Integration Tests", () => {
     });
 
     // Create 2 accounts in database
-    await supabase.from("accounts").insert([
+    const accountsToInsert: Database["public"]["Tables"]["accounts"]["Insert"][] = [
       {
         account_id: "acc_checking",
         user_id: testUserId,
@@ -57,9 +65,10 @@ describe("Account Balances Integration Tests", () => {
         name: "Checking Account",
         type: "depository",
         subtype: "checking",
-        current_balance: 1234.50,
-        available_balance: 1200.00,
+        current_balance: 1234.5,
+        available_balance: 1234.5,
         last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
       },
       {
         account_id: "acc_savings",
@@ -68,26 +77,39 @@ describe("Account Balances Integration Tests", () => {
         name: "Savings Account",
         type: "depository",
         subtype: "savings",
-        current_balance: 5000.00,
-        available_balance: 5000.00,
+        current_balance: 5000.0,
+        available_balance: 5000.0,
         last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
       },
-    ]);
+    ];
 
-    const result = await getAccountBalancesHandler(testUserId);
+    const { error: insertError1 } = await adminClient.from("accounts").insert(accountsToInsert);
+    if (insertError1) {
+      console.error("[TEST] failed inserting accounts for financial summary", JSON.stringify(insertError1, null, 2));
+      throw insertError1;
+    }
 
-    // Verify formatting with 2 decimal places
-    assert(result.content[0].text.includes("$1234.50"));
-    assert(result.content[0].text.includes("$5000.00"));
+    const result = await getFinancialSummaryHandler(testUserId);
 
-    // Verify last synced info present
-    assert(result.content[0].text.includes("Last synced"));
+    const summary = result.structuredContent.summary;
+    const hero = result.structuredContent.dashboard.hero;
+    assert.equal(result.structuredContent.view, "financial-summary");
+    assert(summary, "Structured summary should be present");
+    assert(hero, "Hero dashboard data should exist");
 
-    // Verify institution name shown
-    assert(result.content[0].text.includes("Test Bank"));
+    const expectedAssets = 1234.5 + 5000;
+    assert(
+      Math.abs((summary.assetsTotal ?? 0) - expectedAssets) < 0.01,
+      "Assets total should equal sum of seeded accounts"
+    );
+    assert(
+      (summary.netWorth ?? 0) > 0 && Math.abs((summary.netWorth ?? 0) - expectedAssets) < 0.01,
+      "Net worth should match seeded balances"
+    );
   });
 
-  it("should calculate net worth correctly (assets - liabilities)", async () => {
+  it("account status should list institutions with balances", async () => {
     // Create test connection
     await createTestConnection(supabase, {
       itemId: "item_test_2",
@@ -100,7 +122,7 @@ describe("Account Balances Integration Tests", () => {
     // - Savings: $5,000 (asset)
     // - Credit Card: -$500 (liability - negative balance)
     // Expected net worth: $6,000 - $500 = $5,500
-    await supabase.from("accounts").insert([
+    const accountStatusSeed: Database["public"]["Tables"]["accounts"]["Insert"][] = [
       {
         account_id: "acc_checking",
         user_id: testUserId,
@@ -110,6 +132,7 @@ describe("Account Balances Integration Tests", () => {
         subtype: "checking",
         current_balance: 1000,
         last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
       },
       {
         account_id: "acc_savings",
@@ -120,6 +143,7 @@ describe("Account Balances Integration Tests", () => {
         subtype: "savings",
         current_balance: 5000,
         last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
       },
       {
         account_id: "acc_credit",
@@ -130,21 +154,26 @@ describe("Account Balances Integration Tests", () => {
         subtype: "credit card",
         current_balance: -500,
         last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
       },
-    ]);
+    ];
+    const { error: insertError2 } = await adminClient.from("accounts").insert(accountStatusSeed);
+    if (insertError2) {
+      console.error("[TEST] failed inserting accounts for account status", insertError2);
+      throw insertError2;
+    }
 
-    const result = await getAccountBalancesHandler(testUserId);
+    const result = await getAccountStatusHandler(testUserId);
 
-    // Verify net worth calculation (with markdown formatting)
-    assert(result.content[0].text.includes("**Net Worth:** $5500.00"));
-
-    // Verify accounts grouped by type
-    assert(result.content[0].text.includes("Summary by Account Type"));
-    assert(result.content[0].text.includes("Depository:"));
-    assert(result.content[0].text.includes("Credit:"));
+    assert(result.content[0].text.includes("Account Status"));
+    assert(result.content[0].text.includes("Test Bank"));
+    assert(result.content[0].text.includes("Totals → Assets"));
+    assert(result.content[0].text.includes("Next Steps"));
+    assert.equal(result.structuredContent.view, "account-status");
+    assert(Array.isArray(result.structuredContent.institutions), "Should return institutions array");
   });
 
-  it("should include widget metadata and structured content in response", async () => {
+  it("account status structured content should include institutions and next steps", async () => {
     // Create test connection
     await createTestConnection(supabase, {
       itemId: "item_test_3",
@@ -153,7 +182,7 @@ describe("Account Balances Integration Tests", () => {
     });
 
     // Create at least 1 account
-    await supabase.from("accounts").insert({
+    const singleAccount: Database["public"]["Tables"]["accounts"]["Insert"] = {
       account_id: "acc_1",
       user_id: testUserId,
       item_id: "item_test_3",
@@ -162,9 +191,15 @@ describe("Account Balances Integration Tests", () => {
       subtype: "checking",
       current_balance: 1000,
       last_synced_at: new Date().toISOString(),
-    });
+      currency_code: "USD",
+    };
+    const { error: insertError3 } = await adminClient.from("accounts").insert(singleAccount);
+    if (insertError3) {
+      console.error("[TEST] failed inserting single account", insertError3);
+      throw insertError3;
+    }
 
-    const result = await getAccountBalancesHandler(testUserId);
+    const result = await getAccountStatusHandler(testUserId);
 
     // Verify structured content exists
     assert(result.structuredContent, "Should have structured content");
@@ -191,5 +226,12 @@ describe("Account Balances Integration Tests", () => {
     assert.equal(result.structuredContent.summary.totalAccounts, 1);
     assert(result.structuredContent.summary.accountsByType, "Should have accountsByType");
     assert(result.structuredContent.summary.netWorth !== undefined, "Should have netWorth");
+    assert(result.structuredContent.dashboard.accounts, "Should include accounts dashboard data");
+    assert(Array.isArray(result.structuredContent.dashboard.accounts.nextSteps), "Should include account next steps");
+    const connectAction = result.structuredContent.dashboard.accounts.nextSteps.find(
+      (step: any) => step.id === "connect-account"
+    );
+    assert(connectAction, "Should include connect-account action");
+    assert.equal(connectAction.kind, "tool");
   });
 });

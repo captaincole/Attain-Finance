@@ -82,7 +82,8 @@
     <div class="widget-selector">
       <h1>Widget Preview</h1>
       <select id="widget-select">
-        <option value="connected-institutions">Connected Institutions</option>
+        <option value="financial-summary">Financial Summary</option>
+        <option value="account-status">Account Status</option>
         <option value="budget-list">Budget List</option>
       </select>
     </div>
@@ -99,7 +100,6 @@
   </div>
 
   <script type="module">
-    // Mock window.openai API
     window.openai = {
       toolOutput: null,
       toolInput: null,
@@ -108,7 +108,6 @@
       maxHeight: 600,
       theme: 'light',
       locale: 'en-US',
-
       setWidgetState: async (state) => {
         console.log('setWidgetState called:', state);
         window.openai.widgetState = state;
@@ -116,90 +115,151 @@
           detail: { globals: { widgetState: state } }
         }));
       },
-
       callTool: async (name, args) => {
         console.log('callTool called:', name, args);
         return { success: true };
       },
-
       sendFollowupTurn: async (params) => {
         console.log('sendFollowupTurn called:', params);
       },
-
       requestDisplayMode: async (params) => {
         console.log('requestDisplayMode called:', params);
       }
     };
 
-    // Default mock data for each widget
+    const widgetAssets = {
+      'financial-summary': {
+        script: () => `/public/widgets/financial-summary.js?t=${Date.now()}`,
+        style: () => `/public/widgets/connected-institutions.css?t=${Date.now()}`,
+        rootId: 'financial-summary-root'
+      },
+      'account-status': {
+        script: () => `/public/widgets/account-status.js?t=${Date.now()}`,
+        style: () => `/public/widgets/connected-institutions.css?t=${Date.now()}`,
+        rootId: 'account-status-root'
+      },
+      'budget-list': {
+        script: () => `/public/widgets/budget-list.js?t=${Date.now()}`,
+        rootId: 'budget-list-root'
+      }
+    };
+
     const mockDataTemplates = {
-      'connected-institutions': {
+      'financial-summary': {
+        summary: {
+          netWorth: 211432.85,
+          assetsTotal: 231683.60,
+          liabilitiesTotal: 20250.75,
+          lastSynced: new Date().toISOString(),
+          netWorthTrend: {
+            amountChange: 3200.45,
+            percentChange: 1.53,
+            direction: "up",
+            label: "since last week",
+            baselineDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+          },
+          totalAccounts: 7
+        },
+        dashboard: {
+          hero: {
+            netWorth: 211432.85,
+            assetsTotal: 231683.60,
+            liabilitiesTotal: 20250.75,
+            lastUpdatedAt: new Date().toISOString(),
+            trend: {
+              amountChange: 3200.45,
+              percentChange: 1.53,
+              direction: "up",
+              label: "since last week",
+              baselineDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+            },
+            hasData: true,
+            nextSteps: [
+              {
+                id: "connect-account",
+                label: "Connect Account",
+                kind: "tool",
+                tool: "connect-account",
+                toolArgs: {},
+                variant: "primary"
+              },
+              {
+                id: "analyze-spending",
+                label: "Analyze Spending",
+                kind: "prompt",
+                prompt: "Analyze my recent spending and highlight anything unusual.",
+                variant: "secondary"
+              }
+            ]
+          }
+        }
+      },
+      'account-status': {
         institutions: [
           {
             itemId: "item_123",
             institutionName: "Chase Bank",
-            env: "✅ Production",
-            connectedAt: new Date("2024-01-15"),
+            environment: "production",
+            status: "active",
+            connectedAt: new Date("2024-01-15").toISOString(),
             lastSyncedAt: new Date().toISOString(),
             accounts: [
-              {
-                name: "Chase Total Checking",
-                type: "depository",
-                subtype: "checking",
-                balances: { current: 5432.10 }
-              },
-              {
-                name: "Chase Savings",
-                type: "depository",
-                subtype: "savings",
-                balances: { current: 12750.50 }
-              },
-              {
-                name: "Chase Sapphire Reserve",
-                type: "credit",
-                subtype: "credit card",
-                balances: { current: -1200.75 }
-              }
+              { accountId: "acc_checking_1", name: "Chase Total Checking", type: "depository", subtype: "checking", balances: { current: 5432.10 } },
+              { accountId: "acc_savings_1", name: "Chase Savings", type: "depository", subtype: "savings", balances: { current: 12750.50 } },
+              { accountId: "acc_cc_1", name: "Chase Sapphire Reserve", type: "credit", subtype: "credit card", balances: { current: -1200.75 } }
             ]
           },
           {
             itemId: "item_456",
             institutionName: "Vanguard",
-            env: "✅ Production",
-            connectedAt: new Date("2024-02-01"),
+            environment: "production",
+            status: "active",
+            connectedAt: new Date("2024-02-01").toISOString(),
             lastSyncedAt: new Date().toISOString(),
             accounts: [
-              {
-                name: "Individual Brokerage",
-                type: "investment",
-                subtype: "brokerage",
-                balances: { current: 125000.00 }
-              },
-              {
-                name: "Roth IRA",
-                type: "investment",
-                subtype: "ira",
-                balances: { current: 87500.25 }
-              }
+              { accountId: "acc_inv_1", name: "Individual Brokerage", type: "investment", subtype: "brokerage", balances: { current: 125000.00 } },
+              { accountId: "acc_inv_2", name: "Roth IRA", type: "investment", subtype: "ira", balances: { current: 87500.25 } }
             ]
           },
           {
             itemId: "item_789",
             institutionName: "American Express",
-            env: "✅ Production",
-            connectedAt: new Date("2024-01-20"),
-            lastSyncedAt: new Date().toISOString(),
+            environment: "production",
+            status: "error",
+            errorMessage: "Link expired — reconnect to sync new transactions.",
+            connectedAt: new Date("2024-01-20").toISOString(),
+            lastSyncedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
             accounts: [
-              {
-                name: "Amex Platinum",
-                type: "credit",
-                subtype: "credit card",
-                balances: { current: -3250.00 }
-              }
+              { accountId: "acc_cc_2", name: "Amex Platinum", type: "credit", subtype: "credit card", balances: { current: -3250.00 } }
             ]
           }
         ],
-        totalAccounts: 7
+        totalAccounts: 7,
+        summary: {
+          totalAccounts: 7,
+          lastSynced: new Date().toISOString()
+        },
+        dashboard: {
+          accounts: {
+            nextSteps: [
+              {
+                id: "connect-account",
+                label: "Connect Account",
+                kind: "tool",
+                tool: "connect-account",
+                toolArgs: {},
+                variant: "primary"
+              },
+              {
+                id: "add-advisor",
+                label: "Add an Advisor",
+                kind: "prompt",
+                prompt: "Walk me through how to invite my financial advisor into this workspace.",
+                variant: "secondary"
+              }
+            ]
+          }
+        }
       },
       'budget-list': {
         budgets: [
@@ -245,42 +305,51 @@
 
     // Widget loading logic
     let currentWidget = null;
+    let currentStyle = null;
 
     async function loadWidget(widgetName) {
       const errorDisplay = document.getElementById('error-display');
       errorDisplay.style.display = 'none';
 
       try {
-        // Clear previous widget
+        const assetInfo = widgetAssets[widgetName];
+        if (!assetInfo) {
+          throw new Error(`Unknown widget: ${widgetName}`);
+        }
+
         const root = document.getElementById('widget-root');
-        root.innerHTML = `<div id="${widgetName}-root"></div>`;
+        root.innerHTML = `<div id="${assetInfo.rootId || `${widgetName}-root`}"></div>`;
 
-        // Load mock data
-        const mockData = mockDataTemplates[widgetName];
+        const mockData = structuredClone(mockDataTemplates[widgetName]);
         window.openai.toolOutput = mockData;
-
-        // Update textarea
         document.getElementById('mock-data').value = JSON.stringify(mockData, null, 2);
-
-        // Fire event to notify widget of new data
         window.dispatchEvent(new CustomEvent('openai:set_globals', {
           detail: { globals: { toolOutput: mockData } }
         }));
 
-        // Dynamically load widget script
         if (currentWidget) {
           document.head.removeChild(currentWidget);
+          currentWidget = null;
+        }
+        if (currentStyle) {
+          document.head.removeChild(currentStyle);
+          currentStyle = null;
+        }
+
+        if (assetInfo.style) {
+          const styleEl = document.createElement('link');
+          styleEl.rel = 'stylesheet';
+          styleEl.href = assetInfo.style();
+          currentStyle = styleEl;
+          document.head.appendChild(styleEl);
         }
 
         const script = document.createElement('script');
         script.type = 'module';
-        // Server runs from project root, so path is /public/widgets/...
-        script.src = `/public/widgets/${widgetName}.js?t=${Date.now()}`;
-        script.onload = () => {
-          console.log(`Widget ${widgetName} loaded successfully`);
-        };
-        script.onerror = (error) => {
-          errorDisplay.textContent = `Failed to load widget: ${widgetName}.js. Make sure it's built (npm run build:all).`;
+        script.src = assetInfo.script();
+        script.onload = () => console.log(`Widget ${widgetName} loaded successfully`);
+        script.onerror = () => {
+          errorDisplay.textContent = `Failed to load widget bundle for ${widgetName}.`;
           errorDisplay.style.display = 'block';
         };
 
@@ -293,7 +362,6 @@
       }
     }
 
-    // Update widget with custom data
     function updateWidgetData() {
       const errorDisplay = document.getElementById('error-display');
       errorDisplay.style.display = 'none';
@@ -301,12 +369,9 @@
       try {
         const customData = JSON.parse(document.getElementById('mock-data').value);
         window.openai.toolOutput = customData;
-
-        // Fire event to notify widget
         window.dispatchEvent(new CustomEvent('openai:set_globals', {
           detail: { globals: { toolOutput: customData } }
         }));
-
         console.log('Widget data updated:', customData);
       } catch (error) {
         errorDisplay.textContent = `Invalid JSON: ${error.message}`;
@@ -314,15 +379,13 @@
       }
     }
 
-    // Event listeners
     document.getElementById('widget-select').addEventListener('change', (e) => {
       loadWidget(e.target.value);
     });
 
     document.getElementById('update-data').addEventListener('click', updateWidgetData);
 
-    // Load default widget on page load
-    loadWidget('connected-institutions');
+    loadWidget('financial-summary');
   </script>
 </body>
 </html>

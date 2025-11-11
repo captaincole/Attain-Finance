@@ -27,7 +27,7 @@ export function getTransactionTools(): ToolDefinition[] {
         account_ids: z
           .array(z.string())
           .optional()
-          .describe("Filter transactions by account IDs (exact match). Get account IDs by calling get-account-balances tool first. Example: ['account_123', 'account_456']"),
+          .describe("Filter transactions by account IDs (exact match). Get account IDs by calling get-account-status tool first. Example: ['account_123', 'account_456']"),
         categories: z
           .array(z.string())
           .optional()

@@ -23,7 +23,8 @@ This will:
 
 ### 1. Edit Widget Source
 Edit files in `src/`:
-- `connected-institutions.tsx` - Account balances widget
+- `financial-summary.tsx` - Net worth hero widget
+- `account-status.tsx` - Connected institutions widget
 - `budget-list.tsx` - Budget overview widget
 
 ### 2. Test Locally
@@ -196,10 +197,10 @@ import { test, expect } from '@playwright/test';
 
 test('connected institutions widget renders correctly', async ({ page }) => {
   await page.goto('http://localhost:8080/preview.html');
-  await page.selectOption('#widget-select', 'connected-institutions');
-  await page.waitForSelector('#connected-institutions-root');
+  await page.selectOption('#widget-select', 'financial-summary');
+  await page.waitForSelector('#financial-summary-root');
 
-  await expect(page).toHaveScreenshot('connected-institutions.png');
+  await expect(page).toHaveScreenshot('financial-summary.png');
 });
 ```
 
@@ -208,7 +209,7 @@ This would enable automated screenshot comparison on every widget change.
 ## Build Output
 
 Built widgets are output to `../public/widgets/`:
-- `connected-institutions.js` - ~991KB (includes React)
+- `financial-summary.js` / `account-status.js` - ~990KB each (includes React)
 - `connected-institutions.css` - Styles
 - `budget-list.js` - Budget widget
 
@@ -233,7 +234,7 @@ Widgets are automatically deployed when you push to main:
 ### Changes not reflecting
 - Build the widget: `npm run build:all`
 - Hard refresh browser (Cmd+Shift+R or Ctrl+Shift+R)
-- Check file timestamp: `ls -l ../public/widgets/connected-institutions.js`
+- Check file timestamp: `ls -l ../public/widgets/financial-summary.js ../public/widgets/account-status.js`
 
 ### Mock data not updating
 - Check JSON syntax (must be valid JSON)

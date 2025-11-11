@@ -16,14 +16,23 @@
 
 export const WIDGET_META = {
   /**
-   * Account Balances Widget
-   * Interactive cards showing connected financial institutions with account balances.
-   * Used by: get-account-balances, get-account-status
+   * Financial Summary Widget
    */
-  accountBalances: {
-    "openai/outputTemplate": "ui://widget/connected-institutions.html",
-    "openai/toolInvocation/invoking": "Loading your account balances...",
-    "openai/toolInvocation/invoked": "Account balances loaded",
+  financialSummary: {
+    "openai/outputTemplate": "ui://widget/financial-summary.html",
+    "openai/toolInvocation/invoking": "Loading your financial summary...",
+    "openai/toolInvocation/invoked": "Summary ready",
+    "openai/widgetAccessible": true,
+    "openai/resultCanProduceWidget": true,
+  },
+
+  /**
+   * Account Status Widget
+   */
+  accountStatus: {
+    "openai/outputTemplate": "ui://widget/account-status.html",
+    "openai/toolInvocation/invoking": "Loading your account status...",
+    "openai/toolInvocation/invoked": "Accounts loaded",
     "openai/widgetAccessible": true,
     "openai/resultCanProduceWidget": true,
   },
