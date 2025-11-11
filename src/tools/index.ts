@@ -12,6 +12,7 @@ import { getBudgetTools } from "./budgets/index.js";
 import { getTransactionTools } from "./transactions/index.js";
 import { getInvestmentTools } from "./investments/index.js";
 import { getLiabilityTools } from "./liabilities/index.js";
+import { WIDGET_META } from "../utils/widget-metadata.js";
 import type { ToolDefinition } from "./types.js";
 import { logEvent, serializeError } from "../utils/logger.js";
 
@@ -90,7 +91,27 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
 
 /**
  * Inject widget metadata into tools/list response
- * This is a workaround until MCP SDK supports _meta in tool registration
+ *
+ * IMPORTANT: This is a non-standard MCP pattern required for ChatGPT widget support.
+ *
+ * Background:
+ * ChatGPT's widget system requires _meta fields in the tools/list response.
+ * The MCP SDK server.tool() method does not include _meta from options in tools/list by default.
+ * We define _meta in tool definitions (see src/tools directory) but need to manually inject it
+ * when ChatGPT calls the tools/list endpoint.
+ *
+ * How it works:
+ * 1. Tool definitions include _meta in their options (using WIDGET_META constants)
+ * 2. This function wraps the tools/list handler to inject _meta into the response
+ * 3. ChatGPT receives _meta and pre-fetches widget HTML via resources/read
+ * 4. When tool is called, ChatGPT renders widget with structuredContent data
+ *
+ * Alternative approaches considered:
+ * - Manually registering tools with raw MCP protocol would be too verbose and lose SDK benefits
+ * - Patching MCP SDK would not be maintainable and break on SDK updates
+ * - Current approach is a minimal wrapper that injects _meta from our centralized constants
+ *
+ * See docs/CHATGPT_WIDGET_DEBUG.md and CLAUDE.md for more context.
  */
 function injectWidgetMetadata(server: McpServer) {
   const serverInternal = server.server as any;
@@ -101,77 +122,33 @@ function injectWidgetMetadata(server: McpServer) {
     serverInternal._requestHandlers.set("tools/list", async (request: any) => {
       logEvent("TOOLS", "list-request", { params: request.params });
 
+      // Call original handler
       const result = await originalToolsHandler(request);
 
-      // Add _meta to widget-enabled tools
+      // Inject _meta for widget-enabled tools
+      // The MCP SDK doesn't include _meta from options by default, so we must inject it manually
+      // Note: We reference WIDGET_META constants to stay DRY with tool definitions
       result.tools = result.tools.map((tool: any) => {
-        if (tool.name === "get-account-status") {
-          return {
-            ...tool,
-            _meta: {
-              "openai/outputTemplate": "ui://widget/connected-institutions.html",
-              "openai/toolInvocation/invoking": "Loading your account balances...",
-              "openai/toolInvocation/invoked": "Account balances loaded",
-              "openai/widgetAccessible": true,
-              "openai/resultCanProduceWidget": true
-            }
-          };
-        }
         if (tool.name === "get-account-balances") {
-          return {
-            ...tool,
-            _meta: {
-              "openai/outputTemplate": "ui://widget/connected-institutions.html",
-              "openai/toolInvocation/invoking": "Loading your account balances...",
-              "openai/toolInvocation/invoked": "Account balances loaded",
-              "openai/widgetAccessible": true,
-              "openai/resultCanProduceWidget": true
-            }
-          };
+          return { ...tool, _meta: WIDGET_META.accountBalances };
         }
         if (tool.name === "get-budgets") {
-          return {
-            ...tool,
-            _meta: {
-              "openai/outputTemplate": "ui://widget/budget-list.html",
-              "openai/toolInvocation/invoking": "Calculating budget status...",
-              "openai/toolInvocation/invoked": "Budget status loaded",
-              "openai/widgetAccessible": true,
-              "openai/resultCanProduceWidget": true
-            }
-          };
+          return { ...tool, _meta: WIDGET_META.budgetList };
         }
         if (tool.name === "create-budget") {
-          return {
-            ...tool,
-            _meta: {
-              "openai/outputTemplate": "ui://widget/budget-list.html",
-              "openai/toolInvocation/invoking": "Creating budget...",
-              "openai/toolInvocation/invoked": "Budget created",
-              "openai/widgetAccessible": true,
-              "openai/resultCanProduceWidget": true
-            }
-          };
+          return { ...tool, _meta: WIDGET_META.budgetList };
         }
         if (tool.name === "update-budget-rules") {
-          return {
-            ...tool,
-            _meta: {
-              "openai/outputTemplate": "ui://widget/budget-list.html",
-              "openai/toolInvocation/invoking": "Updating budget...",
-              "openai/toolInvocation/invoked": "Budget updated",
-              "openai/widgetAccessible": true,
-              "openai/resultCanProduceWidget": true
-            }
-          };
+          return { ...tool, _meta: WIDGET_META.budgetList };
         }
         return tool;
       });
 
-      // Log response with _meta details
+      // Log response with _meta details for observability
       const toolsWithMeta = result.tools.filter((t: any) => t._meta).map((t: any) => ({
         name: t.name,
-        _meta: t._meta
+        hasWidget: true,
+        widgetUri: t._meta?.["openai/outputTemplate"]
       }));
 
       logEvent("TOOLS", "list-response", {

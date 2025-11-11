@@ -9,6 +9,7 @@ import { updateBudgetRulesHandler } from "./update-budget-rules.js";
 import { getBudgetsHandler } from "./get-budgets.js";
 import { deleteBudgetHandler } from "./delete-budget.js";
 import { logToolEvent } from "../../utils/logger.js";
+import { WIDGET_META } from "../../utils/widget-metadata.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getBudgetTools(): ToolDefinition[] {
@@ -30,13 +31,8 @@ export function getBudgetTools(): ToolDefinition[] {
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
-        _meta: {
-          "openai/outputTemplate": "ui://widget/budget-list.html",
-          "openai/toolInvocation/invoking": "Calculating budget status...",
-          "openai/toolInvocation/invoked": "Budget status loaded",
-          "openai/widgetAccessible": true,
-          "openai/resultCanProduceWidget": true,
-        },
+        // Widget: Interactive budget cards showing spending progress with color-coded status bars
+        _meta: WIDGET_META.budgetList,
       },
       handler: async (args, { authInfo }, { plaidClient }) => {
         logToolEvent("get-budgets", "called", {
@@ -85,13 +81,8 @@ export function getBudgetTools(): ToolDefinition[] {
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],
-        _meta: {
-          "openai/outputTemplate": "ui://widget/budget-list.html",
-          "openai/toolInvocation/invoking": "Creating budget...",
-          "openai/toolInvocation/invoked": "Budget created",
-          "openai/widgetAccessible": true,
-          "openai/resultCanProduceWidget": true,
-        },
+        // Widget: Shows budget list with newly created budget highlighted
+        _meta: WIDGET_META.budgetList,
       },
       handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
@@ -140,13 +131,8 @@ export function getBudgetTools(): ToolDefinition[] {
       },
       options: {
         securitySchemes: [{ type: "oauth2" }],
-        _meta: {
-          "openai/outputTemplate": "ui://widget/budget-list.html",
-          "openai/toolInvocation/invoking": "Updating budget...",
-          "openai/toolInvocation/invoked": "Budget updated",
-          "openai/widgetAccessible": true,
-          "openai/resultCanProduceWidget": true,
-        },
+        // Widget: Shows budget list with updated budget and new spending calculations
+        _meta: WIDGET_META.budgetList,
       },
       handler: async (args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;

@@ -11,6 +11,7 @@ import {
 } from "./handlers.js";
 import { updateAccountLinkHandler } from "./update-account-link.js";
 import { getBaseUrl } from "../../utils/config.js";
+import { WIDGET_META } from "../../utils/widget-metadata.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getAccountTools(): ToolDefinition[] {
@@ -41,13 +42,8 @@ export function getAccountTools(): ToolDefinition[] {
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
-        _meta: {
-          "openai/outputTemplate": "ui://widget/connected-institutions.html",
-          "openai/toolInvocation/invoking": "Loading your account balances...",
-          "openai/toolInvocation/invoked": "Account balances loaded",
-          "openai/widgetAccessible": true,
-          "openai/resultCanProduceWidget": true,
-        },
+        // Widget: Interactive cards showing connected institutions with account balances and net worth
+        _meta: WIDGET_META.accountBalances,
       },
       handler: async (_args, { authInfo }, _deps) => {
         const userId = authInfo?.extra?.userId as string | undefined;
