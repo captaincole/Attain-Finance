@@ -238,11 +238,13 @@ describe("MCP Widget Metadata Configuration", () => {
         uri: "ui://widget/financial-summary.html",
         rootId: "financial-summary-root",
         scriptName: "financial-summary.js",
+        styleNames: ["widget-base.css", "financial-summary.css"],
       },
       {
         uri: "ui://widget/account-status.html",
         rootId: "account-status-root",
         scriptName: "account-status.js",
+        styleNames: ["widget-base.css", "account-status.css"],
       },
     ];
 
@@ -273,10 +275,12 @@ describe("MCP Widget Metadata Configuration", () => {
         html.includes(`/widgets/${widget.scriptName}`),
         "HTML must reference widget JS file"
       );
-      assert(
-        html.includes('/widgets/connected-institutions.css'),
-        "HTML must reference shared widget CSS file"
-      );
+      for (const styleName of widget.styleNames) {
+        assert(
+          html.includes(`/widgets/${styleName}`),
+          `HTML must reference ${styleName}`
+        );
+      }
 
       const baseUrl = process.env.BASE_URL || "http://localhost:3000";
       assert(html.includes(baseUrl), "HTML should reference BASE_URL");

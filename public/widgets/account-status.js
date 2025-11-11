@@ -23603,7 +23603,7 @@ function useToolOutput() {
         window.removeEventListener("openai:set_globals", handleSetGlobals);
       };
     },
-    () => window.openai?.toolOutput ?? null,
+    () => getOpenAIBridge()?.toolOutput ?? null,
     () => null
   );
 }
@@ -23640,6 +23640,44 @@ function normalizeNextSteps(steps) {
     ...step
   }));
 }
+function getOpenAIBridge() {
+  if (typeof window === "undefined")
+    return void 0;
+  return window.openai;
+}
+function getInitialWidgetState() {
+  return getOpenAIBridge()?.widgetState ?? null;
+}
+function getInitialPendingActionId(defaultValue = null) {
+  const widgetState = getInitialWidgetState();
+  const pending = widgetState?.pendingActionId;
+  if (pending === null || typeof pending === "string") {
+    return pending;
+  }
+  return defaultValue;
+}
+async function persistWidgetState(patch) {
+  const bridge = getOpenAIBridge();
+  if (!bridge?.setWidgetState)
+    return;
+  const currentState = {
+    ...bridge.widgetState ?? {}
+  };
+  const nextState = {
+    ...currentState,
+    ...patch
+  };
+  Object.keys(nextState).forEach((key) => {
+    if (nextState[key] === void 0) {
+      delete nextState[key];
+    }
+  });
+  await bridge.setWidgetState(nextState);
+  bridge.widgetState = nextState;
+}
+async function persistPendingActionId(actionId) {
+  await persistWidgetState({ pendingActionId: actionId });
+}
 
 // src/account-status.tsx
 function getAccountTypeLabel(type) {
@@ -23669,7 +23707,7 @@ function groupAccountsByType(institutions) {
 }
 function AccountStatusWidget() {
   const toolOutput = useToolOutput();
-  const [pendingActionId, setPendingActionId] = (0, import_react2.useState)(null);
+  const [pendingActionId, setPendingActionId] = (0, import_react2.useState)(getInitialPendingActionId());
   if (toolOutput === null) {
     return /* @__PURE__ */ import_react2.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "loading-state", style: { padding: "2rem", textAlign: "center", color: "#666" } }, /* @__PURE__ */ import_react2.default.createElement("p", null, "Loading...")));
   }
@@ -23685,8 +23723,9 @@ function AccountStatusWidget() {
     if (pendingActionId)
       return;
     setPendingActionId(step.id);
+    await persistPendingActionId(step.id);
     try {
-      const openaiBridge = window.openai;
+      const openaiBridge = getOpenAIBridge();
       if (step.kind === "tool" && step.tool && openaiBridge?.callTool) {
         await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
       } else if (step.kind === "prompt" && step.prompt && openaiBridge?.sendFollowupTurn) {
@@ -23694,6 +23733,7 @@ function AccountStatusWidget() {
       }
     } finally {
       setPendingActionId(null);
+      await persistPendingActionId(null);
     }
   }
   function renderNextSteps(steps) {

@@ -210,7 +210,8 @@ This would enable automated screenshot comparison on every widget change.
 
 Built widgets are output to `../public/widgets/`:
 - `financial-summary.js` / `account-status.js` - ~990KB each (includes React)
-- `connected-institutions.css` - Styles
+- `widget-base.css` - Shared tokens/layout styles
+- `financial-summary.css` / `account-status.css` - Widget-specific styles
 - `budget-list.js` - Budget widget
 
 These files are served by the MCP server via the resources API.

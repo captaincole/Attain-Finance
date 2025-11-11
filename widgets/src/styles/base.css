@@ -1,0 +1,119 @@
+body {
+  margin: 0;
+  padding: 0;
+  background: #f4f7f6;
+}
+
+.institutions-widget {
+  --brand-dark: #0a0a0a;
+  --brand-green: #10a37f;
+  --brand-muted: #e6f4ef;
+  --brand-ink: #1f2933;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+  background: #f4f7f6;
+  color: var(--brand-ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--brand-green);
+  background: rgba(16, 163, 127, 0.15);
+  border: 1px solid rgba(16, 163, 127, 0.35);
+  border-radius: 9999px;
+  padding: 0.2rem 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.tool-badge.muted {
+  color: var(--brand-ink);
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
+.next-steps-row {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.next-steps-grid {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.next-step-pill {
+  border-radius: 9999px;
+  border: 1px solid rgba(16, 163, 127, 0.35);
+  background: #ffffff;
+  padding: 0.35rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--brand-ink);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.next-step-pill.primary {
+  background: var(--brand-green);
+  color: #ffffff;
+  border-color: var(--brand-green);
+  box-shadow: 0 5px 12px rgba(16, 163, 127, 0.3);
+}
+
+.next-step-pill.secondary {
+  background: rgba(16, 163, 127, 0.08);
+  color: var(--brand-green);
+}
+
+.next-step-pill:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.next-step-pill.loading {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.next-step-pill:disabled {
+  cursor: not-allowed;
+}
+
+.next-steps-hero {
+  border-top-color: rgba(255, 255, 255, 0.25);
+}
+
+.next-steps-accounts {
+  border-top-color: #edf2f0;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #475569;
+  border: 1px dashed #cbd5f5;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.connection-alert {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
+.connection-alert ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.25rem;
+}

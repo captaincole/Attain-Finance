@@ -83,7 +83,8 @@ function registerWidgetResources(server: McpServer) {
     const baseUrl = getBaseUrl();
     return `
 <div id="financial-summary-root"></div>
-<link rel="stylesheet" href="${baseUrl}/widgets/connected-institutions.css">
+<link rel="stylesheet" href="${baseUrl}/widgets/widget-base.css">
+<link rel="stylesheet" href="${baseUrl}/widgets/financial-summary.css">
 <script type="module" src="${baseUrl}/widgets/financial-summary.js"></script>
     `.trim();
   }
@@ -93,7 +94,8 @@ function registerWidgetResources(server: McpServer) {
     const baseUrl = getBaseUrl();
     return `
 <div id="account-status-root"></div>
-<link rel="stylesheet" href="${baseUrl}/widgets/connected-institutions.css">
+<link rel="stylesheet" href="${baseUrl}/widgets/widget-base.css">
+<link rel="stylesheet" href="${baseUrl}/widgets/account-status.css">
 <script type="module" src="${baseUrl}/widgets/account-status.js"></script>
     `.trim();
   }

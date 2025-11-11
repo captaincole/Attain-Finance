@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import {
   formatCurrency,
   formatRelativeTime,
+  getInitialPendingActionId,
+  getOpenAIBridge,
   normalizeNextSteps,
+  persistPendingActionId,
   useToolOutput,
   type NextStepAction,
 } from "./shared/widget-utils.js";
@@ -47,7 +50,7 @@ interface FinancialSummaryOutput {
 
 function FinancialSummaryWidget() {
   const toolOutput = useToolOutput<FinancialSummaryOutput>();
-  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(getInitialPendingActionId());
 
   if (toolOutput === null) {
     return (
@@ -97,9 +100,10 @@ function FinancialSummaryWidget() {
   async function handleNextStepClick(step: NextStepAction) {
     if (pendingActionId) return;
     setPendingActionId(step.id);
+    await persistPendingActionId(step.id);
 
     try {
-      const openaiBridge = (window as any).openai;
+      const openaiBridge = getOpenAIBridge();
       if (step.kind === "tool" && step.tool && openaiBridge?.callTool) {
         await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
       } else if (step.kind === "prompt" && step.prompt && openaiBridge?.sendFollowupTurn) {
@@ -107,6 +111,7 @@ function FinancialSummaryWidget() {
       }
     } finally {
       setPendingActionId(null);
+      await persistPendingActionId(null);
     }
   }
 

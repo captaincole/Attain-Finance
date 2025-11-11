@@ -1,5 +1,24 @@
 import React, { useSyncExternalStore } from "react";
 
+export interface OpenAIWidgetBridge {
+  toolOutput?: unknown;
+  widgetState?: WidgetStateSnapshot | null;
+  setWidgetState?: (state: WidgetStateSnapshot | null) => void | Promise<void>;
+  callTool?: (name: string, args?: Record<string, unknown>) => Promise<unknown>;
+  sendFollowupTurn?: (payload: { prompt: string }) => Promise<unknown>;
+}
+
+export interface WidgetStateSnapshot {
+  pendingActionId?: string | null;
+  [key: string]: unknown;
+}
+
+declare global {
+  interface Window {
+    openai?: OpenAIWidgetBridge;
+  }
+}
+
 export interface NextStepAction {
   id: string;
   label: string;
@@ -61,7 +80,7 @@ export function useToolOutput<T>(): T | null {
         window.removeEventListener("openai:set_globals", handleSetGlobals as EventListener);
       };
     },
-    () => (window as any).openai?.toolOutput ?? null,
+    () => (getOpenAIBridge()?.toolOutput as T | null | undefined) ?? null,
     () => null
   );
 }
@@ -99,4 +118,50 @@ export function normalizeNextSteps(steps?: NextStepAction[]): NextStepAction[] {
     variant: step.variant ?? (step.id === "connect-account" ? "primary" : "secondary"),
     ...step,
   }));
+}
+
+export function getOpenAIBridge(): OpenAIWidgetBridge | undefined {
+  if (typeof window === "undefined") return undefined;
+  return window.openai;
+}
+
+export function getInitialWidgetState<T extends WidgetStateSnapshot = WidgetStateSnapshot>(): T | null {
+  return (getOpenAIBridge()?.widgetState as T | null | undefined) ?? null;
+}
+
+export function getInitialPendingActionId(defaultValue: string | null = null): string | null {
+  const widgetState = getInitialWidgetState();
+  const pending = widgetState?.pendingActionId;
+  if (pending === null || typeof pending === "string") {
+    return pending;
+  }
+  return defaultValue;
+}
+
+export async function persistWidgetState(patch: Partial<WidgetStateSnapshot>): Promise<void> {
+  const bridge = getOpenAIBridge();
+  if (!bridge?.setWidgetState) return;
+
+  const currentState: WidgetStateSnapshot = {
+    ...(bridge.widgetState ?? {}),
+  };
+
+  const nextState: WidgetStateSnapshot = {
+    ...currentState,
+    ...patch,
+  };
+
+  // Clean up undefined values so we do not persist stray keys
+  Object.keys(nextState).forEach((key) => {
+    if (nextState[key] === undefined) {
+      delete nextState[key];
+    }
+  });
+
+  await bridge.setWidgetState(nextState);
+  bridge.widgetState = nextState;
+}
+
+export async function persistPendingActionId(actionId: string | null): Promise<void> {
+  await persistWidgetState({ pendingActionId: actionId });
 }

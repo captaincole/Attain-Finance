@@ -130,12 +130,18 @@
     const widgetAssets = {
       'financial-summary': {
         script: () => `/public/widgets/financial-summary.js?t=${Date.now()}`,
-        style: () => `/public/widgets/connected-institutions.css?t=${Date.now()}`,
+        styles: [
+          () => `/public/widgets/widget-base.css?t=${Date.now()}`,
+          () => `/public/widgets/financial-summary.css?t=${Date.now()}`
+        ],
         rootId: 'financial-summary-root'
       },
       'account-status': {
         script: () => `/public/widgets/account-status.js?t=${Date.now()}`,
-        style: () => `/public/widgets/connected-institutions.css?t=${Date.now()}`,
+        styles: [
+          () => `/public/widgets/widget-base.css?t=${Date.now()}`,
+          () => `/public/widgets/account-status.css?t=${Date.now()}`
+        ],
         rootId: 'account-status-root'
       },
       'budget-list': {
@@ -305,7 +311,7 @@
 
     // Widget loading logic
     let currentWidget = null;
-    let currentStyle = null;
+    let currentStyle = [];
 
     async function loadWidget(widgetName) {
       const errorDisplay = document.getElementById('error-display');
@@ -331,17 +337,19 @@
           document.head.removeChild(currentWidget);
           currentWidget = null;
         }
-        if (currentStyle) {
-          document.head.removeChild(currentStyle);
-          currentStyle = null;
+        if (currentStyle.length) {
+          currentStyle.forEach((styleEl) => document.head.removeChild(styleEl));
+          currentStyle = [];
         }
 
-        if (assetInfo.style) {
-          const styleEl = document.createElement('link');
-          styleEl.rel = 'stylesheet';
-          styleEl.href = assetInfo.style();
-          currentStyle = styleEl;
-          document.head.appendChild(styleEl);
+        if (assetInfo.styles) {
+          currentStyle = assetInfo.styles.map((factory) => {
+            const styleEl = document.createElement('link');
+            styleEl.rel = 'stylesheet';
+            styleEl.href = factory();
+            document.head.appendChild(styleEl);
+            return styleEl;
+          });
         }
 
         const script = document.createElement('script');
