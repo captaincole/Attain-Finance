@@ -10,13 +10,32 @@ Welcome to the project :)
 
 ### Clone and run locally
 
+Prerequistes
+* Nodejs Installed
+* Docker Desktop
+* Supabase CLI Tool : https://supabase.com/docs/guides/local-development/cli/getting-started?queryGroups=platform&platform=macos
+* A .env file with the appropriate sandbox credentials for clerk and plaid
+
+Once you have those, things, you can execute the following
+
 ```bash
 git clone ...
 npm install
 npm run dev
 ```
 
-You will also need to create a .env file and get credentials in order to run this application.
+### Connect to the local MCP instance
+
+Here is the setup I've been using to run manual testing locally. You can do the same thing with ChatGPT or Claude Desktop if you want but you will need to expose your local instance via ngrok to do this. 
+
+* First run the dev server via `npm run dev`
+* Connect claude code to localhost:3000/mcp via .mcp.json config
+* I copy paste the auth url generated into a chrome incognito tab, because the ability to "signout" of an session in clerk is inconvienient.
+* After creating or singing into the user, I then run the connect-accounts tool by asking claude to connect a bank account. I copy paste that url as well into a incognito window
+* That should get you started, then all the background tasks should start executing
+
+* I have a reset-user tool that is accessible via `npm run reset-user -- --userId=` and will delete all the data in supabase so you can start over and not pollute the db. You don't have to delete your user in clerk and can just resign in. 
+
 
 ### Connect to an AI Client
 
@@ -26,14 +45,14 @@ To connect to a client like claude code, you can add this config to your .mcp.js
   "mcpServers": {
     "attainFinance": {
        "type":"http",
-       "url": "http://localhost:3000/mcp"
+       "url": "<mcp_url>"
     }
   }
 ```
 
 To connect via ChatGPT, you need to expose your dev server using ngrok, or you can use the vercel live url: https://app.attainfinance.io/mcp
 
-The steps are:
+The steps are listed here: https://attainfinance.io/install-instructions
 
 1) Turn on developer mode
 2) Add a new connector, using the url https://app.attainfinance.io/mcp
@@ -51,20 +70,6 @@ npm test
 ```
 
 We have integration tests that mock the external services of plaid, clerk, and supabase so that we can run against our authenticated endpoints. 
-
-### Manual Testing
-
-Here is the setup I've been using to run manual testing locally. 
-
-* First run the dev server via `npm run dev`
-* Connect claude code to localhost:3000/mcp via .mcp.json config
-* I copy paste the auth url generated into a chrome incognito tab, because the ability to "signout" of an session in clerk is inconvienient.
-* After creating or singing into the user, I then run the connect-accounts tool by asking claude to connect a bank account. I copy paste that url as well into a incognito window
-* That should get you started, then all the background tasks should start executing
-
-* I have a reset-user tool that is accessible via `npm run reset-user -- --userId=` and will delete all the data in supabase so you can start over and not pollute the db. You don't have to delete your user in clerk and can just resign in. 
-
-You can do the same thing locally to test with OpenAI, but you need to use ngrok to expose you local port, as OpenAI isn't running locally. I haven't tried this though...
 
 ### Sandbox Accounts
 
