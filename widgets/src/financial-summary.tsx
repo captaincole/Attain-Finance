@@ -142,8 +142,11 @@ function FinancialSummaryWidget() {
     try {
       const openaiBridge = getOpenAIBridge();
       if (step.kind === "tool" && step.tool && openaiBridge?.callTool) {
-        const result = await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
-        const structured = result?.structuredContent as FinancialSummaryOutput | undefined;
+        const result = (await openaiBridge.callTool(step.tool, step.toolArgs ?? {})) as
+          | { structuredContent?: FinancialSummaryOutput }
+          | undefined
+          | null;
+        const structured = result?.structuredContent;
         if (structured?.connectAccountLink) {
           linkFromCall = structured.connectAccountLink;
           setStoredConnectLink(structured.connectAccountLink);
