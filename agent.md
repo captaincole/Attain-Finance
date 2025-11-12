@@ -28,6 +28,11 @@
 - Tool metadata injected post-registration by `injectWidgetMetadata()` (`src/tools/index.ts`), which wraps `tools/list` to add `_meta.openai/outputTemplate`, widget accessibility flags, and status copy
 - Tool handlers return `_meta` plus `structuredContent` (financial summary, account status, budgets) so ChatGPT renders the appropriate widgets without additional calls
 
+### Component-Initiated Tool Calls
+- When a widget button calls `window.openai.callTool`, the host resolves `{ structuredContent }` but **does not** mutate `window.openai.toolOutput`. Components must capture the returned payload and persist it via `window.openai.setWidgetState` (see `widgets/src/shared/widget-utils.ts` helpers) so the UI updates instantly.
+- Always read both `toolOutput` and `widgetState`: prefer server data when present, fall back to the persisted snapshot (e.g., `connectAccountLink`) when awaiting a model refresh.
+- Example: `widgets/src/financial-summary.tsx` stores the Plaid link returned by `connect-account`, rehydrates it on mount, and clears/updates widget state along with the pending-action flag.
+
 ## Data & Storage
 - Supabase client (`src/storage/supabase.ts`) lazily instantiates using `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
 - `getSupabaseForUser()` signs a short-lived Supabase JWT with `SUPABASE_JWT_SECRET`, injects the `x-user-id` headers, and caches the client until the token is about to expire.

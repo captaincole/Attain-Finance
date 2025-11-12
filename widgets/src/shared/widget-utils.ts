@@ -95,20 +95,6 @@ export function getFallbackNextSteps(): NextStepAction[] {
       toolArgs: {},
       variant: "primary",
     },
-    {
-      id: "analyze-spending",
-      label: "Analyze Spending",
-      kind: "prompt",
-      prompt: "Analyze my recent spending and highlight anything unusual.",
-      variant: "secondary",
-    },
-    {
-      id: "add-advisor",
-      label: "Add an Advisor",
-      kind: "prompt",
-      prompt: "Walk me through how to invite my financial advisor into this workspace.",
-      variant: "secondary",
-    },
   ];
 }
 

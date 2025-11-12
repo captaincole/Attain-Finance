@@ -149,6 +149,11 @@ supabase stop    # Stop all containers
 supabase stop --no-backup  # Stop and remove all data (full reset)
 ```
 
+## Widget CTA Pattern (Important)
+- When a widget button calls `window.openai.callTool`, the host does **not** overwrite `window.openai.toolOutput`. Capture the resolved `structuredContent` and persist any UI-relevant fields (e.g., `connectAccountLink`) via `window.openai.setWidgetState` so the component rerenders immediately.
+- Mirror server-delivered structured data whenever possible (financial summary hero, next steps, etc.), but fall back to widget state so the CTA result survives retries and iframe reloads.
+- See `widgets/src/financial-summary.tsx` for the reference implementation: it reads the initial widget state, writes back pending-action + link payloads, and prefers server output whenever the model later returns a refreshed summary.
+
 ### Project Structure
 ```
 src/

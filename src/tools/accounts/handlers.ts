@@ -134,26 +134,6 @@ function buildNextSteps(): NextStepAction[] {
       variant: "primary",
       promptFallback: "Connect my account",
     },
-    {
-      id: "analyze-spending",
-      label: "Analyze Spending",
-      description: "Review recent purchases and spot trends",
-      icon: "📊",
-      kind: "prompt",
-      prompt: "Analyze my recent spending and highlight anything unusual.",
-      variant: "secondary",
-      promptFallback: "Analyze my spending",
-    },
-    {
-      id: "add-advisor",
-      label: "Add an Advisor",
-      description: "Invite a trusted pro to monitor progress",
-      icon: "🧑‍💼",
-      kind: "prompt",
-      prompt: "Walk me through how to invite my financial advisor into this workspace.",
-      variant: "secondary",
-      promptFallback: "Help me add an advisor",
-    },
   ];
 }
 
