@@ -69,6 +69,23 @@ function FinancialSummaryWidget() {
     storedConnectLinkRef.current = storedConnectLink;
   }, [storedConnectLink]);
 
+  const serverConnectLink = toolOutput?.connectAccountLink ?? null;
+  const connectAccountLink = serverConnectLink ?? storedConnectLink;
+
+  useEffect(() => {
+    if (serverConnectLink && !linksEqual(serverConnectLink, storedConnectLink)) {
+      setStoredConnectLink(serverConnectLink);
+      persistWidgetState({ connectAccountLink: serverConnectLink }).catch(() => {});
+    }
+  }, [
+    serverConnectLink?.url,
+    serverConnectLink?.expiresAt,
+    serverConnectLink?.instructions,
+    storedConnectLink?.url,
+    storedConnectLink?.expiresAt,
+    storedConnectLink?.instructions,
+  ]);
+
   if (toolOutput === null) {
     return (
       <div className="institutions-widget">
@@ -113,22 +130,7 @@ function FinancialSummaryWidget() {
 
   const heroTrend = hero.trend ?? null;
   const lastSyncedAt = hero.lastUpdatedAt ? new Date(hero.lastUpdatedAt) : null;
-  const serverConnectLink = toolOutput.connectAccountLink ?? null;
-  const connectAccountLink = serverConnectLink ?? storedConnectLink;
-
-  useEffect(() => {
-    if (serverConnectLink && !linksEqual(serverConnectLink, storedConnectLink)) {
-      setStoredConnectLink(serverConnectLink);
-      persistWidgetState({ connectAccountLink: serverConnectLink }).catch(() => {});
-    }
-  }, [
-    serverConnectLink?.url,
-    serverConnectLink?.expiresAt,
-    serverConnectLink?.instructions,
-    storedConnectLink?.url,
-    storedConnectLink?.expiresAt,
-    storedConnectLink?.instructions,
-  ]);
+  const connectLinkToRender = connectAccountLink;
 
   async function handleNextStepClick(step: NextStepAction) {
     if (pendingActionId) return;
@@ -222,8 +224,8 @@ function FinancialSummaryWidget() {
             </div>
         </div>
         {renderNextSteps(hero.nextSteps ?? [])}
-        {connectAccountLink && connectAccountLink.url && (
-          <ConnectAccountLinkCallout link={connectAccountLink} />
+        {connectLinkToRender && connectLinkToRender.url && (
+          <ConnectAccountLinkCallout link={connectLinkToRender} />
         )}
       </section>
     </div>
