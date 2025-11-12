@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   formatCurrency,
   formatRelativeTime,
+  getInitialWidgetState,
   getInitialPendingActionId,
   getOpenAIBridge,
   normalizeNextSteps,
-  persistPendingActionId,
+  persistWidgetState,
   useToolOutput,
   type NextStepAction,
 } from "./shared/widget-utils.js";
@@ -58,6 +59,15 @@ interface FinancialSummaryOutput {
 function FinancialSummaryWidget() {
   const toolOutput = useToolOutput<FinancialSummaryOutput>();
   const [pendingActionId, setPendingActionId] = useState<string | null>(getInitialPendingActionId());
+  const initialWidgetState = getInitialWidgetState<{ connectAccountLink?: ConnectAccountLink | null }>();
+  const [storedConnectLink, setStoredConnectLink] = useState<ConnectAccountLink | null>(
+    initialWidgetState?.connectAccountLink ?? null
+  );
+  const storedConnectLinkRef = useRef<ConnectAccountLink | null>(storedConnectLink);
+
+  useEffect(() => {
+    storedConnectLinkRef.current = storedConnectLink;
+  }, [storedConnectLink]);
 
   if (toolOutput === null) {
     return (
@@ -103,23 +113,49 @@ function FinancialSummaryWidget() {
 
   const heroTrend = hero.trend ?? null;
   const lastSyncedAt = hero.lastUpdatedAt ? new Date(hero.lastUpdatedAt) : null;
-  const connectAccountLink = toolOutput.connectAccountLink ?? null;
+  const serverConnectLink = toolOutput.connectAccountLink ?? null;
+  const connectAccountLink = serverConnectLink ?? storedConnectLink;
+
+  useEffect(() => {
+    if (serverConnectLink && !linksEqual(serverConnectLink, storedConnectLink)) {
+      setStoredConnectLink(serverConnectLink);
+      persistWidgetState({ connectAccountLink: serverConnectLink }).catch(() => {});
+    }
+  }, [
+    serverConnectLink?.url,
+    serverConnectLink?.expiresAt,
+    serverConnectLink?.instructions,
+    storedConnectLink?.url,
+    storedConnectLink?.expiresAt,
+    storedConnectLink?.instructions,
+  ]);
 
   async function handleNextStepClick(step: NextStepAction) {
     if (pendingActionId) return;
     setPendingActionId(step.id);
-    await persistPendingActionId(step.id);
+    await persistWidgetState({ pendingActionId: step.id });
+
+    let linkFromCall: ConnectAccountLink | null = null;
 
     try {
       const openaiBridge = getOpenAIBridge();
       if (step.kind === "tool" && step.tool && openaiBridge?.callTool) {
-        await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
+        const result = await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
+        const structured = result?.structuredContent as FinancialSummaryOutput | undefined;
+        if (structured?.connectAccountLink) {
+          linkFromCall = structured.connectAccountLink;
+          setStoredConnectLink(structured.connectAccountLink);
+        }
       } else if (step.kind === "prompt" && step.prompt && openaiBridge?.sendFollowupTurn) {
         await openaiBridge.sendFollowupTurn({ prompt: step.prompt });
       }
     } finally {
       setPendingActionId(null);
-      await persistPendingActionId(null);
+      const nextLink = linkFromCall ?? storedConnectLinkRef.current ?? null;
+      await persistWidgetState({
+        pendingActionId: null,
+        connectAccountLink: nextLink,
+      });
     }
   }
 
@@ -230,6 +266,12 @@ function formatLinkExpiry(expiresAt?: string | null): string | null {
     return `Link expires in about ${diffHours} hour${diffHours > 1 ? "s" : ""}.`;
   }
   return `Link expires in ${diffMinutes} minute${diffMinutes > 1 ? "s" : ""}.`;
+}
+
+function linksEqual(a: ConnectAccountLink | null, b: ConnectAccountLink | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.url === b.url && a.expiresAt === b.expiresAt && a.instructions === b.instructions;
 }
 
 const root = document.getElementById("financial-summary-root");

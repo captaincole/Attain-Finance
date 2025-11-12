@@ -1091,11 +1091,11 @@ var require_react_development = __commonJS({
           var dispatcher = resolveDispatcher();
           return dispatcher.useReducer(reducer, initialArg, init);
         }
-        function useRef(initialValue) {
+        function useRef2(initialValue) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useRef(initialValue);
         }
-        function useEffect(create, deps) {
+        function useEffect2(create, deps) {
           var dispatcher = resolveDispatcher();
           return dispatcher.useEffect(create, deps);
         }
@@ -1878,14 +1878,14 @@ var require_react_development = __commonJS({
         exports.useContext = useContext;
         exports.useDebugValue = useDebugValue;
         exports.useDeferredValue = useDeferredValue;
-        exports.useEffect = useEffect;
+        exports.useEffect = useEffect2;
         exports.useId = useId;
         exports.useImperativeHandle = useImperativeHandle;
         exports.useInsertionEffect = useInsertionEffect;
         exports.useLayoutEffect = useLayoutEffect;
         exports.useMemo = useMemo;
         exports.useReducer = useReducer;
-        exports.useRef = useRef;
+        exports.useRef = useRef2;
         exports.useState = useState2;
         exports.useSyncExternalStore = useSyncExternalStore2;
         exports.useTransition = useTransition;
@@ -23675,9 +23675,6 @@ async function persistWidgetState(patch) {
   await bridge.setWidgetState(nextState);
   bridge.widgetState = nextState;
 }
-async function persistPendingActionId(actionId) {
-  await persistWidgetState({ pendingActionId: actionId });
-}
 
 // src/financial-summary.tsx
 var percentFormatter = new Intl.NumberFormat("en-US", {
@@ -23687,6 +23684,14 @@ var percentFormatter = new Intl.NumberFormat("en-US", {
 function FinancialSummaryWidget() {
   const toolOutput = useToolOutput();
   const [pendingActionId, setPendingActionId] = (0, import_react2.useState)(getInitialPendingActionId());
+  const initialWidgetState = getInitialWidgetState();
+  const [storedConnectLink, setStoredConnectLink] = (0, import_react2.useState)(
+    initialWidgetState?.connectAccountLink ?? null
+  );
+  const storedConnectLinkRef = (0, import_react2.useRef)(storedConnectLink);
+  (0, import_react2.useEffect)(() => {
+    storedConnectLinkRef.current = storedConnectLink;
+  }, [storedConnectLink]);
   if (toolOutput === null) {
     return /* @__PURE__ */ import_react2.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "loading-state", style: { padding: "2rem", textAlign: "center", color: "#666" } }, /* @__PURE__ */ import_react2.default.createElement("p", null, "Loading...")));
   }
@@ -23708,22 +23713,47 @@ function FinancialSummaryWidget() {
   };
   const heroTrend = hero.trend ?? null;
   const lastSyncedAt = hero.lastUpdatedAt ? new Date(hero.lastUpdatedAt) : null;
-  const connectAccountLink = toolOutput.connectAccountLink ?? null;
+  const serverConnectLink = toolOutput.connectAccountLink ?? null;
+  const connectAccountLink = serverConnectLink ?? storedConnectLink;
+  (0, import_react2.useEffect)(() => {
+    if (serverConnectLink && !linksEqual(serverConnectLink, storedConnectLink)) {
+      setStoredConnectLink(serverConnectLink);
+      persistWidgetState({ connectAccountLink: serverConnectLink }).catch(() => {
+      });
+    }
+  }, [
+    serverConnectLink?.url,
+    serverConnectLink?.expiresAt,
+    serverConnectLink?.instructions,
+    storedConnectLink?.url,
+    storedConnectLink?.expiresAt,
+    storedConnectLink?.instructions
+  ]);
   async function handleNextStepClick(step) {
     if (pendingActionId)
       return;
     setPendingActionId(step.id);
-    await persistPendingActionId(step.id);
+    await persistWidgetState({ pendingActionId: step.id });
+    let linkFromCall = null;
     try {
       const openaiBridge = getOpenAIBridge();
       if (step.kind === "tool" && step.tool && openaiBridge?.callTool) {
-        await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
+        const result = await openaiBridge.callTool(step.tool, step.toolArgs ?? {});
+        const structured = result?.structuredContent;
+        if (structured?.connectAccountLink) {
+          linkFromCall = structured.connectAccountLink;
+          setStoredConnectLink(structured.connectAccountLink);
+        }
       } else if (step.kind === "prompt" && step.prompt && openaiBridge?.sendFollowupTurn) {
         await openaiBridge.sendFollowupTurn({ prompt: step.prompt });
       }
     } finally {
       setPendingActionId(null);
-      await persistPendingActionId(null);
+      const nextLink = linkFromCall ?? storedConnectLinkRef.current ?? null;
+      await persistWidgetState({
+        pendingActionId: null,
+        connectAccountLink: nextLink
+      });
     }
   }
   function renderNextSteps(steps) {
@@ -23771,6 +23801,13 @@ function formatLinkExpiry(expiresAt) {
     return `Link expires in about ${diffHours} hour${diffHours > 1 ? "s" : ""}.`;
   }
   return `Link expires in ${diffMinutes} minute${diffMinutes > 1 ? "s" : ""}.`;
+}
+function linksEqual(a, b) {
+  if (a === b)
+    return true;
+  if (!a || !b)
+    return false;
+  return a.url === b.url && a.expiresAt === b.expiresAt && a.instructions === b.instructions;
 }
 var root = document.getElementById("financial-summary-root");
 if (root) {
