@@ -80,3 +80,48 @@
   font-size: 1.25rem;
   font-weight: 600;
 }
+.connect-link-card {
+  margin-top: 1rem;
+  border-radius: 16px;
+  padding: 1rem 1.25rem;
+  background: rgba(2, 6, 23, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.connect-link-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: #f8fafc;
+}
+.connect-link-body {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(248, 250, 252, 0.85);
+}
+.connect-link-expiry {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: rgba(248, 250, 252, 0.7);
+}
+.connect-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 1.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #0b1727;
+  background: #f7faf9;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.connect-link-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.18);
+}

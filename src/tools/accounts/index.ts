@@ -24,6 +24,7 @@ export function getAccountTools(): ToolDefinition[] {
       inputSchema: {},
       options: {
         securitySchemes: [{ type: "oauth2" }],
+        _meta: WIDGET_META.connectAccount,
       },
       handler: async (_args, { authInfo }, { plaidClient }) => {
         const userId = authInfo?.extra?.userId as string | undefined;

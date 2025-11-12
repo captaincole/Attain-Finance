@@ -34,6 +34,12 @@ interface HeroData {
   nextSteps?: NextStepAction[];
 }
 
+interface ConnectAccountLink {
+  url: string;
+  expiresAt?: string | null;
+  instructions?: string | null;
+}
+
 interface FinancialSummaryOutput {
   summary?: {
     netWorth?: number;
@@ -46,6 +52,7 @@ interface FinancialSummaryOutput {
   dashboard?: {
     hero?: HeroData;
   };
+  connectAccountLink?: ConnectAccountLink | null;
 }
 
 function FinancialSummaryWidget() {
@@ -96,6 +103,7 @@ function FinancialSummaryWidget() {
 
   const heroTrend = hero.trend ?? null;
   const lastSyncedAt = hero.lastUpdatedAt ? new Date(hero.lastUpdatedAt) : null;
+  const connectAccountLink = toolOutput.connectAccountLink ?? null;
 
   async function handleNextStepClick(step: NextStepAction) {
     if (pendingActionId) return;
@@ -178,9 +186,50 @@ function FinancialSummaryWidget() {
             </div>
         </div>
         {renderNextSteps(hero.nextSteps ?? [])}
+        {connectAccountLink && connectAccountLink.url && (
+          <ConnectAccountLinkCallout link={connectAccountLink} />
+        )}
       </section>
     </div>
   );
+}
+
+function ConnectAccountLinkCallout({ link }: { link: ConnectAccountLink }) {
+  const expiresCopy = formatLinkExpiry(link.expiresAt);
+  const instructions =
+    link.instructions ?? "Use this secure link to connect your institution. The flow opens in a new tab.";
+
+  return (
+    <div className="connect-link-card">
+      <div>
+        <div className="connect-link-title">Secure Plaid Link ready</div>
+        <p className="connect-link-body">{instructions}</p>
+        {expiresCopy && <p className="connect-link-expiry">{expiresCopy}</p>}
+      </div>
+      <a
+        className="connect-link-button"
+        href={link.url}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Open secure link
+      </a>
+    </div>
+  );
+}
+
+function formatLinkExpiry(expiresAt?: string | null): string | null {
+  if (!expiresAt) return null;
+  const expiry = new Date(expiresAt);
+  if (Number.isNaN(expiry.getTime())) return null;
+  const diffMs = expiry.getTime() - Date.now();
+  if (diffMs <= 0) return "Link expired. Request a new connection link.";
+  const diffMinutes = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+  if (diffMinutes >= 60) {
+    const diffHours = Math.floor(diffMinutes / 60);
+    return `Link expires in about ${diffHours} hour${diffHours > 1 ? "s" : ""}.`;
+  }
+  return `Link expires in ${diffMinutes} minute${diffMinutes > 1 ? "s" : ""}.`;
 }
 
 const root = document.getElementById("financial-summary-root");

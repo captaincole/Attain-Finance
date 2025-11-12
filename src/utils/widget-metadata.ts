@@ -49,4 +49,16 @@ export const WIDGET_META = {
     "openai/widgetAccessible": true,
     "openai/resultCanProduceWidget": true,
   },
+
+  /**
+   * Connect Account Widget (shares Financial Summary layout)
+   * Used when connect-account tool needs to refresh the hero widget with link state.
+   */
+  connectAccount: {
+    "openai/outputTemplate": "ui://widget/financial-summary.html",
+    "openai/toolInvocation/invoking": "Preparing your secure connection link...",
+    "openai/toolInvocation/invoked": "Secure link ready",
+    "openai/widgetAccessible": true,
+    "openai/resultCanProduceWidget": true,
+  },
 } as const;

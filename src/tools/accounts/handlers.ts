@@ -168,6 +168,18 @@ export async function connectAccountHandler(
 ) {
   try {
     const { linkUrl } = await initiateAccountConnection(userId, baseUrl, plaidClient);
+    const expiresAtIso = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    let structuredContent: Record<string, any> = {};
+    try {
+      const summaryResult = await getFinancialSummaryHandler(userId);
+      structuredContent = summaryResult.structuredContent
+        ? JSON.parse(JSON.stringify(summaryResult.structuredContent))
+        : {};
+    } catch (summaryError) {
+      console.warn("[CONNECT-ACCOUNT] Unable to hydrate financial summary structured content:", summaryError);
+      structuredContent = { view: "financial-summary" };
+    }
 
     return {
       content: [
@@ -189,6 +201,15 @@ ${linkUrl}
           `.trim(),
         },
       ],
+      structuredContent: {
+        ...structuredContent,
+        connectAccountLink: {
+          url: linkUrl,
+          expiresAt: expiresAtIso,
+          instructions:
+            "Use this secure Plaid Link window to connect your institution. The link opens in a new tab and expires in 30 minutes.",
+        },
+      },
     };
   } catch (error: any) {
     console.error("[CONNECT-ACCOUNT] Error:", error);

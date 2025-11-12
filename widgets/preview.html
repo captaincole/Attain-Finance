@@ -198,6 +198,11 @@
               }
             ]
           }
+        },
+        connectAccountLink: {
+          url: "https://example.com/connect",
+          expiresAt: new Date(Date.now() + 25 * 60 * 1000).toISOString(),
+          instructions: "Open the secure window in a new tab to finish connecting your checking account."
         }
       },
       'account-status': {

@@ -23708,6 +23708,7 @@ function FinancialSummaryWidget() {
   };
   const heroTrend = hero.trend ?? null;
   const lastSyncedAt = hero.lastUpdatedAt ? new Date(hero.lastUpdatedAt) : null;
+  const connectAccountLink = toolOutput.connectAccountLink ?? null;
   async function handleNextStepClick(step) {
     if (pendingActionId)
       return;
@@ -23739,7 +23740,37 @@ function FinancialSummaryWidget() {
       /* @__PURE__ */ import_react2.default.createElement("span", null, step.label)
     ))));
   }
-  return /* @__PURE__ */ import_react2.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react2.default.createElement("section", { className: "dashboard-hero" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "tool-badge" }, "Financial Summary"), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-header" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-title" }, "Net Worth"), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-value" }, formatCurrency(hero.netWorth)), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-trend-row" }, heroTrend ? /* @__PURE__ */ import_react2.default.createElement("div", { className: `hero-trend trend-${heroTrend.direction}` }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "hero-trend-amount" }, heroTrend.direction === "down" ? "\u2193" : heroTrend.direction === "up" ? "\u2191" : "\u2192", " ", formatCurrency(heroTrend.amountChange)), heroTrend.percentChange !== null && heroTrend.percentChange !== void 0 && /* @__PURE__ */ import_react2.default.createElement("span", { className: "hero-trend-percent" }, "(", heroTrend.percentChange >= 0 ? "+" : "", percentFormatter.format(heroTrend.percentChange), "%)"), /* @__PURE__ */ import_react2.default.createElement("span", { className: "hero-trend-label" }, heroTrend.label ?? "since last snapshot")) : /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-trend trend-flat" }, "Trend data appears after your first weekly snapshot")), lastSyncedAt && /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-updated" }, "Updated ", formatRelativeTime(lastSyncedAt))), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-stats" }, /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("span", null, "Assets"), /* @__PURE__ */ import_react2.default.createElement("strong", null, formatCurrency(hero.assetsTotal))), /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("span", null, "Liabilities"), /* @__PURE__ */ import_react2.default.createElement("strong", null, formatCurrency(hero.liabilitiesTotal))), /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("span", null, "Accounts"), /* @__PURE__ */ import_react2.default.createElement("strong", null, accountCount))), renderNextSteps(hero.nextSteps ?? [])));
+  return /* @__PURE__ */ import_react2.default.createElement("div", { className: "institutions-widget" }, /* @__PURE__ */ import_react2.default.createElement("section", { className: "dashboard-hero" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "tool-badge" }, "Financial Summary"), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-header" }, /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-title" }, "Net Worth"), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-value" }, formatCurrency(hero.netWorth)), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-trend-row" }, heroTrend ? /* @__PURE__ */ import_react2.default.createElement("div", { className: `hero-trend trend-${heroTrend.direction}` }, /* @__PURE__ */ import_react2.default.createElement("span", { className: "hero-trend-amount" }, heroTrend.direction === "down" ? "\u2193" : heroTrend.direction === "up" ? "\u2191" : "\u2192", " ", formatCurrency(heroTrend.amountChange)), heroTrend.percentChange !== null && heroTrend.percentChange !== void 0 && /* @__PURE__ */ import_react2.default.createElement("span", { className: "hero-trend-percent" }, "(", heroTrend.percentChange >= 0 ? "+" : "", percentFormatter.format(heroTrend.percentChange), "%)"), /* @__PURE__ */ import_react2.default.createElement("span", { className: "hero-trend-label" }, heroTrend.label ?? "since last snapshot")) : /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-trend trend-flat" }, "Trend data appears after your first weekly snapshot")), lastSyncedAt && /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-updated" }, "Updated ", formatRelativeTime(lastSyncedAt))), /* @__PURE__ */ import_react2.default.createElement("div", { className: "hero-stats" }, /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("span", null, "Assets"), /* @__PURE__ */ import_react2.default.createElement("strong", null, formatCurrency(hero.assetsTotal))), /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("span", null, "Liabilities"), /* @__PURE__ */ import_react2.default.createElement("strong", null, formatCurrency(hero.liabilitiesTotal))), /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("span", null, "Accounts"), /* @__PURE__ */ import_react2.default.createElement("strong", null, accountCount))), renderNextSteps(hero.nextSteps ?? []), connectAccountLink && connectAccountLink.url && /* @__PURE__ */ import_react2.default.createElement(ConnectAccountLinkCallout, { link: connectAccountLink })));
+}
+function ConnectAccountLinkCallout({ link }) {
+  const expiresCopy = formatLinkExpiry(link.expiresAt);
+  const instructions = link.instructions ?? "Use this secure link to connect your institution. The flow opens in a new tab.";
+  return /* @__PURE__ */ import_react2.default.createElement("div", { className: "connect-link-card" }, /* @__PURE__ */ import_react2.default.createElement("div", null, /* @__PURE__ */ import_react2.default.createElement("div", { className: "connect-link-title" }, "Secure Plaid Link ready"), /* @__PURE__ */ import_react2.default.createElement("p", { className: "connect-link-body" }, instructions), expiresCopy && /* @__PURE__ */ import_react2.default.createElement("p", { className: "connect-link-expiry" }, expiresCopy)), /* @__PURE__ */ import_react2.default.createElement(
+    "a",
+    {
+      className: "connect-link-button",
+      href: link.url,
+      target: "_blank",
+      rel: "noreferrer"
+    },
+    "Open secure link"
+  ));
+}
+function formatLinkExpiry(expiresAt) {
+  if (!expiresAt)
+    return null;
+  const expiry = new Date(expiresAt);
+  if (Number.isNaN(expiry.getTime()))
+    return null;
+  const diffMs = expiry.getTime() - Date.now();
+  if (diffMs <= 0)
+    return "Link expired. Request a new connection link.";
+  const diffMinutes = Math.max(1, Math.floor(diffMs / (1e3 * 60)));
+  if (diffMinutes >= 60) {
+    const diffHours = Math.floor(diffMinutes / 60);
+    return `Link expires in about ${diffHours} hour${diffHours > 1 ? "s" : ""}.`;
+  }
+  return `Link expires in ${diffMinutes} minute${diffMinutes > 1 ? "s" : ""}.`;
 }
 var root = document.getElementById("financial-summary-root");
 if (root) {
