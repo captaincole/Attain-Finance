@@ -2,10 +2,13 @@
  * Environment configuration and constants
  */
 
+import dotenv from "dotenv";
 import {
   getSupabasePublishableKey,
   getSupabaseUrl,
 } from "../storage/supabase.js";
+
+dotenv.config();
 
 const DEFAULT_BASE_URL = process.env.BASE_URL || "http://localhost:3000";
 
