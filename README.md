@@ -124,6 +124,27 @@ Once the user and the users AI client is authenticated, that client now has a Cl
 
 We use Clerk as our authentication provider, because Supabase has yet to implement DCR. [See This Github Issue](https://github.com/orgs/supabase/discussions/38022#discussioncomment-14503663) - if this was available it could have greatly simplified our RLS architecture. 
 
+### MCP Bearer tokens (Clerk JWT templates)
+
+For demo builds we disable DCR and rely on Clerk-issued bearer tokens that are generated from a dedicated JWT template. The middleware in `src/middleware/mcp-bearer-auth.ts` validates `Authorization: Bearer <token>` headers, checks the template/audience, and attaches the decoded claims before requests reach the MCP server.
+
+Set the following environment variables when running the demo branch:
+
+| Variable | Purpose |
+| --- | --- |
+| `MCP_BEARER_TEMPLATE_NAME` | Name of the Clerk JWT template used for demos |
+| `MCP_BEARER_AUDIENCE` | Expected `aud` claim (defaults to `${BASE_URL}/mcp`) |
+| `MCP_BEARER_RESOURCE_URL` | Resource URL advertised via OAuth discovery and auth challenges |
+| `MCP_BEARER_REALM` | Realm shown in `WWW-Authenticate` headers |
+| `MCP_BEARER_CACHE_TTL_MS` | Optional verification cache duration (<= 60s) |
+
+Workflow:
+
+1. Create a JWT template in Clerk with the correct audience + custom claims (e.g. `mcp.scopes`).
+2. Issue demo tokens from the Clerk dashboard and store them securely (1Password, etc.).
+3. Share the pre-issued token with trusted demo users; they include it in the `Authorization` header when calling `/mcp`.
+4. Rotate tokens manually if leaked; the middleware logs failures with enough context to track misuse.
+
 ### Supabase Auth, Row Level Security
 
 To make sure that the user is only able to access the data that they are supposed to see, we have implemented RLS on certain tables. The customization we had to add to this is, because we don't have the full Clerk JWT, we can't use the pre built integration with Clerk and Supabase. Instead, we wrap the Clerk oauth token that we got in our own Supabase JWt so that it can provide userID to the db to verify access to the row. 

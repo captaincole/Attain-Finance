@@ -7,8 +7,23 @@ import {
   getSupabaseUrl,
 } from "../storage/supabase.js";
 
+const DEFAULT_BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+
+function parseNumberEnv(value: string | undefined, fallback: number): number {
+  if (typeof value === "undefined") {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed >= 0) {
+    return parsed;
+  }
+
+  return fallback;
+}
+
 export const CONFIG = {
-  baseUrl: process.env.BASE_URL || "http://localhost:3000",
+  baseUrl: DEFAULT_BASE_URL,
   port: process.env.PORT || 3000,
 
   plaid: {
@@ -37,6 +52,14 @@ export const CONFIG = {
 
   jwt: {
     secret: process.env.JWT_SECRET || "",
+  },
+
+  mcpAuth: {
+    templateName: process.env.MCP_BEARER_TEMPLATE_NAME || "",
+    audience: process.env.MCP_BEARER_AUDIENCE || `${DEFAULT_BASE_URL}/mcp`,
+    resourceUrl: process.env.MCP_BEARER_RESOURCE_URL || `${DEFAULT_BASE_URL}/mcp`,
+    realm: process.env.MCP_BEARER_REALM || "mcp",
+    cacheTtlMs: parseNumberEnv(process.env.MCP_BEARER_CACHE_TTL_MS, 60_000),
   },
 
   widgets: {

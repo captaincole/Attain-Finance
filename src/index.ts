@@ -6,7 +6,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { clerkMiddleware } from "@clerk/express";
 import {
-  mcpAuthClerk,
   protectedResourceHandlerClerk,
   authServerMetadataHandlerClerk,
   streamableHttpHandler,
@@ -20,6 +19,8 @@ import { createVisualizationRouter } from "./routes/visualization.js";
 import { createPlaidClient } from "./utils/clients/plaid.js";
 import adminRouter from "./routes/admin.js";
 import { logEvent, serializeError } from "./utils/logger.js";
+import { createMcpBearerAuthMiddleware } from "./middleware/mcp-bearer-auth.js";
+import { CONFIG } from "./utils/config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +29,19 @@ const PUBLIC_DIR = path.join(__dirname, "..", "public");
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 const plaidClient = createPlaidClient();
+
+const mcpBearerSecret =
+  CONFIG.clerk.secretKey ||
+  (process.env.NODE_ENV === "test" ? "test_mcp_secret" : "");
+
+const { middleware: verifyMcpBearer } = createMcpBearerAuthMiddleware({
+  secretKey: mcpBearerSecret,
+  audience: CONFIG.mcpAuth.audience,
+  resourceUrl: CONFIG.mcpAuth.resourceUrl,
+  realm: CONFIG.mcpAuth.realm,
+  templateName: CONFIG.mcpAuth.templateName,
+  cacheTtlMs: CONFIG.mcpAuth.cacheTtlMs,
+});
 
 const { app, server } = initializeApp(plaidClient);
 
@@ -96,7 +110,7 @@ function registerMcpRoutes(app: Express, server: McpServer) {
       });
       next();
     },
-    mcpAuthClerk,
+    verifyMcpBearer,
     streamableHttpHandler(server)
   );
 }
@@ -105,7 +119,7 @@ function registerOauthDiscoveryRoutes(app: Express) {
   app.get(
     "/.well-known/oauth-protected-resource",
     protectedResourceHandlerClerk({
-      resource_url: `${process.env.BASE_URL || "http://localhost:3000"}/mcp`,
+      resource_url: CONFIG.mcpAuth.resourceUrl,
       scopes_supported: ["email", "profile"],
     })
   );
