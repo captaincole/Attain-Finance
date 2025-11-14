@@ -6,7 +6,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { clerkMiddleware } from "@clerk/express";
 import {
-  mcpAuthClerk,
   protectedResourceHandlerClerk,
   authServerMetadataHandlerClerk,
   streamableHttpHandler,
@@ -20,6 +19,7 @@ import { createVisualizationRouter } from "./routes/visualization.js";
 import { createPlaidClient } from "./utils/clients/plaid.js";
 import adminRouter from "./routes/admin.js";
 import { logEvent, serializeError } from "./utils/logger.js";
+import { createMcpAuthMiddleware } from "./auth/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,6 +28,7 @@ const PUBLIC_DIR = path.join(__dirname, "..", "public");
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 const plaidClient = createPlaidClient();
+const mcpAuthMiddleware = createMcpAuthMiddleware();
 
 const { app, server } = initializeApp(plaidClient);
 
@@ -96,7 +97,7 @@ function registerMcpRoutes(app: Express, server: McpServer) {
       });
       next();
     },
-    mcpAuthClerk,
+    mcpAuthMiddleware,
     streamableHttpHandler(server)
   );
 }
