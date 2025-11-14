@@ -6,15 +6,15 @@ DECLARE
 
   credit_item_id CONSTANT text := 'item_demo_chase_card';
   invest_item_id CONSTANT text := 'item_demo_vanguard';
-  mortgage_item_id CONSTANT text := 'item_demo_river_mortgage';
+  car_item_id CONSTANT text := 'item_demo_tesla_auto';
 
   credit_account_id CONSTANT text := 'acct_demo_chase_sapphire';
   invest_account_id CONSTANT text := 'acct_demo_vanguard_brokerage';
-  mortgage_account_id CONSTANT text := 'acct_demo_river_mortgage';
+  car_account_id CONSTANT text := 'acct_demo_tesla_auto';
 
   credit_access_token CONSTANT text := 'bd1ce790e4737f9c2cc8780ad4b0dbf1:c42471f98a6e2cec9dc788b2f00988a0:b67e7cdb5db46130d5737bb6d286884aabcc84ad1e1e6a4994b4';
   invest_access_token CONSTANT text := 'd9238e64a5dac86a624acb4e8515fac2:bb321df286b3365e721f25864b2a2bb1:dfb4c51ec26825000d449e2446ce714686aa29e19a72e7f1eaeb';
-  mortgage_access_token CONSTANT text := 'acf1cba8fc613871b34883a8db068277:051702da06f88632b82fb6f2e9916f06:345afa632bcd38a02928fe5a9748ac5acb60d68c2487efad8810674c';
+  car_access_token CONSTANT text := 'acf1cba8fc613871b34883a8db068277:051702da06f88632b82fb6f2e9916f06:345afa632bcd38a02928fe5a9748ac5acb60d68c2487efad8810674c';
 BEGIN
   -- Clean existing rows for deterministic resets (child tables first)
   DELETE FROM transactions WHERE user_id = seed_user_id;
@@ -24,10 +24,10 @@ BEGIN
   DELETE FROM liabilities_student WHERE user_id = seed_user_id;
 
   DELETE FROM account_investment_sync_state
-  WHERE account_id IN (credit_account_id, invest_account_id, mortgage_account_id);
+  WHERE account_id IN (credit_account_id, invest_account_id, car_account_id);
 
   DELETE FROM account_sync_state
-  WHERE account_id IN (credit_account_id, invest_account_id, mortgage_account_id);
+  WHERE account_id IN (credit_account_id, invest_account_id, car_account_id);
 
   DELETE FROM net_worth_snapshots WHERE user_id = seed_user_id;
   DELETE FROM accounts WHERE user_id = seed_user_id;
@@ -45,7 +45,7 @@ BEGIN
   ) VALUES
     (seed_user_id, credit_access_token, credit_item_id, TIMESTAMPTZ '2024-11-02 09:15:00+00', 'sandbox', 'Chase', 'active'),
     (seed_user_id, invest_access_token, invest_item_id, TIMESTAMPTZ '2024-10-15 14:30:00+00', 'sandbox', 'Vanguard', 'active'),
-    (seed_user_id, mortgage_access_token, mortgage_item_id, TIMESTAMPTZ '2023-05-01 12:00:00+00', 'sandbox', 'River City Mortgage', 'active');
+    (seed_user_id, car_access_token, car_item_id, TIMESTAMPTZ '2023-05-01 12:00:00+00', 'sandbox', 'Tesla Finance', 'active');
 
   -- Accounts
   INSERT INTO accounts (
@@ -84,21 +84,21 @@ BEGIN
       'Vanguard Personal Brokerage',
       'investment',
       'brokerage',
-      48250.67,
-      48250.67,
+      205432.15,
+      205432.15,
       NULL,
       'USD',
       now() - INTERVAL '1 day'
     ),
     (
       seed_user_id,
-      mortgage_item_id,
-      mortgage_account_id,
-      'River City Mortgage',
-      'River City 30-Year Fixed',
+      car_item_id,
+      car_account_id,
+      'Tesla Auto Loan',
+      'Tesla Financial Services Auto Loan',
       'loan',
-      'mortgage',
-      364200.12,
+      'auto',
+      38250.45,
       NULL,
       NULL,
       'USD',
@@ -115,7 +115,7 @@ BEGIN
   ) VALUES
     (credit_account_id, 'cursor-demo-chase-0024', now() - INTERVAL '6 hours', 'complete', 84),
     (invest_account_id, 'invest-cursor-demo-0715', now() - INTERVAL '1 day', 'complete', 18),
-    (mortgage_account_id, 'mortgage-cursor-demo-0201', now() - INTERVAL '3 days', 'complete', 24);
+    (car_account_id, 'auto-cursor-demo-0201', now() - INTERVAL '3 days', 'complete', 24);
 
   INSERT INTO account_investment_sync_state (
     account_id,
@@ -349,27 +349,27 @@ BEGIN
     last_synced_at
   ) VALUES (
     seed_user_id,
-    mortgage_account_id,
-    '****4321',
-    '30 year fixed',
-    'Conventional fixed',
-    DATE '2019-06-01',
-    520000,
-    DATE '2049-06-01',
-    3.25,
+    car_account_id,
+    '****8842',
+    '5 year auto',
+    'Electric vehicle loan',
+    DATE '2023-04-15',
+    62000,
+    DATE '2028-04-15',
+    2.99,
     'fixed',
-    '{"street":"4107 Oak Terrace","city":"Portland","region":"OR","postal_code":"97205","country":"US"}'::jsonb,
-    DATE '2025-02-01',
-    2687.55,
-    DATE '2025-01-01',
-    2687.55,
+    '{"street":"2320 Mission St","city":"San Francisco","region":"CA","postal_code":"94110","country":"US"}'::jsonb,
+    DATE '2025-02-15',
+    899.42,
+    DATE '2025-01-15',
+    899.42,
     0,
     0,
-    4200.33,
-    true,
+    0,
     false,
-    12450.27,
-    8150.10,
+    false,
+    2215.33,
+    5036.12,
     now() - INTERVAL '2 days'
   );
 
@@ -395,17 +395,17 @@ BEGIN
     (
       seed_user_id,
       invest_account_id,
-      'sec_demo_aapl',
-      120.5,
-      198.12,
+      'sec_demo_nvda',
+      120.0,
+      950.00,
       DATE '2025-01-10',
-      23884.06,
-      16250.00,
-      'AAPL',
-      'Apple Inc.',
+      114000.00,
+      68000.00,
+      'NVDA',
+      'NVIDIA Corporation',
       'equity',
       'common stock',
-      198.12,
+      950.00,
       DATE '2025-01-10',
       'USD',
       now() - INTERVAL '1 day'
@@ -413,17 +413,17 @@ BEGIN
     (
       seed_user_id,
       invest_account_id,
-      'sec_demo_vti',
-      80.0,
-      259.43,
+      'sec_demo_goog',
+      200.0,
+      142.33,
       DATE '2025-01-10',
-      20754.40,
-      18500.00,
-      'VTI',
-      'Vanguard Total Stock Market ETF',
-      'etf',
-      'index fund',
-      259.43,
+      28466.00,
+      21000.00,
+      'GOOGL',
+      'Alphabet Inc. Class A',
+      'equity',
+      'common stock',
+      142.33,
       DATE '2025-01-10',
       'USD',
       now() - INTERVAL '1 day'
@@ -431,17 +431,53 @@ BEGIN
     (
       seed_user_id,
       invest_account_id,
-      'sec_demo_bnd',
-      95.0,
-      73.00,
+      'sec_demo_msft',
+      90.0,
+      410.21,
       DATE '2025-01-10',
-      6935.00,
-      7200.00,
-      'BND',
-      'Vanguard Total Bond Market ETF',
-      'etf',
-      'bond fund',
-      73.00,
+      36918.90,
+      28500.00,
+      'MSFT',
+      'Microsoft Corporation',
+      'equity',
+      'common stock',
+      410.21,
+      DATE '2025-01-10',
+      'USD',
+      now() - INTERVAL '1 day'
+    ),
+    (
+      seed_user_id,
+      invest_account_id,
+      'sec_demo_amd',
+      75.0,
+      165.44,
+      DATE '2025-01-10',
+      12408.00,
+      8800.00,
+      'AMD',
+      'Advanced Micro Devices, Inc.',
+      'equity',
+      'common stock',
+      165.44,
+      DATE '2025-01-10',
+      'USD',
+      now() - INTERVAL '1 day'
+    ),
+    (
+      seed_user_id,
+      invest_account_id,
+      'sec_demo_tsla',
+      60.0,
+      248.82,
+      DATE '2025-01-10',
+      14929.20,
+      22000.00,
+      'TSLA',
+      'Tesla, Inc.',
+      'equity',
+      'common stock',
+      248.82,
       DATE '2025-01-10',
       'USD',
       now() - INTERVAL '1 day'
@@ -455,12 +491,12 @@ BEGIN
     assets_total,
     liabilities_total
   ) VALUES
-    (seed_user_id, DATE '2024-12-08', 132000.00, 512000.00, 380000.00),
-    (seed_user_id, DATE '2024-12-15', 133250.00, 513500.00, 380250.00),
-    (seed_user_id, DATE '2024-12-22', 134100.00, 515000.00, 380900.00),
-    (seed_user_id, DATE '2024-12-29', 134750.00, 516250.00, 381500.00),
-    (seed_user_id, DATE '2025-01-05', 135980.00, 518200.00, 382220.00),
-    (seed_user_id, DATE '2025-01-12', 136450.00, 519000.00, 382550.00);
+    (seed_user_id, DATE '2024-12-08', 175000.00, 215000.00, 40000.00),
+    (seed_user_id, DATE '2024-12-15', 177700.00, 217500.00, 39800.00),
+    (seed_user_id, DATE '2024-12-22', 180400.00, 220000.00, 39600.00),
+    (seed_user_id, DATE '2024-12-29', 183600.00, 223000.00, 39400.00),
+    (seed_user_id, DATE '2025-01-05', 186250.00, 225500.00, 39250.00),
+    (seed_user_id, DATE '2025-01-12', 189000.00, 228000.00, 39000.00);
 
   RAISE NOTICE 'Seed complete for user %', seed_user_id;
 END;
