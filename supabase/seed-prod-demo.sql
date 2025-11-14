@@ -1,20 +1,21 @@
+-- Production demo seed. Update the constants at the top with production-safe values before running in Supabase SQL or via psql.
 BEGIN;
 
 DO $seed$
 DECLARE
-  seed_user_id CONSTANT text := COALESCE(NULLIF(current_setting('seed_user_id', true), ''), 'user_349wJGAl66iA6ENUunzpfWLyERK');
+  seed_user_id CONSTANT text := 'user_34TgygyzWWGUkKpr0BYhbnhkqSX';
 
-  credit_item_id CONSTANT text := COALESCE(NULLIF(current_setting('credit_item_id', true), ''), 'item_demo_chase_card');
-  invest_item_id CONSTANT text := COALESCE(NULLIF(current_setting('invest_item_id', true), ''), 'item_demo_vanguard');
-  car_item_id CONSTANT text := COALESCE(NULLIF(current_setting('car_item_id', true), ''), 'item_demo_tesla_auto');
+  credit_item_id CONSTANT text := 'item_prod_chase_demo';
+  invest_item_id CONSTANT text := 'item_prod_vanguard_demo';
+  car_item_id CONSTANT text := 'item_prod_auto_demo';
 
-  credit_account_id CONSTANT text := COALESCE(NULLIF(current_setting('credit_account_id', true), ''), 'acct_demo_chase_sapphire');
-  invest_account_id CONSTANT text := COALESCE(NULLIF(current_setting('invest_account_id', true), ''), 'acct_demo_vanguard_brokerage');
-  car_account_id CONSTANT text := COALESCE(NULLIF(current_setting('car_account_id', true), ''), 'acct_demo_tesla_auto');
+  credit_account_id CONSTANT text := 'acct_prod_chase_demo';
+  invest_account_id CONSTANT text := 'acct_prod_vanguard_demo';
+  car_account_id CONSTANT text := 'acct_prod_auto_demo';
 
-  credit_access_token CONSTANT text := COALESCE(NULLIF(current_setting('credit_access_token', true), ''), 'bd1ce790e4737f9c2cc8780ad4b0dbf1:c42471f98a6e2cec9dc788b2f00988a0:b67e7cdb5db46130d5737bb6d286884aabcc84ad1e1e6a4994b4');
-  invest_access_token CONSTANT text := COALESCE(NULLIF(current_setting('invest_access_token', true), ''), 'd9238e64a5dac86a624acb4e8515fac2:bb321df286b3365e721f25864b2a2bb1:dfb4c51ec26825000d449e2446ce714686aa29e19a72e7f1eaeb');
-  car_access_token CONSTANT text := COALESCE(NULLIF(current_setting('car_access_token', true), ''), 'acf1cba8fc613871b34883a8db068277:051702da06f88632b82fb6f2e9916f06:345afa632bcd38a02928fe5a9748ac5acb60d68c2487efad8810674c');
+  credit_access_token CONSTANT text := '4f0ed151c586dc08632d1050dc42837a:a4810d501c5048a20940569210a3bd63:fdfb3d8d56e5f12634d84e2887d3ad10192282b06d34e144ab02';
+  invest_access_token CONSTANT text := '171f4157092e6c6b6eb081d65eb72dc0:c6a425fda574badf190a76e090e5e8f1:fe144c386edf118d20d724fe8f0deb3919125b0345955ecf48d6';
+  car_access_token CONSTANT text := 'b7f0c5498245a06b286f37969cea5431:72b9734db7c7d2b2a9d932fa5cdcca2d:60957c08c3e523d0bb81cb2b86fa1fd75bfdc35038d17e94';
 BEGIN
   -- Clean existing rows for deterministic resets (child tables first)
   DELETE FROM transactions WHERE user_id = seed_user_id;

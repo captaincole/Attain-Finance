@@ -36,6 +36,12 @@ export interface UserSyncOptions {
 }
 
 export class UserBatchSyncService {
+  private readonly ignoredUserIds = new Set(
+    (process.env.CRON_IGNORE_USER_IDS || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+  );
   /**
    * Get all unique user IDs from plaid_connections table
    * Optionally filter by Plaid environment
@@ -58,7 +64,17 @@ export class UserBatchSyncService {
 
     // Get unique user IDs
     const uniqueUserIds = [...new Set(data.map((row) => row.user_id))];
-    return uniqueUserIds;
+    if (this.ignoredUserIds.size === 0) {
+      return uniqueUserIds;
+    }
+
+    const filtered = uniqueUserIds.filter((userId) => !this.ignoredUserIds.has(userId));
+    if (uniqueUserIds.length !== filtered.length) {
+      logEvent("CRON:batch-sync", "ignored-demo-users", {
+        ignoredCount: uniqueUserIds.length - filtered.length,
+      });
+    }
+    return filtered;
   }
 
   /**

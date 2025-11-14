@@ -90,8 +90,8 @@ Password: pass_good
 We now ship a deterministic Supabase seed (`supabase/seed.sql`) that provisions the demo Clerk user (`user_349wJGAl66iA6ENUunzpfWLyERK`) with:
 
 * A Chase Sapphire credit card + 60 days of realistic transactions
-* A Vanguard brokerage account with equity/ETF holdings
-* A River City mortgage loan and matching liability rows
+* A Vanguard brokerage account with a ~$200k single-stock portfolio (NVDA/GOOGL heavy)
+* A Tesla auto loan liability to exercise the loans experience
 
 To reset your local database with this data:
 
@@ -102,9 +102,31 @@ To reset your local database with this data:
 
 After the reset, sign in to the Clerk "demo" account and you should immediately see the seeded accounts/transactions without connecting Plaid.
 
+Need to seed a different user without editing the file? Every constant can be overridden at runtime via `psql -v` arguments:
+
+```bash
+psql 'postgres://postgres:postgres@localhost:54322/postgres' \
+  -v seed_user_id='user_custom' \
+  -v credit_item_id='item_custom_chase' \
+  -v credit_access_token='encrypted_token_here' \
+  -f supabase/seed.sql
+```
+
+For production, edit `supabase/seed-prod-demo.sql` with the prod Clerk user ID, Plaid item/account IDs, and encrypted access tokens (using the prod `ENCRYPTION_KEY`), then run:
+
+```bash
+psql $PROD_DATABASE_URL -f supabase/seed-prod-demo.sql
+```
+
+The wrapper file sets the relevant `psql` variables and includes the shared seed logic, so you only maintain one script.
+
 Demo Account Credentials
 username: andrew.test@gmail.com
 password: andrewcole232
+
+### Ignoring Demo Users in Cron Jobs
+
+Set `CRON_IGNORE_USER_IDS` (comma-separated user IDs) in your environment to keep long-running cron jobs from touching demo data. Any ID in that list is filtered out before sync jobs, recategorization, etc., iterate over `plaid_connections`.
 
 
 ## Architecture 
