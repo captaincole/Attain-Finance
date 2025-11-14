@@ -85,6 +85,27 @@ Username: user_good
 Password: pass_good
 2FA: 1234
 
+### Local Supabase Seed Data
+
+We now ship a deterministic Supabase seed (`supabase/seed.sql`) that provisions the demo Clerk user (`user_349wJGAl66iA6ENUunzpfWLyERK`) with:
+
+* A Chase Sapphire credit card + 60 days of realistic transactions
+* A Vanguard brokerage account with equity/ETF holdings
+* A River City mortgage loan and matching liability rows
+
+To reset your local database with this data:
+
+1. Make sure the Supabase CLI stack is running (`supabase start`).
+2. Copy `.env.example` → `.env` and keep the provided `ENCRYPTION_KEY=4b0d5d…9627`. The encrypted Plaid tokens in the seed require that exact key so the app can decrypt them.
+3. Run `supabase db reset` to run all migrations and apply `supabase/seed.sql`.
+4. Start the app with the appropriate sandbox and local environment variables via `npm run dev`
+
+After the reset, sign in to the Clerk "demo" account and you should immediately see the seeded accounts/transactions without connecting Plaid.
+
+Demo Account Credentials
+username: andrew.test@gmail.com
+password: andrewcole232
+
 
 ## Architecture 
 
