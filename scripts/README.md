@@ -84,3 +84,10 @@ Validates environment configuration.
 ```bash
 npm run sandbox:validate
 ```
+
+### mint-mcp-token.ts
+Mints a Clerk JWT using the MCP bearer template. Useful for demo tokens.
+
+```bash
+npx tsx scripts/mint-mcp-token.ts --userId=user_123
+```

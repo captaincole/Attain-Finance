@@ -1,6 +1,7 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { mcpAuthClerk } from "@clerk/mcp-tools/express";
 import { createBearerAuthMiddleware, type BearerAuthOptions } from "./bearer.js";
+import { logEvent } from "../utils/logger.js";
 
 export interface HybridAuthOptions {
   bearer?: BearerAuthOptions;
@@ -12,25 +13,31 @@ export interface HybridAuthOptions {
  * makes it easy to layer JWT bearer support without touching the route.
  */
 export function createMcpAuthMiddleware(options?: HybridAuthOptions): RequestHandler {
-  const bearerMiddleware = createBearerAuthMiddleware(options?.bearer);
+  const bearerHandler = createBearerAuthMiddleware(options?.bearer);
   const dcrMiddleware = mcpAuthClerk;
 
-  if (!bearerMiddleware) {
+  if (!bearerHandler) {
+    if (options?.bearer?.enabled) {
+      logEvent("AUTH:BEARER", "disabled", {
+        reason: "missing secret or template",
+      });
+    }
     return dcrMiddleware;
   }
 
   return (req: Request, res: Response, next: NextFunction) => {
-    const continueToDcr: NextFunction = (err?: unknown) => {
-      if (err) {
-        next(err);
+    void (async () => {
+      const result = await bearerHandler(req, res);
+      if (result === "authenticated") {
+        next();
         return;
       }
-      if (res.headersSent) {
-        return;
-      }
-      dcrMiddleware(req, res, next);
-    };
 
-    bearerMiddleware(req, res, continueToDcr);
+      if (result === "skip") {
+        dcrMiddleware(req, res, next);
+        return;
+      }
+      // responded -> do nothing
+    })().catch(next);
   };
 }

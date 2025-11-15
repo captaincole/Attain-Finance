@@ -167,6 +167,18 @@ Once the user and the users AI client is authenticated, that client now has a Cl
 
 We use Clerk as our authentication provider, because Supabase has yet to implement DCR. [See This Github Issue](https://github.com/orgs/supabase/discussions/38022#discussioncomment-14503663) - if this was available it could have greatly simplified our RLS architecture. 
 
+### Optional bearer tokens
+
+For private demos you can bypass DCR by issuing a Clerk JWT template token and sending it as `Authorization: Bearer <token>`. This path is **additive**—standard MCP clients still use DCR—and is gated by env vars:
+
+| Variable | Purpose |
+| --- | --- |
+| `MCP_ALLOW_BEARER` | Set to `true` to enable hybrid auth |
+| `MCP_BEARER_TEMPLATE_NAME` | Clerk JWT template name used for tokens |
+| `MCP_BEARER_CACHE_TTL_MS` | Optional cache duration for verified tokens |
+
+Once configured, trusted clients (e.g., Claude Code) can set the header in their `.mcp.json`. Requests with valid bearer tokens skip DCR; everything else follows the normal OAuth flow.
+
 ### Supabase Auth, Row Level Security
 
 To make sure that the user is only able to access the data that they are supposed to see, we have implemented RLS on certain tables. The customization we had to add to this is, because we don't have the full Clerk JWT, we can't use the pre built integration with Clerk and Supabase. Instead, we wrap the Clerk oauth token that we got in our own Supabase JWt so that it can provide userID to the db to verify access to the row. 

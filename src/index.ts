@@ -20,6 +20,7 @@ import { createPlaidClient } from "./utils/clients/plaid.js";
 import adminRouter from "./routes/admin.js";
 import { logEvent, serializeError } from "./utils/logger.js";
 import { createMcpAuthMiddleware } from "./auth/index.js";
+import { CONFIG } from "./utils/config.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -28,7 +29,23 @@ const PUBLIC_DIR = path.join(__dirname, "..", "public");
 dotenv.config();
 const PORT = process.env.PORT || 3000;
 const plaidClient = createPlaidClient();
-const mcpAuthMiddleware = createMcpAuthMiddleware();
+const bearerEnabled =
+  CONFIG.mcpAuth.allowBearer &&
+  Boolean(CONFIG.clerk.secretKey) &&
+  Boolean(CONFIG.mcpAuth.templateName);
+const resourceUrl = `${CONFIG.baseUrl.replace(/\/$/, "")}/mcp`;
+const mcpAuthMiddleware = createMcpAuthMiddleware({
+  bearer: bearerEnabled
+    ? {
+        enabled: true,
+        secretKey: CONFIG.clerk.secretKey,
+        templateName: CONFIG.mcpAuth.templateName,
+        resourceUrl,
+        realm: "mcp",
+        cacheTtlMs: CONFIG.mcpAuth.cacheTtlMs,
+      }
+    : undefined,
+});
 
 const { app, server } = initializeApp(plaidClient);
 

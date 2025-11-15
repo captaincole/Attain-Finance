@@ -20,7 +20,7 @@ We need a hybrid model that allows JWT-based bearer tokens for curated demos whi
 
 2. **JWT verification module**
    - Keep the current `createMcpBearerAuthMiddleware` (possibly renamed to `verifyMcpBearer`) but ensure it only throws when configuration is invalid. For runtime auth failures it should call `next("route")` so the DCR middleware can try next.
-   - Move configuration (template, audience, realm, cache TTL) into `CONFIG.mcpAuth`.
+   - Move configuration (template + cache TTL) into `CONFIG.mcpAuth` and derive resource metadata from `BASE_URL`.
    - Require `CLERK_SECRET_KEY` or `CLERK_JWT_KEY` in production; allow test overrides.
 
 3. **DCR fallback path**
@@ -75,9 +75,6 @@ We need a hybrid model that allows JWT-based bearer tokens for curated demos whi
 | Variable | Description |
 | --- | --- |
 | `MCP_BEARER_TEMPLATE_NAME` | Clerk JWT template that issues MCP tokens (e.g. `mcp-access`) |
-| `MCP_BEARER_AUDIENCE` | Expected `aud` claim, default `${BASE_URL}/mcp` |
-| `MCP_BEARER_RESOURCE_URL` | Resource URL advertised in OAuth discovery + `WWW-Authenticate` |
-| `MCP_BEARER_REALM` | Realm string appended to auth challenges |
 | `MCP_BEARER_CACHE_TTL_MS` | Optional TTL for the in-memory verification cache (<= 60s) |
 | `MCP_ALLOW_BEARER` | (Optional) Feature flag to enable hybrid mode in a deployment |
 

@@ -2,13 +2,29 @@
  * Environment configuration and constants
  */
 
+import dotenv from "dotenv";
 import {
   getSupabasePublishableKey,
   getSupabaseUrl,
 } from "../storage/supabase.js";
 
+dotenv.config();
+
+const DEFAULT_BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+
+function parseNumberEnv(value: string | undefined, fallback: number): number {
+  if (typeof value === "undefined") {
+    return fallback;
+  }
+  const parsed = Number(value);
+  if (Number.isFinite(parsed) && parsed >= 0) {
+    return parsed;
+  }
+  return fallback;
+}
+
 export const CONFIG = {
-  baseUrl: process.env.BASE_URL || "http://localhost:3000",
+  baseUrl: DEFAULT_BASE_URL,
   port: process.env.PORT || 3000,
 
   plaid: {
@@ -37,6 +53,12 @@ export const CONFIG = {
 
   jwt: {
     secret: process.env.JWT_SECRET || "",
+  },
+
+  mcpAuth: {
+    allowBearer: process.env.MCP_ALLOW_BEARER === "true",
+    templateName: process.env.MCP_BEARER_TEMPLATE_NAME || "",
+    cacheTtlMs: parseNumberEnv(process.env.MCP_BEARER_CACHE_TTL_MS, 60_000),
   },
 
   widgets: {
