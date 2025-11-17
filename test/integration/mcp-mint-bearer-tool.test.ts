@@ -14,11 +14,19 @@ import {
 
 const ORIGINAL_TEMPLATE = CONFIG.mcpAuth.templateName;
 const ORIGINAL_ALLOW_LIST = [...CONFIG.mcpAuth.tokenMintAllowList];
+const ORIGINAL_SECRET = CONFIG.clerk.secretKey;
 
 afterEach(() => {
   CONFIG.mcpAuth.templateName = ORIGINAL_TEMPLATE;
   CONFIG.mcpAuth.tokenMintAllowList = [...ORIGINAL_ALLOW_LIST];
+  CONFIG.clerk.secretKey = ORIGINAL_SECRET;
 });
+
+function fakeJwtWithSession(sessionId: string): string {
+  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ sid: sessionId })).toString("base64url");
+  return `${header}.${payload}.`;
+}
 
 describe("mint-mcp-bearer-token tool registration", () => {
   it("does not register when allow list is empty", () => {
@@ -33,8 +41,20 @@ describe("mint-mcp-bearer-token tool registration", () => {
   it("mints a token for allowlisted Clerk users", async () => {
     CONFIG.mcpAuth.templateName = "test-template";
     CONFIG.mcpAuth.tokenMintAllowList = ["user_admin"];
+    CONFIG.clerk.secretKey = "secret";
 
-    const adminTools = getAdminTools();
+    const adminTools = getAdminTools({
+      createClerkClientFn: () =>
+        ({
+          sessions: {
+            getToken: async (sessionId: string, templateName: string) => {
+              assert.strictEqual(sessionId, "sess_123");
+              assert.strictEqual(templateName, "test-template");
+              return { jwt: "jwt-123" };
+            },
+          },
+        }) as any,
+    });
     const mintTool = adminTools.find((tool) => tool.name === MINT_MCP_BEARER_TOOL_NAME);
     assert(mintTool, "Mint tool should be registered when allowlist is populated");
 
@@ -43,10 +63,7 @@ describe("mint-mcp-bearer-token tool registration", () => {
       {
         authInfo: {
           userId: "user_admin",
-          getToken: async ({ template }: { template?: string }) => {
-            assert.strictEqual(template, "test-template");
-            return "jwt-123";
-          },
+          token: fakeJwtWithSession("sess_123"),
         },
       },
       {}
@@ -54,6 +71,31 @@ describe("mint-mcp-bearer-token tool registration", () => {
 
     assert.strictEqual(result.structuredContent?.token, "jwt-123");
     assert.match(result.content?.[0]?.text ?? "", /jwt-123/);
+  });
+
+  it("rejects minting when authenticated via bearer token", async () => {
+    CONFIG.mcpAuth.templateName = "test-template";
+    CONFIG.mcpAuth.tokenMintAllowList = ["user_admin"];
+
+    const adminTools = getAdminTools();
+    const mintTool = adminTools.find((tool) => tool.name === MINT_MCP_BEARER_TOOL_NAME);
+    assert(mintTool, "Mint tool should be registered when allowlist is populated");
+
+    await assert.rejects(
+      () =>
+        mintTool!.handler(
+          {},
+          {
+            authInfo: {
+              userId: "user_admin",
+              authMethod: "bearer",
+              token: fakeJwtWithSession("sess_123"),
+            },
+          },
+          {}
+        ),
+      /OAuth session/
+    );
   });
 });
 

@@ -62,10 +62,12 @@ export function createBearerAuthMiddleware(
 
   return async function handleBearer(req: Request, res: Response): Promise<BearerResult> {
     const extraction = extractBearerToken(req.headers.authorization);
+    // NO AUTH SCENARIO: no Authorization header → let Clerk's DCR middleware handle the request
     if (extraction.type === "missing") {
       logEvent("AUTH:BEARER", "no-header", undefined, "info");
       return "skip";
     }
+    // DCR SCENARIO: header exists but isn't a template JWT (Clerk session token or malformed value)
     if (extraction.type === "invalid") {
       respondUnauthorized(res, realm, resourceUrl, "invalid_request", extraction.reason);
       logEvent("AUTH:BEARER", "invalid-header", { reason: extraction.reason }, "warn");
@@ -73,7 +75,21 @@ export function createBearerAuthMiddleware(
     }
 
     const token = extraction.token;
-    logEvent("AUTH:BEARER", "token-received", { hasToken: true });
+    logEvent("AUTH:BEARER", "token-received", {
+      hasToken: true,
+      tokenPreview: previewToken(token),
+    });
+
+    if (!isJwtFormat(token)) {
+      // DCR SCENARIO (continued): header was Bearer but not one of our JWTs → skip so DCR keeps control
+      logEvent(
+        "AUTH:BEARER",
+        "non-jwt-token",
+        { reason: "token missing JWT sections", tokenPreview: previewToken(token) },
+        "info"
+      );
+      return "skip";
+    }
 
     const cached = getCachedClaims(token);
     if (cached) {
@@ -83,6 +99,7 @@ export function createBearerAuthMiddleware(
     }
 
     try {
+      // JWT TEMPLATE SCENARIO: token looks like a JWT, so verify it and short-circuit to bearer auth
       const claims = (await verifier(token, {
         secretKey: options.secretKey!,
       })) as McpJwtPayload;
@@ -180,6 +197,22 @@ function extractBearerToken(header?: string | string[]): TokenExtraction {
     return { type: "invalid", reason: "Bearer token is missing" };
   }
   return { type: "token", token };
+}
+
+function isJwtFormat(token: string): boolean {
+  const segments = token.split(".");
+  return segments.length === 3 && segments.every((part) => part.length > 0);
+}
+
+function previewToken(token: string): string {
+  if (!token) {
+    return "(empty)";
+  }
+  const trimmed = token.trim();
+  if (trimmed.length <= 16) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, 8)}…${trimmed.slice(-4)} (${trimmed.length} chars)`;
 }
 
 function attachAuth(req: AuthenticatedRequest, claims: McpJwtPayload, token: string) {

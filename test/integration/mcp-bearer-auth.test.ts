@@ -91,7 +91,7 @@ describe("Bearer auth middleware", () => {
       now,
     });
 
-    const req = createRequest({ authorization: "Bearer valid-token" }) as Request & { auth?: any };
+    const req = createRequest({ authorization: "Bearer valid.token.value" }) as Request & { auth?: any };
     const res = createResponse();
     const result = await handler!(req, res);
     assert.equal(result, "authenticated");
@@ -110,10 +110,10 @@ describe("Bearer auth middleware", () => {
       now,
     });
 
-    const req = createRequest({ authorization: "Bearer cached-token" }) as Request & { auth?: any };
+    const req = createRequest({ authorization: "Bearer cached.token.value" }) as Request & { auth?: any };
     const res = createResponse();
     await handler!(req, res);
-    const secondReq = createRequest({ authorization: "Bearer cached-token" }) as Request & { auth?: any };
+    const secondReq = createRequest({ authorization: "Bearer cached.token.value" }) as Request & { auth?: any };
     const secondRes = createResponse();
 
     const result = await handler!(secondReq, secondRes);
@@ -129,8 +129,22 @@ describe("Bearer auth middleware", () => {
       now,
     });
     const res = createResponse();
-    const result = await handler!(createRequest({ authorization: "Bearer bad-token" }), res);
+    const result = await handler!(createRequest({ authorization: "Bearer bad.token.value" }), res);
     assert.equal(result, "responded");
     assert.equal(res.statusCode, 401);
+  });
+
+  it("skips non-JWT bearer tokens so DCR can handle them", async () => {
+    const handler = createBearerAuthMiddleware(baseOptions, {
+      verifyTokenFn: async () => {
+        throw new Error("should not verify");
+      },
+      now,
+    });
+    const req = createRequest({ authorization: "Bearer notajwt" }) as Request & { auth?: any };
+    const res = createResponse();
+    const result = await handler!(req, res);
+    assert.equal(result, "skip");
+    assert.equal(req.auth, undefined);
   });
 });
