@@ -22,12 +22,6 @@ afterEach(() => {
   CONFIG.clerk.secretKey = ORIGINAL_SECRET;
 });
 
-function fakeJwtWithSession(sessionId: string): string {
-  const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url");
-  const payload = Buffer.from(JSON.stringify({ sid: sessionId })).toString("base64url");
-  return `${header}.${payload}.`;
-}
-
 describe("mint-mcp-bearer-token tool registration", () => {
   it("does not register when allow list is empty", () => {
     CONFIG.mcpAuth.templateName = "test-template";
@@ -42,11 +36,11 @@ describe("mint-mcp-bearer-token tool registration", () => {
     CONFIG.mcpAuth.templateName = "test-template";
     CONFIG.mcpAuth.tokenMintAllowList = ["user_admin"];
     CONFIG.clerk.secretKey = "secret";
-
     const adminTools = getAdminTools({
       createClerkClientFn: () =>
         ({
           sessions: {
+            getSessionList: async () => [{ id: "sess_123" }],
             getToken: async (sessionId: string, templateName: string) => {
               assert.strictEqual(sessionId, "sess_123");
               assert.strictEqual(templateName, "test-template");
@@ -63,7 +57,6 @@ describe("mint-mcp-bearer-token tool registration", () => {
       {
         authInfo: {
           userId: "user_admin",
-          token: fakeJwtWithSession("sess_123"),
         },
       },
       {}
@@ -89,7 +82,6 @@ describe("mint-mcp-bearer-token tool registration", () => {
             authInfo: {
               userId: "user_admin",
               authMethod: "bearer",
-              token: fakeJwtWithSession("sess_123"),
             },
           },
           {}

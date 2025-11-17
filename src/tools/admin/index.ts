@@ -3,7 +3,6 @@
  * - Currently exposes minting of MCP bearer JWTs for allowlisted users.
  */
 
-import { Buffer } from "node:buffer";
 import { createClerkClient } from "@clerk/backend";
 import type { ToolDefinition } from "../types.js";
 import { CONFIG } from "../../utils/config.js";
@@ -14,8 +13,8 @@ export const MINT_MCP_BEARER_TOOL_NAME = "mint-mcp-bearer-token";
 interface AuthContext {
   userId?: string;
   sessionId?: string;
-  authMethod?: string;
   token?: string;
+  authMethod?: string;
   getToken?: (options?: { template?: string }) => Promise<string | null>;
   extra?: {
     userId?: string;
@@ -71,24 +70,19 @@ export function getAdminTools(deps?: AdminToolDependencies): ToolDefinition[] {
           throw new Error("Clerk secret key is not configured on the server.");
         }
 
-        const sessionToken = authContext?.token;
-        if (!sessionToken) {
-          logEvent("TOOLS:MINT_MCP_BEARER_TOKEN", "missing-session-token", {
+        const mintClient = deps?.createClerkClientFn ?? ((options: { secretKey: string }) =>
+          createClerkClient(options));
+        const clerkClient = mintClient({ secretKey });
+        const sessionId = await getActiveSession(authContext, clerkClient, userId);
+        if (!sessionId) {
+          logEvent("TOOLS:MINT_MCP_BEARER_TOKEN", "missing-session", {
             userId,
             hasAuthContext: Boolean(authContext),
             authKeys: authContext ? Object.keys(authContext).filter((key) => key !== "claims") : [],
           });
-          throw new Error("Minting requires an active Clerk session token.");
+          throw new Error("Minting requires an active Clerk session.");
         }
 
-        const sessionId = extractSessionId(sessionToken);
-        if (!sessionId) {
-          throw new Error("Unable to extract Clerk session ID from authentication token.");
-        }
-
-        const mintClient = deps?.createClerkClientFn ?? ((options: { secretKey: string }) =>
-          createClerkClient(options));
-        const clerkClient = mintClient({ secretKey });
         const minted = await clerkClient.sessions.getToken(sessionId, templateName);
         const token = (minted as any).jwt ?? minted;
 
@@ -123,18 +117,31 @@ export function getAdminTools(deps?: AdminToolDependencies): ToolDefinition[] {
   ];
 }
 
-function extractSessionId(token: string): string | null {
-  const parts = token.split(".");
-  if (parts.length < 2) {
-    return null;
+async function getActiveSession(
+  context: AuthContext | undefined,
+  clerkClient: ReturnType<typeof createClerkClient>,
+  userId: string
+): Promise<string | null> {
+  if (context?.sessionId && typeof context.sessionId === "string") {
+    return context.sessionId;
   }
+
   try {
-    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-    if (payload && typeof payload.sid === "string") {
-      return payload.sid;
-    }
-    return null;
-  } catch {
+    const sessions = await (clerkClient.sessions as any).getSessionList({
+      userId,
+      status: "active",
+      orderBy: "-last_active_at",
+      limit: 1,
+    });
+    const session = Array.isArray(sessions) ? sessions[0] : sessions?.data?.[0];
+    return session?.id ?? null;
+  } catch (error) {
+    logEvent(
+      "TOOLS:MINT_MCP_BEARER_TOKEN",
+      "session-fetch-failed",
+      { userId, error },
+      "warn"
+    );
     return null;
   }
 }

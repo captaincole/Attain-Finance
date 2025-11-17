@@ -34,7 +34,21 @@ export function createMcpAuthMiddleware(options?: HybridAuthOptions): RequestHan
       }
 
       if (result === "skip") {
-        dcrMiddleware(req, res, next);
+        const originalAuth = (req as any).auth;
+        dcrMiddleware(req, res, (...args: any[]) => {
+          if (args.length > 0) {
+            const [err] = args;
+            next(err);
+            return;
+          }
+          const currentAuth = (req as any).auth;
+          if (currentAuth && originalAuth) {
+            if (typeof originalAuth.getToken === "function" && typeof currentAuth.getToken !== "function") {
+              currentAuth.getToken = originalAuth.getToken.bind(originalAuth);
+            }
+          }
+          next();
+        });
         return;
       }
       // responded -> do nothing
