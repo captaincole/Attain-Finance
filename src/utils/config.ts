@@ -23,6 +23,16 @@ function parseNumberEnv(value: string | undefined, fallback: number): number {
   return fallback;
 }
 
+function parseListEnv(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => Boolean(entry));
+}
+
 export const CONFIG = {
   baseUrl: DEFAULT_BASE_URL,
   port: process.env.PORT || 3000,
@@ -59,6 +69,7 @@ export const CONFIG = {
     allowBearer: process.env.MCP_ALLOW_BEARER === "true",
     templateName: process.env.MCP_BEARER_TEMPLATE_NAME || "",
     cacheTtlMs: parseNumberEnv(process.env.MCP_BEARER_CACHE_TTL_MS, 60_000),
+    tokenMintAllowList: parseListEnv(process.env.MCP_BEARER_ALLOWED_USER_IDS),
   },
 
   widgets: {

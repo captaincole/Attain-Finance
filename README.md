@@ -176,8 +176,11 @@ For private demos you can bypass DCR by issuing a Clerk JWT template token and s
 | `MCP_ALLOW_BEARER` | Set to `true` to enable hybrid auth |
 | `MCP_BEARER_TEMPLATE_NAME` | Clerk JWT template name used for tokens |
 | `MCP_BEARER_CACHE_TTL_MS` | Optional cache duration for verified tokens |
+| `MCP_BEARER_ALLOWED_USER_IDS` | Comma-separated Clerk user IDs permitted to mint bearer tokens via MCP tools |
 
 Once configured, trusted clients (e.g., Claude Code) can set the header in their `.mcp.json`. Requests with valid bearer tokens skip DCR; everything else follows the normal OAuth flow.
+
+Allowlisted accounts will also see the `mint-mcp-bearer-token` tool, which mints a short-lived JWT based on the configured template using their current Clerk session.
 
 ### Supabase Auth, Row Level Security
 

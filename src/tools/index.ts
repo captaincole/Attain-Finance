@@ -15,6 +15,11 @@ import { getLiabilityTools } from "./liabilities/index.js";
 import { WIDGET_META } from "../utils/widget-metadata.js";
 import type { ToolDefinition } from "./types.js";
 import { logEvent, serializeError } from "../utils/logger.js";
+import {
+  getAdminTools,
+  isMintAllowedForUser,
+  MINT_MCP_BEARER_TOOL_NAME,
+} from "./admin/index.js";
 
 /**
  * Register all MCP tools with the server
@@ -28,6 +33,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
     ...getTransactionTools(),
     ...getInvestmentTools(),
     ...getLiabilityTools(),
+    ...getAdminTools(),
   ];
 
   // Register each tool with logging and error handling
@@ -119,11 +125,18 @@ function injectWidgetMetadata(server: McpServer) {
   if (serverInternal._requestHandlers) {
     const originalToolsHandler = serverInternal._requestHandlers.get("tools/list");
 
-    serverInternal._requestHandlers.set("tools/list", async (request: any) => {
-      logEvent("TOOLS", "list-request", { params: request.params });
+    serverInternal._requestHandlers.set("tools/list", async (request: any, extra: any) => {
+      const userId = extra?.authInfo?.extra?.userId ?? extra?.authInfo?.userId;
+      logEvent("TOOLS", "list-request", { params: request.params, userId });
 
       // Call original handler
-      const result = await originalToolsHandler(request);
+      const result = await originalToolsHandler(request, extra);
+
+      if (!isMintAllowedForUser(userId)) {
+        result.tools = result.tools.filter(
+          (tool: any) => tool.name !== MINT_MCP_BEARER_TOOL_NAME
+        );
+      }
 
       // Inject _meta for widget-enabled tools
       // The MCP SDK doesn't include _meta from options by default, so we must inject it manually

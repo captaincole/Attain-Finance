@@ -77,5 +77,6 @@ We need a hybrid model that allows JWT-based bearer tokens for curated demos whi
 | `MCP_BEARER_TEMPLATE_NAME` | Clerk JWT template that issues MCP tokens (e.g. `mcp-access`) |
 | `MCP_BEARER_CACHE_TTL_MS` | Optional TTL for the in-memory verification cache (<= 60s) |
 | `MCP_ALLOW_BEARER` | (Optional) Feature flag to enable hybrid mode in a deployment |
+| `MCP_BEARER_ALLOWED_USER_IDS` | Comma-separated Clerk user IDs allowed to mint bearer tokens via the MCP minting tool |
 
 All values live in `.env.*` files so demo/staging/prod can choose the right Clerk template and resource URL.

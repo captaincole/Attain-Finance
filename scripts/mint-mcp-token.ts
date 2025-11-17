@@ -53,7 +53,11 @@ async function main() {
     console.log(token.jwt);
   } catch (error: any) {
     console.error("\n❌ Failed to mint JWT:");
-    console.error(error?.message || error);
+    if (error?.errors) {
+      console.error(JSON.stringify(error.errors, null, 2));
+    } else {
+      console.error(error?.message || error);
+    }
     process.exit(1);
   }
 }
