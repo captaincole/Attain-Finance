@@ -59,12 +59,6 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
           if (result._meta) {
             logEvent(`TOOL:${name}`, "response-meta", { _meta: result._meta, userId });
           }
-          if (result.structuredContent) {
-            logEvent(`TOOL:${name}`, "response-structured-content", {
-              keys: Object.keys(result.structuredContent),
-              userId,
-            });
-          }
 
           return result;
         } catch (error: any) {

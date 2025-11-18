@@ -86,8 +86,46 @@ npm run sandbox:validate
 ```
 
 ### mint-mcp-token.ts
-Mints a Clerk JWT using the MCP bearer template. Useful for demo tokens.
+**⚠️ DEVELOPMENT ONLY** - Mints a Clerk JWT using the MCP bearer template for local testing and staging environments.
 
+**Prerequisites:**
+- `CLERK_SECRET_KEY` environment variable configured
+- `MCP_BEARER_TEMPLATE_NAME` environment variable configured (Clerk JWT template name)
+- User ID must be a valid Clerk user
+
+**Usage:**
 ```bash
-npx tsx scripts/mint-mcp-token.ts --userId=user_123
+# Via npm script (recommended)
+npm run mint-token -- --userId=user_2xyz123
+
+# Direct invocation
+npx tsx scripts/mint-mcp-token.ts --userId=user_2xyz123
+
+# With environment override
+CLERK_SECRET_KEY=sk_live_xxx npx tsx scripts/mint-mcp-token.ts --userId=user_2xyz123
+```
+
+**What it does:**
+1. Creates **temporary/ephemeral** Clerk session for target user
+2. Mints JWT using configured template (`MCP_BEARER_TEMPLATE_NAME`)
+3. Outputs JWT to stdout for use in `.mcp.json` or API requests
+
+**Production vs Development:**
+- **Development/Staging**: This script works because it creates arbitrary sessions
+- **Production**: Use the `mint-mcp-bearer-token` MCP tool instead
+  - Requires user to authenticate via OAuth first
+  - Uses existing session (no ephemeral session creation)
+  - More secure for production workflows
+
+**Security Notes:**
+- Token inherits Clerk template expiry (typically 1 hour)
+- Only works for users in `MCP_BEARER_ALLOWED_USER_IDS` (enforced at server level)
+- Requires Clerk credentials with session creation permissions
+- **Not recommended for production** - use MCP tool for production token minting
+
+**Example Output:**
+```
+✅ JWT minted successfully:
+
+eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzJ4eXoxMjMiLCJ0ZW1wbGF0ZSI6Im1jcC1hY2Nlc3MiLCJleHAiOjE3MzQxMjM0NTZ9...
 ```

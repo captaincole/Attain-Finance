@@ -15,7 +15,6 @@ import type { PlaidApi } from "plaid";
 import { createServer } from "./create-server.js";
 import { createPlaidRouter } from "./routes/plaid/index.js";
 import { createDataRouter } from "./routes/data/index.js";
-import { createVisualizationRouter } from "./routes/visualization.js";
 import { createPlaidClient } from "./utils/clients/plaid.js";
 import adminRouter from "./routes/admin.js";
 import { logEvent, serializeError } from "./utils/logger.js";
@@ -68,7 +67,6 @@ function initializeApp(plaidClient: PlaidApi) {
   registerOauthDiscoveryRoutes(app);
   registerDomainRoutes(app, plaidClient);
   registerDataRoutes(app);
-  registerVisualizationRoutes(app);
 
   return { app, server };
 }
@@ -149,10 +147,6 @@ function registerDomainRoutes(app: Express, plaidClient: PlaidApi) {
 
 function registerDataRoutes(app: Express) {
   app.use("/api/data", createDataRouter());
-}
-
-function registerVisualizationRoutes(app: Express) {
-  app.use("/api/visualization", createVisualizationRouter());
 }
 
 function startServer(app: Express, server: McpServer, port: number | string) {

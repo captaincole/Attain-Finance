@@ -20,6 +20,9 @@ npm run cron:list                   # List all cron jobs
 npm run cron:plaid-sync             # Sync all Plaid data (production)
 npm run cron:plaid-sync-sandbox     # Sync sandbox users only (testing)
 
+# Authentication (Bearer Tokens)
+npm run mint-token -- --userId=user_xxx  # Mint MCP bearer token via CLI
+
 # Git
 gh pr create             # Create pull request
 ```
@@ -324,19 +327,228 @@ serverInternal._requestHandlers.set("tools/list", async (request) => {
 3. Server provides HTML template via MCP `resources/read`
 4. ChatGPT renders iframe with widget
 
+## Authentication Architecture
+
+### Hybrid Authentication (DCR + Bearer Tokens)
+
+The MCP server supports **two authentication paths** that work together:
+
+1. **Dynamic Client Registration (DCR)** - Default OAuth 2.0 flow
+   - Standard MCP protocol for clients like ChatGPT, Claude Code, Cursor
+   - Clerk handles OAuth handshake and issues session tokens
+   - Discovery via `/.well-known/oauth-protected-resource`
+   - Session tokens validated by `@clerk/mcp-tools/express` middleware
+
+2. **Bearer Tokens (JWT)** - Optional pre-issued tokens for demos/automation
+   - Clerk JWT templates allow trusted users to mint short-lived tokens
+   - Tokens bypass DCR and authenticate directly via signature verification
+   - Enabled via `MCP_ALLOW_BEARER=true` environment variable
+   - Requires Clerk secret key for token verification
+
+**Authentication Flow Decision Tree:**
+```
+Incoming request to /mcp
+  ↓
+Check Authorization header
+  ↓
+┌─────────────────────────┐
+│ No header?              │──→ DCR middleware validates Clerk session
+└─────────────────────────┘
+  ↓
+┌─────────────────────────┐
+│ Bearer token present?   │
+└─────────────────────────┘
+  ↓
+┌─────────────────────────────────────────┐
+│ Is it JWT format? (3 dot-separated)    │
+└─────────────────────────────────────────┘
+  │                                      │
+  NO → Skip to DCR                       YES → Verify JWT signature
+  │                                      │
+  │                                   Valid?
+  │                                      │
+  │                          ┌───────────┴───────────┐
+  │                          │                       │
+  │                       YES                       NO
+  │                          │                       │
+  │                  Template match?          Respond 401
+  │                          │                (no DCR fallback)
+  │                    ┌─────┴─────┐
+  │                   YES          NO
+  │                    │            │
+  │              Attach auth   Respond 401
+  │              Proceed
+  │
+  └──→ DCR validates session
+```
+
+**Key Design Decisions:**
+
+1. **No DCR Fallback for Invalid Bearer Tokens**
+   - If `Authorization: Bearer <token>` is present but invalid, request fails immediately
+   - Prevents privilege escalation attacks where attacker sends invalid bearer token to trigger DCR with stolen session
+
+2. **JWT Format Detection**
+   - Only tokens with 3 dot-separated segments trigger bearer verification
+   - Non-JWT bearer values (like Clerk session tokens) skip to DCR
+   - Allows coexistence with other bearer token schemes
+
+3. **Template Validation**
+   - JWT must include template claim matching `MCP_BEARER_TEMPLATE_NAME`
+   - Checks multiple claim locations: `template`, `tpl`, `mcp.template`
+   - Prevents accidental acceptance of other Clerk JWTs
+
+4. **In-Memory Token Cache**
+   - Valid tokens cached for `MCP_BEARER_CACHE_TTL_MS` (default: 60s)
+   - Cache respects token expiry (`exp` claim)
+   - Reduces Clerk API calls for repeated requests
+
+**Implementation Files:**
+- [src/auth/bearer.ts](src/auth/bearer.ts) - Bearer token verification (returns `"skip" | "authenticated" | "responded"`)
+- [src/auth/index.ts](src/auth/index.ts) - Hybrid auth orchestration (composes bearer + DCR)
+- [src/index.ts](src/index.ts#L32-L48) - Server configuration and middleware setup
+- [src/tools/admin/index.ts](src/tools/admin/index.ts) - Token minting MCP tool
+- [scripts/mint-mcp-token.ts](scripts/mint-mcp-token.ts) - CLI token minting script
+
+**Authentication Context (`req.auth`):**
+
+Both DCR and bearer paths populate identical structure:
+```typescript
+req.auth = {
+  userId: string;           // Clerk user ID (from 'sub' claim)
+  sessionId?: string;       // Clerk session ID (DCR: session, Bearer: 'sid' claim)
+  token: string;            // Original token (DCR: session token, Bearer: JWT)
+  claims?: JwtPayload;      // Full JWT payload (bearer only)
+  actor?: object;           // Actor claim (bearer only, from 'act')
+  extra: {
+    userId: string;         // Duplicated for MCP SDK context
+  }
+}
+```
+
+MCP tools access user via `context.authInfo.extra.userId`.
+
+**Bearer Token Security:**
+
+1. **Allowlist-Based Minting**
+   - Only users in `MCP_BEARER_ALLOWED_USER_IDS` can mint tokens
+   - `mint-mcp-bearer-token` tool filtered from `tools/list` for unauthorized users
+   - See [src/tools/index.ts](src/tools/index.ts#L129-L133) for filtering logic
+
+2. **OAuth-Only Minting**
+   - Tool requires DCR session (rejects if `authInfo.authMethod === "bearer"`)
+   - Prevents recursive minting (can't use bearer token to mint bearer token)
+   - Must authenticate via standard OAuth flow first
+
+3. **Short-Lived Tokens**
+   - Tokens inherit Clerk template expiry (typically 1 hour)
+   - Cache TTL capped at token expiry to prevent serving expired tokens
+
+4. **Template Isolation**
+   - Server only accepts tokens from specific template name
+   - Other Clerk JWTs (even valid) rejected via template mismatch
+
+**Minting Bearer Tokens:**
+
+**Production (via MCP Tool)** - Requires active OAuth session:
+```typescript
+// Tool appears in tools/list only for allowlisted users
+// User must authenticate via DCR first, then call this tool
+await callTool("mint-mcp-bearer-token", {});
+// Returns: { content: [{ type: "text", text: "eyJhbG..." }], structuredContent: { token: "eyJhbG..." } }
+```
+
+The tool requires an active Clerk session because:
+- Clerk sessions are tied to actual user authentication
+- Production environments don't allow arbitrary session creation
+- Tool fetches user's current session and mints JWT from it
+
+**Development Only (via CLI Script)** - Creates temporary session:
+```bash
+npm run mint-token -- --userId=user_2xyz123
+# Or with environment override:
+CLERK_SECRET_KEY=sk_live_xxx npx tsx scripts/mint-mcp-token.ts --userId=user_2xyz123
+```
+
+⚠️ **Script creates ephemeral Clerk session** - This works in development/staging but is **not suitable for production** where users must authenticate via standard OAuth flow. Use the MCP tool for production token minting.
+
+**Using Bearer Tokens:**
+
+Add to `.mcp.json` or HTTP client:
+```json
+{
+  "mcpServers": {
+    "personal-finance": {
+      "url": "https://personal-finance-mcp-d0eg.onrender.com/mcp",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+      }
+    }
+  }
+}
+```
+
+**Observability:**
+
+All bearer auth events logged with `AUTH:BEARER` scope:
+
+| Event | Description | Level |
+|-------|-------------|-------|
+| `no-header` | No Authorization header (skip to DCR) | info |
+| `invalid-header` | Malformed Authorization header | warn |
+| `non-jwt-token` | Bearer token not JWT format (skip to DCR) | info |
+| `token-received` | Valid JWT format detected | info |
+| `cache-hit` | Token found in verification cache | info |
+| `token-verified` | JWT signature verified successfully | info |
+| `verification-failed` | JWT verification failed | warn |
+| `template-mismatch` | JWT template doesn't match config | warn |
+| `missing-sub` | JWT missing subject claim | warn |
+
+Tool invocations log `authMethod: "bearer"` when bearer path used.
+
+**Testing:**
+
+Integration tests at [test/integration/mcp-mint-bearer-tool.test.ts](test/integration/mcp-mint-bearer-tool.test.ts):
+- Tool registration based on allowlist
+- Token minting with mocked Clerk client
+- Rejection when authenticated via bearer token
+- Tool filtering in `tools/list` response
+
+### Supabase Row Level Security
+
+Supabase RLS enforces user data isolation. Since we use Clerk (not Supabase Auth), we can't use the built-in Clerk↔Supabase integration. Instead:
+
+1. **DCR Path**: Server receives Clerk session token but needs JWT for RLS
+   - If Clerk token is already JWT format → forward directly to Supabase
+   - Otherwise → sign new Supabase JWT with `SUPABASE_JWT_SECRET` containing `userId`
+
+2. **Bearer Path**: JWT already contains `sub` claim
+   - Forward JWT to Supabase directly (already signed by Clerk)
+
+RLS policies in migrations use `auth.uid()` to verify row ownership.
+
 ## Environment Variables
 
 **Required:**
-- `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` - OAuth authentication
+- `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` - Clerk authentication (OAuth + JWT verification)
 - `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` - Database access for user-scoped flows
 - `SUPABASE_SECRET_KEY` - Database admin access for background jobs
+- `SUPABASE_JWT_SECRET` - Sign JWTs for RLS when Clerk token isn't JWT format
 - `ENCRYPTION_KEY` - AES-256 key for Plaid tokens (64-char hex)
-- `JWT_SECRET` - Signed download URLs (64-char hex)
+- `JWT_SECRET` - Sign download URLs (64-char hex)
 - `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV` - Plaid API
 
-**Optional:**
-- `PORT` - Server port (default: 3000)
-- `BASE_URL` - For download links (local: http://localhost:3000, prod: https://personal-finance-mcp-d0eg.onrender.com)
+**Optional (Bearer Auth):**
+- `MCP_ALLOW_BEARER` - Enable bearer token authentication (default: `false`)
+- `MCP_BEARER_TEMPLATE_NAME` - Clerk JWT template name (e.g., `mcp-access`)
+- `MCP_BEARER_CACHE_TTL_MS` - Token verification cache duration in ms (default: `60000`)
+- `MCP_BEARER_ALLOWED_USER_IDS` - Comma-separated Clerk user IDs allowed to mint tokens
+
+**Optional (Server):**
+- `PORT` - Server port (default: `3000`)
+- `BASE_URL` - For download links and OAuth callbacks (local: `http://localhost:3000`, prod: `https://personal-finance-mcp-d0eg.onrender.com`)
+- `CRON_IGNORE_USER_IDS` - Comma-separated user IDs to skip in cron jobs (demo accounts)
 
 ## Common Gotchas
 

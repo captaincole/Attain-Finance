@@ -14,11 +14,11 @@
 ## Architecture Map
 - Entry: `src/index.ts` initializes Express, Clerk middleware, Plaid router, admin routes, signed download endpoints
 - MCP server factory: `src/create-server.ts` wires tools/resources and widget metadata
-- Tools live in `src/tools/` grouped by domain: `accounts`, `categorization`, `budgets`, `transactions`, `visualization`, `opinions`
+- Tools live in `src/tools/` grouped by domain: `accounts`, `categorization`, `budgets`, `transactions`, `investments`, `liabilities`, `opinions`, `admin`
   - Registries expose `get*Tools()` returning metadata + handlers; all handlers expect `authInfo.extra.userId`
 - Services: `src/services/account-service.ts` (Plaid Link flow + immediate sync kickoff), `transaction-sync.ts` (cursor-based sync + categorization + budget labeling), `recategorization-service.ts`
-- Background jobs: `src/cron/jobs/` with runner + user batch sync service; production uses Render cron config (`docs/RENDER_CRON.md`)
-- HTTP routes: `src/routes/plaid/` (Link UI/callback), `routes/admin.ts` (dev utilities)
+- Background jobs: `src/cron/jobs/` with runner + user batch sync service; production uses Render cron (see `CLAUDE.md`)
+- HTTP routes: `src/routes/plaid/` (Link UI/callback), `routes/admin.ts` (dev utilities), `routes/data/` (CSV downloads)
 - Shared utilities: `src/utils/clients/claude.ts` (AI categorization + budget filtering), `utils/clients/plaid.ts`, `utils/budget-labeling.ts`, `utils/signed-urls.ts`
 
 ## ChatGPT Widget Configuration
@@ -36,16 +36,15 @@
 ## Data & Storage
 - Supabase client (`src/storage/supabase.ts`) lazily instantiates using `SUPABASE_URL` + `SUPABASE_PUBLISHABLE_KEY`
 - `getSupabaseForUser()` signs a short-lived Supabase JWT with `SUPABASE_JWT_SECRET`, injects the `x-user-id` headers, and caches the client until the token is about to expire.
-- Repositories under `src/storage/repositories/` manage tables: `plaid_connections`, `accounts`, `account_sync_state`, `transactions`, etc.
+- Repositories under `src/storage/repositories/` manage tables: `plaid_connections`, `accounts`, `account_sync_state`, `transactions`, `investment_holdings`, `liabilities_*`, etc.
 - Budgets module (`src/storage/budgets/`) calculates period windows, aggregates spending, matches transactions
 - Migrations in `supabase/migrations/`; append-only policy
-- Visualization scripts stored via `src/storage/visualization/`
 
 ## External Integrations
 - Plaid: `createPlaidClient()` handles environment selection; account connection flow stores encrypted access tokens then fires transaction sync (`TransactionSyncService`)
 - Claude (Anthropic): `categorizeTransactions()` batches requests, supports injected mocks; environment key `ANTHROPIC_API_KEY`
 - Clerk: middleware in `src/index.ts`; OAuth metadata exposed at `/.well-known/*`
-- Render: deployment + cron documented in `docs/RENDER.md` / `docs/RENDER_CRON.md`
+- Render: deployment + cron documented in `CLAUDE.md` and official [Render docs](https://render.com/docs/)
 
 ## Background Processing Patterns
 - Account connection completion triggers `TransactionSyncService.initiateSyncForConnection()` via `setImmediate`
@@ -61,8 +60,8 @@
 
 ## Documentation Waypoints
 - Human-facing overview: `README.md` (do not edit automatically)
-- AI operations guide: `CLAUDE.md` (command matrix, patterns, gotchas)
-- Plaid deep dives: `docs/PLAID_API.md`, `docs/PLAID_TRANSACTIONS_SYNC.md`, `docs/PLAID_UPDATE_MODE.md`
+- AI operations guide: `CLAUDE.md` (command matrix, patterns, gotchas, all external service integration)
+- Plaid deep dives: `docs/PLAID_API.md`, `docs/PLAID_TRANSACTIONS_SYNC.md`, `docs/PLAID_INVESTMENTS.md`, `docs/PLAID_LIABILITIES.md`
 - MCP references: `docs/MCP_PROTOCOL_*.md`, widget UX specs in `docs/MCP_WIDGETS_*`
 - Prompting & automation: `docs/CLAUDE_PROMPT_ENGINEERING_GUIDE.md`, `docs/CLAUDE_CODE_IMPROVEMENTS.md`
 - Budget async design notes: `docs/BUDGET_ASYNC_PROCESSING.md`

@@ -95,21 +95,11 @@ export function getAdminTools(deps?: AdminToolDependencies): ToolDefinition[] {
           content: [
             {
               type: "text" as const,
-              text: [
-                "✅ **Bearer token minted**",
-                "",
-                `User: \`${userId}\``,
-                "",
-                "```",
-                token,
-                "```",
-              ].join("\n"),
+              text: token,
             },
           ],
           structuredContent: {
             token,
-            template: templateName,
-            userId,
           },
         };
       },
