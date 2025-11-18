@@ -7,14 +7,20 @@ DECLARE
   credit_item_id CONSTANT text := COALESCE(NULLIF(current_setting('credit_item_id', true), ''), 'item_demo_chase_card');
   invest_item_id CONSTANT text := COALESCE(NULLIF(current_setting('invest_item_id', true), ''), 'item_demo_vanguard');
   car_item_id CONSTANT text := COALESCE(NULLIF(current_setting('car_item_id', true), ''), 'item_demo_tesla_auto');
+  checking_item_id CONSTANT text := COALESCE(NULLIF(current_setting('checking_item_id', true), ''), 'item_demo_chase_checking');
 
   credit_account_id CONSTANT text := COALESCE(NULLIF(current_setting('credit_account_id', true), ''), 'acct_demo_chase_sapphire');
   invest_account_id CONSTANT text := COALESCE(NULLIF(current_setting('invest_account_id', true), ''), 'acct_demo_vanguard_brokerage');
   car_account_id CONSTANT text := COALESCE(NULLIF(current_setting('car_account_id', true), ''), 'acct_demo_tesla_auto');
+  checking_account_id CONSTANT text := COALESCE(NULLIF(current_setting('checking_account_id', true), ''), 'acct_demo_chase_checking');
 
   credit_access_token CONSTANT text := COALESCE(NULLIF(current_setting('credit_access_token', true), ''), 'bd1ce790e4737f9c2cc8780ad4b0dbf1:c42471f98a6e2cec9dc788b2f00988a0:b67e7cdb5db46130d5737bb6d286884aabcc84ad1e1e6a4994b4');
   invest_access_token CONSTANT text := COALESCE(NULLIF(current_setting('invest_access_token', true), ''), 'd9238e64a5dac86a624acb4e8515fac2:bb321df286b3365e721f25864b2a2bb1:dfb4c51ec26825000d449e2446ce714686aa29e19a72e7f1eaeb');
   car_access_token CONSTANT text := COALESCE(NULLIF(current_setting('car_access_token', true), ''), 'acf1cba8fc613871b34883a8db068277:051702da06f88632b82fb6f2e9916f06:345afa632bcd38a02928fe5a9748ac5acb60d68c2487efad8810674c');
+  checking_access_token CONSTANT text := COALESCE(NULLIF(current_setting('checking_access_token', true), ''), '8a2f1d3e5c6b7a9d0e1f2c3b4a5d6e7f:9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f');
+
+  coffee_budget_id CONSTANT text := COALESCE(NULLIF(current_setting('coffee_budget_id', true), ''), 'budget_demo_coffee_shops');
+  travel_budget_id CONSTANT text := COALESCE(NULLIF(current_setting('travel_budget_id', true), ''), 'budget_demo_travel');
 BEGIN
   -- Clean existing rows for deterministic resets (child tables first)
   DELETE FROM transactions WHERE user_id = seed_user_id;
@@ -24,12 +30,13 @@ BEGIN
   DELETE FROM liabilities_student WHERE user_id = seed_user_id;
 
   DELETE FROM account_investment_sync_state
-  WHERE account_id IN (credit_account_id, invest_account_id, car_account_id);
+  WHERE account_id IN (credit_account_id, invest_account_id, car_account_id, checking_account_id);
 
   DELETE FROM account_sync_state
-  WHERE account_id IN (credit_account_id, invest_account_id, car_account_id);
+  WHERE account_id IN (credit_account_id, invest_account_id, car_account_id, checking_account_id);
 
   DELETE FROM net_worth_snapshots WHERE user_id = seed_user_id;
+  DELETE FROM budgets WHERE user_id = seed_user_id;
   DELETE FROM accounts WHERE user_id = seed_user_id;
   DELETE FROM plaid_connections WHERE user_id = seed_user_id;
 
@@ -45,7 +52,8 @@ BEGIN
   ) VALUES
     (seed_user_id, credit_access_token, credit_item_id, TIMESTAMPTZ '2024-11-02 09:15:00+00', 'sandbox', 'Chase', 'active'),
     (seed_user_id, invest_access_token, invest_item_id, TIMESTAMPTZ '2024-10-15 14:30:00+00', 'sandbox', 'Vanguard', 'active'),
-    (seed_user_id, car_access_token, car_item_id, TIMESTAMPTZ '2023-05-01 12:00:00+00', 'sandbox', 'Tesla Finance', 'active');
+    (seed_user_id, car_access_token, car_item_id, TIMESTAMPTZ '2023-05-01 12:00:00+00', 'sandbox', 'Tesla Finance', 'active'),
+    (seed_user_id, checking_access_token, checking_item_id, TIMESTAMPTZ '2024-11-02 09:00:00+00', 'sandbox', 'Chase', 'active');
 
   -- Accounts
   INSERT INTO accounts (
@@ -103,6 +111,20 @@ BEGIN
       NULL,
       'USD',
       now() - INTERVAL '2 days'
+    ),
+    (
+      seed_user_id,
+      checking_item_id,
+      checking_account_id,
+      'Chase Total Checking',
+      'Chase Total Checking Account',
+      'depository',
+      'checking',
+      20000.00,
+      19850.00,
+      NULL,
+      'USD',
+      now() - INTERVAL '6 hours'
     );
 
   -- Account sync state metadata
@@ -115,7 +137,8 @@ BEGIN
   ) VALUES
     (credit_account_id, 'cursor-demo-chase-0024', now() - INTERVAL '6 hours', 'complete', 84),
     (invest_account_id, 'invest-cursor-demo-0715', now() - INTERVAL '1 day', 'complete', 18),
-    (car_account_id, 'auto-cursor-demo-0201', now() - INTERVAL '3 days', 'complete', 24);
+    (car_account_id, 'auto-cursor-demo-0201', now() - INTERVAL '3 days', 'complete', 24),
+    (checking_account_id, 'cursor-demo-checking-0120', now() - INTERVAL '6 hours', 'complete', 8);
 
   INSERT INTO account_investment_sync_state (
     account_id,
@@ -279,7 +302,9 @@ BEGIN
     pending,
     plaid_category,
     account_name,
-    institution_name
+    institution_name,
+    budget_ids,
+    budgets_updated_at
   )
   SELECT
     format('demo_tx_%s_%s', to_char(tx_date, 'YYYYMMDD'), lpad(daily_rank::text, 2, '0')),
@@ -292,9 +317,131 @@ BEGIN
     false,
     plaid_category,
     'Chase Sapphire Preferred',
-    'Chase'
+    'Chase',
+    -- Pre-label transactions with budget IDs based on transaction name
+    CASE
+      -- Coffee budget: Match coffee shops and cafes
+      WHEN UPPER(name) LIKE '%REVEILLE%' OR UPPER(name) LIKE '%RITUAL%' OR
+           UPPER(name) LIKE '%ANDYTOWN%' OR UPPER(name) LIKE '%COFFEE%' OR
+           UPPER(name) LIKE '%BARISTA%' OR UPPER(name) LIKE '%PIXLCAT%'
+      THEN ARRAY[coffee_budget_id]
+      -- Travel budget: Match travel-related expenses
+      WHEN UPPER(name) LIKE '%FASTRAK%' OR UPPER(name) LIKE '%WAYMO%' OR
+           UPPER(name) LIKE '%CARMEL%' OR UPPER(name) LIKE '%TESLA SUPERCHARGER%' OR
+           UPPER(name) LIKE '%ROYAL FARMS%' OR UPPER(name) LIKE '%ETOLLAVIS%'
+      THEN ARRAY[travel_budget_id]
+      ELSE ARRAY[]::text[]
+    END,
+    -- Set budgets_updated_at for labeled transactions
+    CASE
+      WHEN UPPER(name) LIKE '%REVEILLE%' OR UPPER(name) LIKE '%RITUAL%' OR
+           UPPER(name) LIKE '%ANDYTOWN%' OR UPPER(name) LIKE '%COFFEE%' OR
+           UPPER(name) LIKE '%BARISTA%' OR UPPER(name) LIKE '%PIXLCAT%' OR
+           UPPER(name) LIKE '%FASTRAK%' OR UPPER(name) LIKE '%WAYMO%' OR
+           UPPER(name) LIKE '%CARMEL%' OR UPPER(name) LIKE '%TESLA SUPERCHARGER%' OR
+           UPPER(name) LIKE '%ROYAL FARMS%' OR UPPER(name) LIKE '%ETOLLAVIS%'
+      THEN now()
+      ELSE NULL
+    END
   FROM prepared_transactions
   ORDER BY tx_date, daily_rank;
+
+  -- Checking account transactions (salary, rent, credit card payments)
+  WITH base_dates AS (
+    SELECT (current_date - INTERVAL '60 days')::date AS start_date
+  ),
+  raw_checking_transactions(day_offset, sequence, name, amount, category_text) AS (
+    VALUES
+      (1, 1, 'Zelle payment to John Smith', 2500.00, '["Transfer", "Rent"]'),
+      (14, 2, 'GOOGLE LLC PAYROLL', -4733.33, '["Transfer", "Payroll"]'),
+      (19, 3, 'CHASE CREDIT CARD PAYMENT', 3000.00, '["Transfer", "Credit Card"]'),
+      (29, 4, 'GOOGLE LLC PAYROLL', -4733.33, '["Transfer", "Payroll"]'),
+      (31, 5, 'CHASE CREDIT CARD PAYMENT', 1300.00, '["Transfer", "Credit Card"]'),
+      (32, 6, 'Zelle payment to John Smith', 2500.00, '["Transfer", "Rent"]'),
+      (45, 7, 'GOOGLE LLC PAYROLL', -4733.33, '["Transfer", "Payroll"]'),
+      (49, 8, 'CHASE CREDIT CARD PAYMENT', 900.00, '["Transfer", "Credit Card"]')
+  ),
+  prepared_checking_transactions AS (
+    SELECT
+      base.start_date + raw.day_offset AS tx_date,
+      raw.name,
+      raw.amount,
+      raw.category_text::jsonb AS plaid_category,
+      row_number() OVER (
+        PARTITION BY base.start_date + raw.day_offset
+        ORDER BY raw.sequence
+      ) AS daily_rank
+    FROM base_dates base
+    CROSS JOIN raw_checking_transactions raw
+  )
+  INSERT INTO transactions (
+    transaction_id,
+    account_id,
+    item_id,
+    user_id,
+    date,
+    name,
+    amount,
+    pending,
+    plaid_category,
+    account_name,
+    institution_name
+  )
+  SELECT
+    format('demo_checking_tx_%s_%s', to_char(tx_date, 'YYYYMMDD'), lpad(daily_rank::text, 2, '0')),
+    checking_account_id,
+    checking_item_id,
+    seed_user_id,
+    tx_date,
+    name,
+    amount,
+    false,
+    plaid_category,
+    'Chase Total Checking',
+    'Chase'
+  FROM prepared_checking_transactions
+  ORDER BY tx_date, daily_rank;
+
+  -- Budgets
+  INSERT INTO budgets (
+    id,
+    user_id,
+    title,
+    filter_prompt,
+    budget_amount,
+    time_period,
+    custom_period_days,
+    fixed_period_start_date,
+    processing_status,
+    created_at,
+    updated_at
+  ) VALUES
+    (
+      coffee_budget_id,
+      seed_user_id,
+      'Coffee Shops',
+      'Include transactions from coffee shops, cafes, and coffee-related purchases. This includes Reveille Coffee, Ritual Coffee, Andytown Coffee, and any other coffee or cafe establishments.',
+      75.00,
+      'rolling',
+      7,
+      NULL,
+      'ready',
+      now() - INTERVAL '30 days',
+      now() - INTERVAL '30 days'
+    ),
+    (
+      travel_budget_id,
+      seed_user_id,
+      'Travel',
+      'Include all travel-related expenses such as hotels, flights, rental cars, tolls (like FasTrak), ride shares (Waymo, Uber, Lyft), gas stations, and vacation accommodations.',
+      500.00,
+      'monthly',
+      NULL,
+      DATE_TRUNC('month', CURRENT_DATE)::DATE,
+      'ready',
+      now() - INTERVAL '30 days',
+      now() - INTERVAL '30 days'
+    );
 
   -- Liabilities
   INSERT INTO liabilities_credit (
@@ -483,7 +630,7 @@ BEGIN
       now() - INTERVAL '1 day'
     );
 
-  -- Net worth snapshots
+  -- Net worth snapshots (includes checking account ~$20,000)
   INSERT INTO net_worth_snapshots (
     user_id,
     snapshot_date,
@@ -491,12 +638,12 @@ BEGIN
     assets_total,
     liabilities_total
   ) VALUES
-    (seed_user_id, DATE '2024-12-08', 175000.00, 215000.00, 40000.00),
-    (seed_user_id, DATE '2024-12-15', 177700.00, 217500.00, 39800.00),
-    (seed_user_id, DATE '2024-12-22', 180400.00, 220000.00, 39600.00),
-    (seed_user_id, DATE '2024-12-29', 183600.00, 223000.00, 39400.00),
-    (seed_user_id, DATE '2025-01-05', 186250.00, 225500.00, 39250.00),
-    (seed_user_id, DATE '2025-01-12', 189000.00, 228000.00, 39000.00);
+    (seed_user_id, DATE '2024-12-08', 195000.00, 235000.00, 40000.00),
+    (seed_user_id, DATE '2024-12-15', 197700.00, 237500.00, 39800.00),
+    (seed_user_id, DATE '2024-12-22', 200400.00, 240000.00, 39600.00),
+    (seed_user_id, DATE '2024-12-29', 203600.00, 243000.00, 39400.00),
+    (seed_user_id, DATE '2025-01-05', 206250.00, 245500.00, 39250.00),
+    (seed_user_id, DATE '2025-01-12', 209000.00, 248000.00, 39000.00);
 
   RAISE NOTICE 'Seed complete for user %', seed_user_id;
 END;
