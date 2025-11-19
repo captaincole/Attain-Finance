@@ -5,7 +5,7 @@ import { findTransactionsByBudgetId } from "../../storage/repositories/transacti
 import { logToolEvent } from "../../utils/logger.js";
 
 // Input schema for get-budgets tool
-export const GetBudgetsArgsSchema = z.object({
+export const GetBudgetsArgsSchema = {
   budget_id: z
     .string()
     .optional()
@@ -14,9 +14,53 @@ export const GetBudgetsArgsSchema = z.object({
     .boolean()
     .default(false)
     .describe("Include matching transactions in the response (default: false)"),
-});
+};
 
-export type GetBudgetsArgs = z.infer<typeof GetBudgetsArgsSchema>;
+export type GetBudgetsArgs = {
+  budget_id?: string;
+  showTransactions?: boolean;
+};
+
+// Output schema for get-budgets tool (using Zod for type safety and validation)
+// This defines the structure of the tool's response, including both human-readable content
+// and machine-readable structuredContent fields
+export const GetBudgetsOutputSchema = {
+  structuredContent: z.object({
+    budgets: z.array(
+      z.object({
+        id: z.string().describe("Unique budget identifier"),
+        title: z.string().describe("Budget display name (e.g., 'Coffee Shop Budget')"),
+        amount: z.number().describe("Budget limit in dollars"),
+        period: z.string().describe("Budget time period: 'rolling', 'weekly', 'biweekly', 'monthly', 'quarterly', or 'yearly'"),
+        customPeriodDays: z.number().optional().describe("Number of days for rolling budgets (only present when period is 'rolling')"),
+        spent: z.number().describe("Total amount spent in current budget period"),
+        remaining: z.number().describe("Amount remaining before hitting budget limit (can be negative if over budget)"),
+        percentage: z.number().describe("Percentage of budget spent (0-100+)"),
+        status: z.string().describe("Budget status indicator: 'under' (< 70%), 'near' (70-99%), or 'over' (>= 100%)"),
+        processingStatus: z.string().optional().describe("Current processing state: 'processing' (analyzing transactions), 'error' (processing failed), or 'ready' (budget is active)"),
+        processingError: z.string().optional().describe("Error message when processingStatus is 'error'"),
+        transactionCount: z.number().describe("Number of transactions matching this budget in the current period"),
+        dateRange: z.object({
+          start: z.string().describe("Period start date in YYYY-MM-DD format"),
+          end: z.string().describe("Period end date in YYYY-MM-DD format"),
+        }).optional().describe("Budget period date range (only present when processingStatus is 'ready')"),
+        transactions: z.array(
+          z.object({
+            date: z.string().describe("Transaction date in YYYY-MM-DD format"),
+            description: z.string().describe("Transaction merchant/description"),
+            amount: z.number().describe("Transaction amount in dollars"),
+            category: z.string().describe("Transaction category (e.g., 'Food & Dining', 'Coffee Shops')"),
+            account_name: z.string().describe("Name of the account this transaction came from"),
+            pending: z.boolean().describe("Whether this transaction is still pending"),
+          })
+        ).optional().describe("Matching transactions for this budget (only present when showTransactions=true)"),
+        error: z.string().optional().describe("Error message when budget processing completely failed (different from processingError)"),
+      })
+    ).describe("List of budgets with current spending status. Each budget may be in different states: processing, error, ready, or failed."),
+    widgetInstructions: z.string().describe("Detailed guidance for creating and managing budgets, including time period options and example flows"),
+    exampleBudgets: z.array(z.string()).describe("Example budget descriptions to help users create their first budget"),
+  }).optional().describe("Structured budget data for programmatic use"),
+};
 
 /**
  * Calculate date range for budget period

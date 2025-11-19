@@ -6,7 +6,11 @@
 import { z } from "zod";
 import { createBudgetHandler } from "./create-budget.js";
 import { updateBudgetRulesHandler } from "./update-budget-rules.js";
-import { getBudgetsHandler } from "./get-budgets.js";
+import {
+  getBudgetsHandler,
+  GetBudgetsArgsSchema,
+  GetBudgetsOutputSchema
+} from "./get-budgets.js";
 import { deleteBudgetHandler } from "./delete-budget.js";
 import { logToolEvent } from "../../utils/logger.js";
 import { WIDGET_META } from "../../utils/widget-metadata.js";
@@ -18,16 +22,8 @@ export function getBudgetTools(): ToolDefinition[] {
       name: "get-budgets",
       description:
         "CALL THIS FIRST when user asks about budgets, wants to create a budget, or view budget status. Shows existing budgets with spending progress or provides creation guidance if no budgets exist. Use showTransactions=true to include matching transactions, or false (default) to get just spending totals. Optionally filter by budget_id to get a specific budget. Returns widget visualization showing budget progress bars.",
-      inputSchema: {
-        budget_id: z
-          .string()
-          .optional()
-          .describe("Optional: Get specific budget by ID. If omitted, returns all budgets."),
-        showTransactions: z
-          .boolean()
-          .default(false)
-          .describe("Include matching transactions in the response (default: false)"),
-      },
+      inputSchema: GetBudgetsArgsSchema,
+      outputSchema: GetBudgetsOutputSchema,
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],

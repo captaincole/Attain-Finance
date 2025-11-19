@@ -138,6 +138,7 @@ describe("MCP Widget Metadata Configuration", () => {
 
     // Tools that SHOULD have widget metadata
     const widgetTools = [
+      "connect-account",
       "financial-summary",
       "get-account-status",
       "get-budgets",

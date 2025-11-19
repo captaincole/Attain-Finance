@@ -97,7 +97,7 @@ describe("Bearer auth middleware", () => {
     assert.equal(result, "authenticated");
     assert.equal(req.auth?.userId, "user_123");
     assert.equal(req.auth?.sessionId, "sess_456");
-    assert.deepEqual(verifyCalls, ["valid-token"]);
+    assert.deepEqual(verifyCalls, ["valid.token.value"]);
   });
 
   it("caches verified tokens within TTL", async () => {
