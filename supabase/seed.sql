@@ -14,10 +14,10 @@ DECLARE
   car_account_id CONSTANT text := COALESCE(NULLIF(current_setting('car_account_id', true), ''), 'acct_demo_tesla_auto');
   checking_account_id CONSTANT text := COALESCE(NULLIF(current_setting('checking_account_id', true), ''), 'acct_demo_chase_checking');
 
-  credit_access_token CONSTANT text := COALESCE(NULLIF(current_setting('credit_access_token', true), ''), 'bd1ce790e4737f9c2cc8780ad4b0dbf1:c42471f98a6e2cec9dc788b2f00988a0:b67e7cdb5db46130d5737bb6d286884aabcc84ad1e1e6a4994b4');
-  invest_access_token CONSTANT text := COALESCE(NULLIF(current_setting('invest_access_token', true), ''), 'd9238e64a5dac86a624acb4e8515fac2:bb321df286b3365e721f25864b2a2bb1:dfb4c51ec26825000d449e2446ce714686aa29e19a72e7f1eaeb');
-  car_access_token CONSTANT text := COALESCE(NULLIF(current_setting('car_access_token', true), ''), 'acf1cba8fc613871b34883a8db068277:051702da06f88632b82fb6f2e9916f06:345afa632bcd38a02928fe5a9748ac5acb60d68c2487efad8810674c');
-  checking_access_token CONSTANT text := COALESCE(NULLIF(current_setting('checking_access_token', true), ''), '8a2f1d3e5c6b7a9d0e1f2c3b4a5d6e7f:9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d:1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f');
+  credit_access_token CONSTANT text := COALESCE(NULLIF(current_setting('credit_access_token', true), ''), 'cce1555b5f3e956c21fc0abb3c778b5e:48e7e658fdc9f85335c31cf540bf97e9:fb4d0e8e73676e5932a32653a02f539bc881d9952e8529bf8d6a9c282bcbd576');
+  invest_access_token CONSTANT text := COALESCE(NULLIF(current_setting('invest_access_token', true), ''), 'e14887e85b34d90a18054efbf246f7b5:64421e649164c68f321d6ab02b18c15b:890a8093247a7a3d5f0a2a513f2deea39db2fb0cb6e0fa3f69b93f2a041617');
+  car_access_token CONSTANT text := COALESCE(NULLIF(current_setting('car_access_token', true), ''), '90c94c8e3eec99bd9671fc9e53dcddec:d57eacfc6b39333a2f07223e59e2a7de:ce702d887ec158c1d2f4fe6f693a7ea25ecab5fa7bf61d2f82bbf8284fc0');
+  checking_access_token CONSTANT text := COALESCE(NULLIF(current_setting('checking_access_token', true), ''), '57833958e52805276005dbc331c8fac1:cae66dacc36afca510e5c0e524ec5900:fe4451a2268145dc904abd53c8a4e523d651ca84bb831b0062e0e3d7e7');
 
   coffee_budget_id CONSTANT text := COALESCE(NULLIF(current_setting('coffee_budget_id', true), ''), 'budget_demo_coffee_shops');
   travel_budget_id CONSTANT text := COALESCE(NULLIF(current_setting('travel_budget_id', true), ''), 'budget_demo_travel');

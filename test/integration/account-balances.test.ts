@@ -9,7 +9,10 @@ import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
 import { getAccountStatusHandler } from "../../src/tools/accounts/handlers.js";
-import { getFinancialSummaryHandler } from "../../src/tools/financial-summary/get-financial-summary.js";
+import {
+  getFinancialSummaryHandler,
+  GetFinancialSummaryOutputSchema,
+} from "../../src/tools/financial-summary/get-financial-summary.js";
 import {
   createTestSupabaseClient,
   createTestSupabaseAdminClient,
@@ -231,5 +234,129 @@ describe("Account Dashboard Tool Integration Tests", () => {
     );
     assert(connectAction, "Should include connect-account action");
     assert.equal(connectAction.kind, "tool");
+  });
+
+  it("financial summary output should match Zod schema definition", async () => {
+    // Setup test data: connection + accounts + net worth snapshots
+    await createTestConnection(supabase, {
+      itemId: "item_schema_test",
+      userId: testUserId,
+      institutionName: "Schema Test Bank",
+    });
+
+    // Create diverse account types to test full schema
+    const accountsForSchemaTest: Database["public"]["Tables"]["accounts"]["Insert"][] = [
+      {
+        account_id: "acc_schema_checking",
+        user_id: testUserId,
+        item_id: "item_schema_test",
+        name: "Checking Account",
+        type: "depository",
+        subtype: "checking",
+        current_balance: 2500.75,
+        available_balance: 2500.75,
+        last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
+      },
+      {
+        account_id: "acc_schema_investment",
+        user_id: testUserId,
+        item_id: "item_schema_test",
+        name: "Investment Account",
+        type: "investment",
+        subtype: "401k",
+        current_balance: 50000.0,
+        last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
+      },
+      {
+        account_id: "acc_schema_credit",
+        user_id: testUserId,
+        item_id: "item_schema_test",
+        name: "Credit Card",
+        type: "credit",
+        subtype: "credit card",
+        current_balance: -1200.5,
+        limit_amount: 5000,
+        last_synced_at: new Date().toISOString(),
+        currency_code: "USD",
+      },
+    ];
+
+    const { error: accountInsertError } = await adminClient
+      .from("accounts")
+      .insert(accountsForSchemaTest);
+
+    if (accountInsertError) {
+      console.error("[TEST] Failed to insert accounts for schema test", accountInsertError);
+      throw accountInsertError;
+    }
+
+    // Create net worth snapshot for trend data (1 week ago)
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    const { error: snapshotError } = await adminClient.from("net_worth_snapshots").insert({
+      user_id: testUserId,
+      snapshot_date: oneWeekAgo.toISOString().split("T")[0],
+      net_worth_amount: 50000.0, // Baseline for trend calculation
+      assets_total: 51000.0,
+      liabilities_total: 1000.0,
+    });
+
+    if (snapshotError) {
+      console.error("[TEST] Failed to insert net worth snapshot", snapshotError);
+      throw snapshotError;
+    }
+
+    // Call the handler with real data
+    const result = await getFinancialSummaryHandler(testUserId);
+
+    // Validate against Zod schema
+    const schemaValidation = GetFinancialSummaryOutputSchema.structuredContent.safeParse(
+      result.structuredContent
+    );
+
+    if (!schemaValidation.success) {
+      console.error("[TEST] Schema validation failed:");
+      console.error(JSON.stringify(schemaValidation.error.issues, null, 2));
+      console.error("\nActual output:");
+      console.error(JSON.stringify(result.structuredContent, null, 2));
+    }
+
+    assert(
+      schemaValidation.success,
+      `Financial summary output must match Zod schema. Errors: ${JSON.stringify(schemaValidation.error?.issues || [])}`
+    );
+
+    // Additional assertions to verify the data integrity
+    const structuredContent = result.structuredContent;
+    assert.equal(structuredContent.view, "financial-summary");
+    assert(structuredContent.summary, "Should have summary object");
+    assert(structuredContent.dashboard, "Should have dashboard object");
+    assert(structuredContent.dashboard.hero, "Should have hero section");
+
+    // Verify calculated values make sense
+    const expectedNetWorth = 2500.75 + 50000.0 - 1200.5; // checking + investment - credit
+    assert(
+      Math.abs(structuredContent.summary.netWorth - expectedNetWorth) < 0.01,
+      "Net worth should match seeded account balances"
+    );
+    assert.equal(structuredContent.summary.totalAccounts, 3, "Should have 3 accounts");
+
+    // Verify trend data exists (we added a snapshot)
+    assert(structuredContent.summary.netWorthTrend, "Should have net worth trend");
+    assert.equal(structuredContent.summary.netWorthTrend.direction, "up", "Net worth should be trending up");
+    assert(
+      structuredContent.summary.netWorthTrend.amountChange > 0,
+      "Should show positive change from baseline"
+    );
+
+    // Verify dashboard hero section
+    assert.equal(structuredContent.dashboard.hero.hasData, true, "Hero should indicate data exists");
+    assert(Array.isArray(structuredContent.dashboard.hero.nextSteps), "Hero should have next steps");
+    assert(structuredContent.dashboard.hero.nextSteps.length > 0, "Should have at least one next step");
+
+    console.log("✓ Financial summary output successfully validated against Zod schema");
   });
 });
