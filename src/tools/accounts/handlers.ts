@@ -15,6 +15,7 @@ import {
   getRecentNetWorthSnapshots,
   type NetWorthSnapshot,
 } from "../../storage/repositories/net-worth-snapshots.js";
+import { getFinancialSummaryHandler } from "../financial-summary/get-financial-summary.js";
 
 const LIABILITY_ACCOUNT_TYPES = new Set(["credit", "loan"]);
 const currencyFormatter = new Intl.NumberFormat("en-US", {
@@ -69,55 +70,6 @@ function calculateNetTotals(accounts: Awaited<ReturnType<typeof getAccountsByUse
     assets: totals.assets,
     liabilities: totals.liabilities,
     netWorth: totals.assets - totals.liabilities,
-  };
-}
-
-function differenceInDays(a: Date, b: Date): number {
-  const diffMs = a.getTime() - b.getTime();
-  return diffMs / (1000 * 60 * 60 * 24);
-}
-
-function buildNetWorthTrend(
-  currentNetWorth: number,
-  snapshots: NetWorthSnapshot[]
-):
-  | {
-      amountChange: number;
-      percentChange: number | null;
-      direction: "up" | "down" | "flat";
-      baselineDate: string;
-      label: string;
-    }
-  | null {
-  if (snapshots.length === 0) {
-    return null;
-  }
-
-  const now = new Date();
-  const comparisonSnapshot = snapshots.find((snapshot) => {
-    const snapshotDate = new Date(snapshot.snapshot_date);
-    return differenceInDays(now, snapshotDate) >= 6;
-  });
-
-  if (!comparisonSnapshot) {
-    return null;
-  }
-
-  const amountChange = currentNetWorth - Number(comparisonSnapshot.net_worth_amount);
-  const direction: "up" | "down" | "flat" =
-    amountChange > 0 ? "up" : amountChange < 0 ? "down" : "flat";
-
-  let percentChange: number | null = null;
-  if (Math.abs(Number(comparisonSnapshot.net_worth_amount)) >= 0.01) {
-    percentChange = (amountChange / Math.abs(Number(comparisonSnapshot.net_worth_amount))) * 100;
-  }
-
-  return {
-    amountChange,
-    percentChange,
-    direction,
-    baselineDate: comparisonSnapshot.snapshot_date,
-    label: "since last week",
   };
 }
 
@@ -225,10 +177,6 @@ Please check your environment variables and try again.
   }
 }
 
-/**
- * Get Account Balances Tool Handler
- * Shows current balances from database (fast, no API calls)
- */
 type AccountDashboardData = {
   accounts: Awaited<ReturnType<typeof getAccountsByUserId>>;
   connections: Awaited<ReturnType<typeof getUserConnections>>;
@@ -332,6 +280,11 @@ function summarizeAccountsByType(
   );
 }
 
+/**
+ * Get Account Status Tool Handler
+ * Shows connection health and balance details for all connected institutions
+ */
+
 function buildAccountSections(
   accounts: Awaited<ReturnType<typeof getAccountsByUserId>>,
   assets: number,
@@ -363,147 +316,6 @@ function buildAccountSections(
       ),
     },
   ];
-}
-
-export async function getFinancialSummaryHandler(userId: string) {
-  const { accounts, liabilityDetails, snapshots } = await loadAccountDashboardData(userId);
-  const hasAccounts = accounts.length > 0;
-
-  if (!hasAccounts) {
-    return {
-      content: [
-        {
-          type: "text" as const,
-          text: `
-🏠 **Financial Summary**
-
-No connected accounts yet.
-
-Say "Connect my account" to link your first bank, card, or investment account.
-          `.trim(),
-        },
-      ],
-      structuredContent: {
-        view: "financial-summary",
-        dashboard: {
-          hero: {
-            netWorth: 0,
-            assetsTotal: 0,
-            liabilitiesTotal: 0,
-            lastUpdatedAt: null,
-            trend: null,
-            hasData: false,
-            nextSteps: buildNextSteps(),
-          },
-        },
-      },
-    };
-  }
-
-  const { assets, liabilities, netWorth } = calculateNetTotals(accounts);
-  const netWorthTrend = buildNetWorthTrend(netWorth, snapshots);
-  const lastSyncedAt = getMostRecentSync(accounts);
-  const liabilitySummary = summarizeLiabilities(liabilityDetails);
-
-  const heroNextSteps = buildNextSteps();
-  const heroSection = {
-    netWorth,
-    assetsTotal: assets,
-    liabilitiesTotal: liabilities,
-    lastUpdatedAt: lastSyncedAt?.toISOString() || null,
-    trend: netWorthTrend
-      ? {
-          amountChange: netWorthTrend.amountChange,
-          percentChange: netWorthTrend.percentChange,
-          direction: netWorthTrend.direction,
-          label: netWorthTrend.label,
-          baselineDate: netWorthTrend.baselineDate,
-        }
-      : null,
-    hasData: true,
-    nextSteps: heroNextSteps,
-  };
-
-  const responseLines: string[] = [];
-  responseLines.push("🏠 **Financial Summary**");
-  responseLines.push("");
-  responseLines.push(`**Net Worth:** ${formatCurrency(netWorth)}`);
-  if (netWorthTrend) {
-    const percentText =
-      netWorthTrend.percentChange !== null
-        ? ` (${netWorthTrend.percentChange >= 0 ? "+" : ""}${netWorthTrend.percentChange.toFixed(2)}%)`
-        : "";
-    const trendSymbol = netWorthTrend.direction === "up" ? "📈" : netWorthTrend.direction === "down" ? "📉" : "➖";
-    responseLines.push(
-      `${trendSymbol} ${formatCurrency(netWorthTrend.amountChange)}${percentText} ${netWorthTrend.label}`
-    );
-  } else {
-    responseLines.push("_Trend data appears after we collect a weekly snapshot._");
-  }
-  if (lastSyncedAt) {
-    responseLines.push(`Last updated: ${lastSyncedAt.toLocaleString()}`);
-    responseLines.push('*To refresh balances, say: "Refresh my transactions"*');
-  }
-  responseLines.push("");
-  responseLines.push(`Assets: ${formatCurrency(assets)} • Liabilities: ${formatCurrency(liabilities)}`);
-
-  if (liabilitySummary.total > 0) {
-    const parts: string[] = [];
-    if (liabilitySummary.credit > 0) {
-      parts.push(`${liabilitySummary.credit} credit card${liabilitySummary.credit > 1 ? "s" : ""}`);
-    }
-    if (liabilitySummary.mortgage > 0) {
-      parts.push(`${liabilitySummary.mortgage} mortgage${liabilitySummary.mortgage > 1 ? "s" : ""}`);
-    }
-    if (liabilitySummary.student > 0) {
-      parts.push(`${liabilitySummary.student} student loan${liabilitySummary.student > 1 ? "s" : ""}`);
-    }
-    responseLines.push("");
-    responseLines.push(
-      `Liabilities detected: ${liabilitySummary.total}${parts.length ? ` (${parts.join(", ")})` : ""}`
-    );
-  }
-
-  responseLines.push("");
-  responseLines.push("**Suggested Next Steps:**");
-  heroNextSteps.forEach((step) => {
-    responseLines.push(`  • ${step.label} — say "${step.promptFallback}"`);
-  });
-
-  const accountsByType = summarizeAccountsByType(accounts);
-
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: responseLines.join("\n").trim(),
-      },
-    ],
-    structuredContent: {
-      view: "financial-summary",
-      accounts,
-      summary: {
-        totalAccounts: accounts.length,
-        accountsByType,
-        netWorth,
-        assetsTotal: assets,
-        liabilitiesTotal: liabilities,
-        lastSynced: lastSyncedAt?.toISOString() || null,
-        liabilities: liabilitySummary,
-        netWorthTrend: netWorthTrend
-          ? {
-              amountChange: netWorthTrend.amountChange,
-              percentChange: netWorthTrend.percentChange,
-              direction: netWorthTrend.direction,
-              baselineDate: netWorthTrend.baselineDate,
-            }
-          : null,
-      },
-      dashboard: {
-        hero: heroSection,
-      },
-    },
-  };
 }
 
 export async function getAccountStatusHandler(userId: string) {

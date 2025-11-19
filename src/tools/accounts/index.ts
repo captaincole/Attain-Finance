@@ -8,7 +8,6 @@ import {
   connectAccountHandler,
   disconnectAccountHandler,
   getAccountStatusHandler,
-  getFinancialSummaryHandler,
 } from "./handlers.js";
 import { updateAccountLinkHandler } from "./update-account-link.js";
 import { getBaseUrl } from "../../utils/config.js";
@@ -34,25 +33,6 @@ export function getAccountTools(): ToolDefinition[] {
 
         const baseUrl = getBaseUrl();
         return connectAccountHandler(userId, baseUrl, plaidClient!);
-      },
-    },
-    {
-      name: "financial-summary",
-      description:
-        "Net worth and asset overview. Shows total assets, liabilities, trend (week over week), and suggested next actions. Use this to recap overall health before diving into specific accounts.",
-      inputSchema: {},
-      options: {
-        readOnlyHint: true,
-        securitySchemes: [{ type: "oauth2" }],
-        _meta: WIDGET_META.financialSummary,
-      },
-      handler: async (_args, { authInfo }) => {
-        const userId = authInfo?.extra?.userId as string | undefined;
-        if (!userId) {
-          throw new Error("User authentication required");
-        }
-
-        return getFinancialSummaryHandler(userId);
       },
     },
     {

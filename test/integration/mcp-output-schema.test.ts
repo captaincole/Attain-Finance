@@ -310,4 +310,65 @@ describe("MCP Output Schema", () => {
     console.log("✓ outputSchema correctly exposed for get-investment-holdings tool");
     console.log("✓ All top-level fields present in structuredContent");
   });
+
+  it("should expose outputSchema for financial-summary tool", async () => {
+    // Create server with mock Plaid client
+    const mockPlaidClient = new MockPlaidClient();
+    const { server } = createServer(mockPlaidClient as any);
+
+    // Access the internal tool registry
+    const serverInternal = server.server as any;
+    const toolsHandler = serverInternal._requestHandlers.get("tools/list");
+
+    assert(toolsHandler, "Server should have tools/list handler");
+
+    // Call the handler directly (bypassing HTTP/auth)
+    const result = await toolsHandler({
+      method: "tools/list",
+      params: {}
+    });
+
+    // Find financial-summary tool
+    const financialSummaryTool = result.tools.find(
+      (t: any) => t.name === "financial-summary"
+    );
+
+    assert(financialSummaryTool, "Should include financial-summary tool");
+
+    // CRITICAL: Verify outputSchema field exists
+    assert(
+      financialSummaryTool.outputSchema,
+      "financial-summary tool MUST have outputSchema field"
+    );
+
+    // Verify outputSchema structure
+    assert.equal(
+      financialSummaryTool.outputSchema.type,
+      "object",
+      "outputSchema should be an object type"
+    );
+
+    assert(
+      financialSummaryTool.outputSchema.properties,
+      "outputSchema should have properties"
+    );
+
+    // Verify structuredContent property
+    const props = financialSummaryTool.outputSchema.properties;
+    assert(props.structuredContent, "Should have structuredContent property");
+
+    // Verify structuredContent has top-level fields
+    assert(
+      props.structuredContent.properties,
+      "structuredContent should have nested properties"
+    );
+
+    const structuredProps = props.structuredContent.properties;
+    assert(structuredProps.view, "Should have view literal schema");
+    assert(structuredProps.summary, "Should have summary schema");
+    assert(structuredProps.dashboard, "Should have dashboard schema");
+
+    console.log("✓ outputSchema correctly exposed for financial-summary tool");
+    console.log("✓ All top-level fields present in structuredContent");
+  });
 });

@@ -8,10 +8,8 @@
 import { describe, it, before, beforeEach, after } from "node:test";
 import assert from "node:assert";
 import { setSupabaseMock, resetSupabase } from "../../src/storage/supabase.js";
-import {
-  getAccountStatusHandler,
-  getFinancialSummaryHandler,
-} from "../../src/tools/accounts/handlers.js";
+import { getAccountStatusHandler } from "../../src/tools/accounts/handlers.js";
+import { getFinancialSummaryHandler } from "../../src/tools/financial-summary/get-financial-summary.js";
 import {
   createTestSupabaseClient,
   createTestSupabaseAdminClient,

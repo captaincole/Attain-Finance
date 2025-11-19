@@ -12,6 +12,7 @@ import { getBudgetTools } from "./budgets/index.js";
 import { getTransactionTools } from "./transactions/index.js";
 import { getInvestmentTools } from "./investments/index.js";
 import { getLiabilityTools } from "./liabilities/index.js";
+import { getFinancialSummaryTools } from "./financial-summary/index.js";
 import type { ToolDefinition } from "./types.js";
 import { logEvent, serializeError } from "../utils/logger.js";
 import {
@@ -26,6 +27,7 @@ import {
 export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
   const allTools: ToolDefinition[] = [
     ...getAccountTools(),
+    ...getFinancialSummaryTools(),
     ...getCategorizationTools(),
     ...getOpinionTools(),
     ...getBudgetTools(),
