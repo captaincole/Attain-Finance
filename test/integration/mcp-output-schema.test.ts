@@ -189,4 +189,65 @@ describe("MCP Output Schema", () => {
     console.log("✓ outputSchema correctly exposed for get-transactions tool");
     console.log("✓ All top-level fields present in structuredContent");
   });
+
+  it("should expose outputSchema for get-liabilities tool", async () => {
+    // Create server with mock Plaid client
+    const mockPlaidClient = new MockPlaidClient();
+    const { server } = createServer(mockPlaidClient as any);
+
+    // Access the internal tool registry
+    const serverInternal = server.server as any;
+    const toolsHandler = serverInternal._requestHandlers.get("tools/list");
+
+    assert(toolsHandler, "Server should have tools/list handler");
+
+    // Call the handler directly (bypassing HTTP/auth)
+    const result = await toolsHandler({
+      method: "tools/list",
+      params: {}
+    });
+
+    // Find get-liabilities tool
+    const getLiabilitiesTool = result.tools.find(
+      (t: any) => t.name === "get-liabilities"
+    );
+
+    assert(getLiabilitiesTool, "Should include get-liabilities tool");
+
+    // CRITICAL: Verify outputSchema field exists
+    assert(
+      getLiabilitiesTool.outputSchema,
+      "get-liabilities tool MUST have outputSchema field"
+    );
+
+    // Verify outputSchema structure
+    assert.equal(
+      getLiabilitiesTool.outputSchema.type,
+      "object",
+      "outputSchema should be an object type"
+    );
+
+    assert(
+      getLiabilitiesTool.outputSchema.properties,
+      "outputSchema should have properties"
+    );
+
+    // Verify structuredContent property
+    const props = getLiabilitiesTool.outputSchema.properties;
+    assert(props.structuredContent, "Should have structuredContent property");
+
+    // Verify structuredContent has top-level fields
+    assert(
+      props.structuredContent.properties,
+      "structuredContent should have nested properties"
+    );
+
+    const structuredProps = props.structuredContent.properties;
+    assert(structuredProps.liabilities, "Should have liabilities array schema");
+    assert(structuredProps.summary, "Should have summary schema");
+    assert(structuredProps.dataInstructions, "Should have dataInstructions schema");
+
+    console.log("✓ outputSchema correctly exposed for get-liabilities tool");
+    console.log("✓ All top-level fields present in structuredContent");
+  });
 });
