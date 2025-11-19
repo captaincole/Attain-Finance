@@ -3,7 +3,47 @@
  * View investment portfolio across all connected investment accounts
  */
 
+import { z } from "zod";
 import { getHoldingsByUserId } from "../../storage/repositories/investment-holdings.js";
+
+// Output schema for get-investment-holdings tool (using Zod for type safety and validation)
+// This defines the structure of the tool's response, including both human-readable content
+// and machine-readable structuredContent fields
+// Note: This tool has no input parameters
+export const GetInvestmentHoldingsOutputSchema = {
+  structuredContent: z.object({
+    holdings: z.array(
+      z.object({
+        account_id: z.string().describe("Plaid account ID for this investment account"),
+        account_name: z.string().describe("Display name of the account (e.g., 'Fidelity 401k', 'Robinhood')"),
+        account_type: z.string().nullable().describe("Plaid account type (e.g., 'investment')"),
+        account_subtype: z.string().nullable().describe("Plaid account subtype (e.g., '401k', 'ira', 'brokerage')"),
+        security_id: z.string().describe("Plaid security ID"),
+        ticker_symbol: z.string().nullable().describe("Stock ticker symbol (e.g., 'AAPL', 'TSLA')"),
+        security_name: z.string().nullable().describe("Full security name (e.g., 'Apple Inc.', 'Vanguard S&P 500 ETF')"),
+        security_type: z.string().nullable().describe("Security type (e.g., 'equity', 'mutual fund', 'etf', 'cash', 'cryptocurrency')"),
+        security_subtype: z.string().nullable().describe("Security subtype for more granular classification"),
+        quantity: z.number().describe("Number of shares/units held"),
+        institution_price: z.number().describe("Current price per share/unit in USD"),
+        institution_price_as_of: z.string().nullable().describe("Timestamp when price was last updated (ISO 8601 format)"),
+        institution_value: z.number().describe("Total value of this holding (quantity × price) in USD"),
+        cost_basis: z.number().nullable().describe("Original purchase price (total cost basis) in USD, if available"),
+        gain_loss: z.number().nullable().describe("Unrealized gain/loss in USD (current value - cost basis). Null if cost basis unavailable"),
+        gain_loss_percentage: z.number().nullable().describe("Unrealized gain/loss as percentage. Null if cost basis unavailable"),
+        iso_currency_code: z.string().nullable().describe("ISO currency code (e.g., 'USD', 'EUR')"),
+        unofficial_currency_code: z.string().nullable().describe("Unofficial currency code for cryptocurrencies (e.g., 'BTC', 'ETH')"),
+      })
+    ).describe("Array of investment holdings with current valuations and performance metrics"),
+    summary: z.object({
+      totalValue: z.number().describe("Total portfolio value across all accounts in USD"),
+      totalCostBasis: z.number().nullable().describe("Total cost basis across all holdings in USD. Null if no cost basis data available"),
+      totalGainLoss: z.number().nullable().describe("Total unrealized gain/loss in USD. Null if no cost basis data available"),
+      totalGainLossPercentage: z.number().nullable().describe("Total unrealized gain/loss as percentage. Null if no cost basis data available"),
+      accountCount: z.number().describe("Number of investment accounts"),
+      holdingCount: z.number().describe("Total number of securities held"),
+    }).describe("Portfolio summary statistics"),
+  }).optional().describe("Structured investment holdings data for programmatic use"),
+};
 
 /**
  * Format currency for display

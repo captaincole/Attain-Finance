@@ -3,7 +3,10 @@
  * All investment-related MCP tools
  */
 
-import { getInvestmentHoldingsHandler } from "./get-investment-holdings.js";
+import {
+  getInvestmentHoldingsHandler,
+  GetInvestmentHoldingsOutputSchema,
+} from "./get-investment-holdings.js";
 import type { ToolDefinition } from "../types.js";
 
 export function getInvestmentTools(): ToolDefinition[] {
@@ -13,6 +16,7 @@ export function getInvestmentTools(): ToolDefinition[] {
       description:
         "View your investment portfolio across all connected investment accounts (401k, IRA, brokerage, crypto exchange). Shows total portfolio value, breakdown by security with current prices, quantity held, and gain/loss if cost basis is available. This is a read-only tool that provides instant access to your holdings data stored in the database.",
       inputSchema: {},
+      outputSchema: GetInvestmentHoldingsOutputSchema,
       options: {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],

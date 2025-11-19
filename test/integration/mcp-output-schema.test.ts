@@ -250,4 +250,64 @@ describe("MCP Output Schema", () => {
     console.log("✓ outputSchema correctly exposed for get-liabilities tool");
     console.log("✓ All top-level fields present in structuredContent");
   });
+
+  it("should expose outputSchema for get-investment-holdings tool", async () => {
+    // Create server with mock Plaid client
+    const mockPlaidClient = new MockPlaidClient();
+    const { server } = createServer(mockPlaidClient as any);
+
+    // Access the internal tool registry
+    const serverInternal = server.server as any;
+    const toolsHandler = serverInternal._requestHandlers.get("tools/list");
+
+    assert(toolsHandler, "Server should have tools/list handler");
+
+    // Call the handler directly (bypassing HTTP/auth)
+    const result = await toolsHandler({
+      method: "tools/list",
+      params: {}
+    });
+
+    // Find get-investment-holdings tool
+    const getInvestmentHoldingsTool = result.tools.find(
+      (t: any) => t.name === "get-investment-holdings"
+    );
+
+    assert(getInvestmentHoldingsTool, "Should include get-investment-holdings tool");
+
+    // CRITICAL: Verify outputSchema field exists
+    assert(
+      getInvestmentHoldingsTool.outputSchema,
+      "get-investment-holdings tool MUST have outputSchema field"
+    );
+
+    // Verify outputSchema structure
+    assert.equal(
+      getInvestmentHoldingsTool.outputSchema.type,
+      "object",
+      "outputSchema should be an object type"
+    );
+
+    assert(
+      getInvestmentHoldingsTool.outputSchema.properties,
+      "outputSchema should have properties"
+    );
+
+    // Verify structuredContent property
+    const props = getInvestmentHoldingsTool.outputSchema.properties;
+    assert(props.structuredContent, "Should have structuredContent property");
+
+    // Verify structuredContent has top-level fields
+    assert(
+      props.structuredContent.properties,
+      "structuredContent should have nested properties"
+    );
+
+    const structuredProps = props.structuredContent.properties;
+    assert(structuredProps.holdings, "Should have holdings array schema");
+    assert(structuredProps.summary, "Should have summary schema");
+
+    console.log("✓ outputSchema correctly exposed for get-investment-holdings tool");
+    console.log("✓ All top-level fields present in structuredContent");
+  });
 });
