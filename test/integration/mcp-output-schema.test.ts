@@ -127,4 +127,66 @@ describe("MCP Output Schema", () => {
 
     console.log("✓ Tools without outputSchema don't expose it");
   });
+
+  it("should expose outputSchema for get-transactions tool", async () => {
+    // Create server with mock Plaid client
+    const mockPlaidClient = new MockPlaidClient();
+    const { server } = createServer(mockPlaidClient as any);
+
+    // Access the internal tool registry
+    const serverInternal = server.server as any;
+    const toolsHandler = serverInternal._requestHandlers.get("tools/list");
+
+    assert(toolsHandler, "Server should have tools/list handler");
+
+    // Call the handler directly (bypassing HTTP/auth)
+    const result = await toolsHandler({
+      method: "tools/list",
+      params: {}
+    });
+
+    // Find get-transactions tool
+    const getTransactionsTool = result.tools.find(
+      (t: any) => t.name === "get-transactions"
+    );
+
+    assert(getTransactionsTool, "Should include get-transactions tool");
+
+    // CRITICAL: Verify outputSchema field exists
+    assert(
+      getTransactionsTool.outputSchema,
+      "get-transactions tool MUST have outputSchema field"
+    );
+
+    // Verify outputSchema structure
+    assert.equal(
+      getTransactionsTool.outputSchema.type,
+      "object",
+      "outputSchema should be an object type"
+    );
+
+    assert(
+      getTransactionsTool.outputSchema.properties,
+      "outputSchema should have properties"
+    );
+
+    // Verify structuredContent property
+    const props = getTransactionsTool.outputSchema.properties;
+    assert(props.structuredContent, "Should have structuredContent property");
+
+    // Verify structuredContent has top-level fields
+    assert(
+      props.structuredContent.properties,
+      "structuredContent should have nested properties"
+    );
+
+    const structuredProps = props.structuredContent.properties;
+    assert(structuredProps.transactions, "Should have transactions array schema");
+    assert(structuredProps.summary, "Should have summary schema");
+    assert(structuredProps.dataInstructions, "Should have dataInstructions schema");
+    assert(structuredProps.visualizationInstructions, "Should have visualizationInstructions schema");
+
+    console.log("✓ outputSchema correctly exposed for get-transactions tool");
+    console.log("✓ All top-level fields present in structuredContent");
+  });
 });

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../storage/database.types.js";
 import { generateSignedUrl } from "../../utils/signed-urls.js";
@@ -5,15 +6,74 @@ import { findAccountConnectionsByUserId } from "../../storage/repositories/accou
 import { findTransactionsByUserId } from "../../storage/repositories/transactions.js";
 import { logToolEvent } from "../../utils/logger.js";
 
-interface GetTransactionsArgs {
+// Input schema for get-transactions tool
+export const GetTransactionsArgsSchema = {
+  start_date: z
+    .string()
+    .optional()
+    .describe("Start date in YYYY-MM-DD format (default: all available data)"),
+  end_date: z
+    .string()
+    .optional()
+    .describe("End date in YYYY-MM-DD format (default: today)"),
+  account_ids: z
+    .array(z.string())
+    .optional()
+    .describe("Filter transactions by account IDs (exact match). Get account IDs by calling get-account-status tool first. Example: ['account_123', 'account_456']"),
+  categories: z
+    .array(z.string())
+    .optional()
+    .describe("Filter transactions by category names (case-insensitive partial match). Searches AI-generated custom categories. Multiple categories use OR logic. Example: ['Food', 'Transport'] will match 'Food & Dining', 'Transportation', etc."),
+  budget_id: z
+    .string()
+    .optional()
+    .describe("Filter transactions tagged to a specific budget (exact match). Get budget IDs by calling get-budgets tool first. Example: 'budget_123'"),
+  pending_only: z
+    .boolean()
+    .optional()
+    .describe("Show only pending transactions (exact match). Useful for cash flow management and seeing what charges haven't cleared yet. Cannot be used with exclude_pending."),
+  exclude_pending: z
+    .boolean()
+    .optional()
+    .describe("Exclude pending transactions (exact match). Shows only confirmed/cleared transactions. Useful for accurate spending analysis. Cannot be used with pending_only."),
+};
+
+export type GetTransactionsArgs = {
   start_date?: string;
   end_date?: string;
-  account_ids?: string[];  // Array of account IDs to filter by
-  categories?: string[];   // Array of category names to filter by
-  budget_id?: string;      // Budget ID to filter by
-  pending_only?: boolean;  // Show only pending transactions
-  exclude_pending?: boolean; // Exclude pending transactions
-}
+  account_ids?: string[];
+  categories?: string[];
+  budget_id?: string;
+  pending_only?: boolean;
+  exclude_pending?: boolean;
+};
+
+// Output schema for get-transactions tool (using Zod for type safety and validation)
+// This defines the structure of the tool's response, including both human-readable content
+// and machine-readable structuredContent fields
+export const GetTransactionsOutputSchema = {
+  structuredContent: z.object({
+    transactions: z.array(
+      z.object({
+        date: z.string().describe("Transaction date in YYYY-MM-DD format"),
+        description: z.string().describe("Merchant or transaction description"),
+        amount: z.number().describe("Transaction amount in dollars (positive = spending, negative = income in some systems)"),
+        category: z.string().describe("AI-assigned category using user's custom categorization rules"),
+        account_name: z.string().describe("Name of the account this transaction came from"),
+        pending: z.boolean().describe("Whether this transaction is still pending"),
+      })
+    ).describe("Array of transactions with AI-powered categorization"),
+    summary: z.object({
+      transactionCount: z.number().describe("Total number of transactions returned"),
+      dateRange: z.object({
+        start: z.string().describe("Start date of transaction range in YYYY-MM-DD format"),
+        end: z.string().describe("End date of transaction range in YYYY-MM-DD format"),
+      }).describe("Date range for the transactions"),
+    }).describe("Summary statistics for the transaction set"),
+    dataInstructions: z.string().describe("Guidelines for analyzing transaction data (spending categories, large expenses, data structure)"),
+    visualizationInstructions: z.string().describe("Recommendations for visualizing transaction data (spending by category, trends over time, top merchants, account breakdown)"),
+  }).optional().describe("Structured transaction data for programmatic use"),
+};
 
 // Storage for temporary transaction data (in-memory for MVP)
 const userTransactionData = new Map<string, string>();
