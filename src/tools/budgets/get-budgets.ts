@@ -25,8 +25,7 @@ export type GetBudgetsArgs = {
 // This defines the structure of the tool's response, including both human-readable content
 // and machine-readable structuredContent fields
 export const GetBudgetsOutputSchema = {
-  structuredContent: z.object({
-    budgets: z.array(
+  budgets: z.array(
       z.object({
         id: z.string().describe("Unique budget identifier"),
         title: z.string().describe("Budget display name (e.g., 'Coffee Shop Budget')"),
@@ -57,9 +56,8 @@ export const GetBudgetsOutputSchema = {
         error: z.string().optional().describe("Error message when budget processing completely failed (different from processingError)"),
       })
     ).describe("List of budgets with current spending status. Each budget may be in different states: processing, error, ready, or failed."),
-    widgetInstructions: z.string().describe("Detailed guidance for creating and managing budgets, including time period options and example flows"),
-    exampleBudgets: z.array(z.string()).describe("Example budget descriptions to help users create their first budget"),
-  }).optional().describe("Structured budget data for programmatic use"),
+  widgetInstructions: z.string().describe("Detailed guidance for creating and managing budgets, including time period options and example flows"),
+  exampleBudgets: z.array(z.string()).describe("Example budget descriptions to help users create their first budget"),
 };
 
 /**

@@ -29,6 +29,36 @@ gh pr create             # Create pull request
 
 **YOU MUST** run `npx tsc --noEmit` after making code changes.
 
+## CRITICAL: Output Schema Rules
+
+**NEVER WRAP outputSchema IN `z.object()` OR ANY ZOD WRAPPER!**
+
+The outputSchema must be a **plain JavaScript object** with Zod properties as values, NOT a Zod schema itself.
+
+**CORRECT:**
+```typescript
+export const MyToolOutputSchema = {
+  transactions: z.array(z.object({...})),
+  summary: z.object({...}),
+};
+```
+
+**WRONG - DO NOT DO THIS:**
+```typescript
+// ❌ NEVER wrap in z.object()!
+export const MyToolOutputSchema = z.object({
+  transactions: z.array(z.object({...})),
+  summary: z.object({...}),
+});
+```
+
+**Why:** The MCP SDK expects a plain object and will internally process it. Wrapping it causes `keyValidator._parse is not a function` errors.
+
+**Testing:** Validate individual fields from outputSchema:
+```typescript
+const validation = MyToolOutputSchema.transactions.safeParse(result.structuredContent.transactions);
+```
+
 ### Testing Requirements
 
 **Integration tests require Docker and local Supabase:**

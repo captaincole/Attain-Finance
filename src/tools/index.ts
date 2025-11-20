@@ -39,13 +39,24 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
 
   // Register each tool with logging and error handling
   allTools.forEach(({ name, description, inputSchema, outputSchema, options, handler }) => {
+    // Determine if this is a zero-arg tool (empty or no inputSchema)
+    const isZeroArg = !inputSchema || Object.keys(inputSchema).length === 0;
+
     // Create the wrapped handler with logging and error handling
-    const wrappedHandler = async (args: any, context: any) => {
+    // For zero-arg tools, MCP SDK passes only (extra), not (args, extra)
+    const wrappedHandler = async (firstParam: any, secondParam?: any) => {
+      const args = isZeroArg ? {} : firstParam;
+      const context = isZeroArg ? firstParam : secondParam;
+
       const userId = context?.authInfo?.extra?.userId as string | undefined;
       logEvent(`TOOL:${name}`, "invoked", {
         args,
         userId,
         hasAuthInfo: Boolean(context?.authInfo),
+        isZeroArg,
+        firstParamKeys: firstParam ? Object.keys(firstParam) : null,
+        secondParamDefined: secondParam !== undefined,
+        contextHasAuthInfo: context && 'authInfo' in context,
       });
 
       try {
@@ -90,7 +101,7 @@ export function registerAllTools(server: McpServer, plaidClient: PlaidApi) {
       config.inputSchema = inputSchema;
     }
 
-    // Include outputSchema if defined (must be Zod schema)
+    // Include outputSchema if defined (plain object with Zod properties)
     if (outputSchema) {
       config.outputSchema = outputSchema;
     }

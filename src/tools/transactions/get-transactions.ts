@@ -49,11 +49,9 @@ export type GetTransactionsArgs = {
 };
 
 // Output schema for get-transactions tool (using Zod for type safety and validation)
-// This defines the structure of the tool's response, including both human-readable content
-// and machine-readable structuredContent fields
+// This defines the structure of structuredContent ONLY (not the entire response)
 export const GetTransactionsOutputSchema = {
-  structuredContent: z.object({
-    transactions: z.array(
+  transactions: z.array(
       z.object({
         date: z.string().describe("Transaction date in YYYY-MM-DD format"),
         description: z.string().describe("Merchant or transaction description"),
@@ -72,7 +70,6 @@ export const GetTransactionsOutputSchema = {
     }).describe("Summary statistics for the transaction set"),
     dataInstructions: z.string().describe("Guidelines for analyzing transaction data (spending categories, large expenses, data structure)"),
     visualizationInstructions: z.string().describe("Recommendations for visualizing transaction data (spending by category, trends over time, top merchants, account breakdown)"),
-  }).optional().describe("Structured transaction data for programmatic use"),
 };
 
 // Storage for temporary transaction data (in-memory for MVP)

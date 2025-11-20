@@ -23,7 +23,7 @@ export function getFinancialSummaryTools(): ToolDefinition[] {
         securitySchemes: [{ type: "oauth2" }],
         _meta: WIDGET_META.financialSummary,
       },
-      handler: async (_args, { authInfo }, _deps) => {
+      handler: async (_args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");

@@ -27,78 +27,27 @@ export type GetLiabilitiesArgs = {
   type?: "credit" | "mortgage" | "student";
 };
 
-// Output schema for get-liabilities tool (plain JSON Schema format)
+// Output schema for get-liabilities tool (using Zod for type safety and validation)
 // This defines the structure of the tool's response, including both human-readable content
 // and machine-readable structuredContent fields
 export const GetLiabilitiesOutputSchema = {
-  "type": "object",
-  "properties": {
-    "structuredContent": {
-      "type": "object",
-      "description": "Structured liability data for programmatic use",
-      "properties": {
-        "liabilities": {
-          "type": "array",
-          "description": "Array of liabilities with detailed information",
-          "items": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": ["credit", "mortgage", "student"],
-                "description": "Liability type: 'credit' (credit cards), 'mortgage' (home loans), or 'student' (student loans)"
-              },
-              "account_id": {
-                "type": "string",
-                "description": "Plaid account ID for this liability"
-              },
-              "account_name": {
-                "type": ["string", "null"],
-                "description": "Display name of the account (e.g., 'Chase Freedom', 'Wells Fargo Mortgage')"
-              },
-              "account_type": {
-                "type": ["string", "null"],
-                "description": "Plaid account type (e.g., 'credit', 'loan')"
-              },
-              "account_subtype": {
-                "type": ["string", "null"],
-                "description": "Plaid account subtype (e.g., 'credit card', 'mortgage', 'student')"
-              },
-              "data": {
-                "description": "Liability-specific data as JSONB. Structure varies by type: credit cards include APRs and payment schedules, mortgages include property details and loan terms, student loans include repayment plans and guarantors"
-              }
-            }
-          }
-        },
-        "summary": {
-          "type": "object",
-          "description": "Summary statistics for liabilities",
-          "properties": {
-            "totalLiabilities": {
-              "type": "number",
-              "description": "Total number of liabilities across all types"
-            },
-            "creditCount": {
-              "type": "number",
-              "description": "Number of credit card liabilities"
-            },
-            "mortgageCount": {
-              "type": "number",
-              "description": "Number of mortgage liabilities"
-            },
-            "studentCount": {
-              "type": "number",
-              "description": "Number of student loan liabilities"
-            }
-          }
-        },
-        "dataInstructions": {
-          "type": "string",
-          "description": "Guidelines for analyzing liability data (credit card APRs, mortgage terms, student loan repayment)"
-        }
-      }
-    }
-  }
+  liabilities: z.array(
+      z.object({
+        type: z.enum(["credit", "mortgage", "student"]).describe("Liability type: 'credit' (credit cards), 'mortgage' (home loans), or 'student' (student loans)"),
+        account_id: z.string().describe("Plaid account ID for this liability"),
+        account_name: z.string().nullable().describe("Display name of the account (e.g., 'Chase Freedom', 'Wells Fargo Mortgage')"),
+        account_type: z.string().nullable().describe("Plaid account type (e.g., 'credit', 'loan')"),
+        account_subtype: z.string().nullable().describe("Plaid account subtype (e.g., 'credit card', 'mortgage', 'student')"),
+        data: z.any().describe("Liability-specific data as JSONB. Structure varies by type: credit cards include APRs and payment schedules, mortgages include property details and loan terms, student loans include repayment plans and guarantors"),
+      })
+    ).describe("Array of liabilities with detailed information"),
+    summary: z.object({
+      totalLiabilities: z.number().describe("Total number of liabilities across all types"),
+      creditCount: z.number().describe("Number of credit card liabilities"),
+      mortgageCount: z.number().describe("Number of mortgage liabilities"),
+      studentCount: z.number().describe("Number of student loan liabilities"),
+  }).describe("Summary statistics for liabilities"),
+  dataInstructions: z.string().describe("Guidelines for analyzing liability data (credit card APRs, mortgage terms, student loan repayment)"),
 };
 
 /**

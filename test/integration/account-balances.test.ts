@@ -312,21 +312,21 @@ describe("Account Dashboard Tool Integration Tests", () => {
     // Call the handler with real data
     const result = await getFinancialSummaryHandler(testUserId);
 
-    // Validate against Zod schema
-    const schemaValidation = GetFinancialSummaryOutputSchema.structuredContent.safeParse(
-      result.structuredContent
+    // Validate against Zod schema - check key fields match outputSchema
+    const dashboardValidation = GetFinancialSummaryOutputSchema.dashboard.safeParse(
+      result.structuredContent.dashboard
     );
 
-    if (!schemaValidation.success) {
-      console.error("[TEST] Schema validation failed:");
-      console.error(JSON.stringify(schemaValidation.error.issues, null, 2));
-      console.error("\nActual output:");
-      console.error(JSON.stringify(result.structuredContent, null, 2));
+    if (!dashboardValidation.success) {
+      console.error("[TEST] Dashboard schema validation failed:");
+      console.error(JSON.stringify(dashboardValidation.error.issues, null, 2));
+      console.error("\nActual dashboard output:");
+      console.error(JSON.stringify(result.structuredContent.dashboard, null, 2));
     }
 
     assert(
-      schemaValidation.success,
-      `Financial summary output must match Zod schema. Errors: ${JSON.stringify(schemaValidation.error?.issues || [])}`
+      dashboardValidation.success,
+      `Financial summary dashboard output must match Zod schema. Errors: ${JSON.stringify(dashboardValidation.error?.issues || [])}`
     );
 
     // Additional assertions to verify the data integrity

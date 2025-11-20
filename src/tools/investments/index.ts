@@ -21,7 +21,7 @@ export function getInvestmentTools(): ToolDefinition[] {
         readOnlyHint: true,
         securitySchemes: [{ type: "oauth2" }],
       },
-      handler: async (_args, { authInfo }, _deps) => {
+      handler: async (_args, { authInfo }) => {
         const userId = authInfo?.extra?.userId as string | undefined;
         if (!userId) {
           throw new Error("User authentication required");

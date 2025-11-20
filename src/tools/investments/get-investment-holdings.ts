@@ -11,8 +11,7 @@ import { getHoldingsByUserId } from "../../storage/repositories/investment-holdi
 // and machine-readable structuredContent fields
 // Note: This tool has no input parameters
 export const GetInvestmentHoldingsOutputSchema = {
-  structuredContent: z.object({
-    holdings: z.array(
+  holdings: z.array(
       z.object({
         account_id: z.string().describe("Plaid account ID for this investment account"),
         account_name: z.string().describe("Display name of the account (e.g., 'Fidelity 401k', 'Robinhood')"),
@@ -40,9 +39,8 @@ export const GetInvestmentHoldingsOutputSchema = {
       totalGainLoss: z.number().nullable().describe("Total unrealized gain/loss in USD. Null if no cost basis data available"),
       totalGainLossPercentage: z.number().nullable().describe("Total unrealized gain/loss as percentage. Null if no cost basis data available"),
       accountCount: z.number().describe("Number of investment accounts"),
-      holdingCount: z.number().describe("Total number of securities held"),
-    }).describe("Portfolio summary statistics"),
-  }).optional().describe("Structured investment holdings data for programmatic use"),
+    holdingCount: z.number().describe("Total number of securities held"),
+  }).describe("Portfolio summary statistics"),
 };
 
 /**

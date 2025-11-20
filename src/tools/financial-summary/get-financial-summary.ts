@@ -12,11 +12,8 @@ import {
 } from "../../storage/repositories/net-worth-snapshots.js";
 
 // Output schema for financial-summary tool (using Zod for type safety and validation)
-// This defines the structure of the tool's response, including both human-readable content
-// and machine-readable structuredContent fields
-// Note: This tool has no input parameters
-export const GetFinancialSummaryOutputSchema = z.object({
-  structuredContent: z.object({
+// This defines the structure of structuredContent ONLY (not the entire response)
+export const GetFinancialSummaryOutputSchema = {
     view: z.literal("financial-summary").describe("View type identifier"),
     accounts: z.array(z.any()).optional().describe("Array of account details"),
     summary: z.object({
@@ -70,8 +67,7 @@ export const GetFinancialSummaryOutputSchema = z.object({
         })).describe("Suggested next actions for the user"),
       }).describe("Hero section data for dashboard widget"),
     }).describe("Dashboard-specific structured data"),
-  }).optional().describe("Structured financial summary data for programmatic use"),
-});
+};
 
 const LIABILITY_ACCOUNT_TYPES = new Set(["credit", "loan"]);
 const currencyFormatter = new Intl.NumberFormat("en-US", {
