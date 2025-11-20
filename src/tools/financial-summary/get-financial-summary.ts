@@ -16,6 +16,16 @@ import {
 export const GetFinancialSummaryOutputSchema = {
     view: z.literal("financial-summary").describe("View type identifier"),
     accounts: z.array(z.any()).optional().describe("Array of account details"),
+    snapshots: z.array(z.object({
+      id: z.string(),
+      user_id: z.string(),
+      snapshot_date: z.string().describe("ISO date of snapshot"),
+      net_worth_amount: z.number().describe("Net worth at snapshot date in USD"),
+      assets_total: z.number().describe("Total assets at snapshot date in USD"),
+      liabilities_total: z.number().describe("Total liabilities at snapshot date in USD"),
+      created_at: z.string().nullable(),
+      updated_at: z.string().nullable(),
+    })).optional().describe("Historical net worth snapshots (up to 8, ordered newest to oldest)"),
     summary: z.object({
       totalAccounts: z.number().describe("Total number of connected accounts"),
       accountsByType: z.record(z.string(), z.object({
@@ -265,6 +275,7 @@ Say "Connect my account" to link your first bank, card, or investment account.
       ],
       structuredContent: {
         view: "financial-summary",
+        snapshots,
         dashboard: {
           hero: {
             netWorth: 0,
@@ -362,6 +373,7 @@ Say "Connect my account" to link your first bank, card, or investment account.
     structuredContent: {
       view: "financial-summary",
       accounts,
+      snapshots,
       summary: {
         totalAccounts: accounts.length,
         accountsByType,

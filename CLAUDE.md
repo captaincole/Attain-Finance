@@ -54,6 +54,13 @@ export const MyToolOutputSchema = z.object({
 
 **Why:** The MCP SDK expects a plain object and will internally process it. Wrapping it causes `keyValidator._parse is not a function` errors.
 
+**Zod Version Constraint:**
+- **MUST use Zod v3.x** (currently `zod@3.25.1`)
+- **DO NOT upgrade to Zod v4.x** until MCP SDK supports it
+- The MCP SDK (`@modelcontextprotocol/sdk@1.22.0`) internally uses Zod v3.25.76
+- Upgrading to Zod v4 causes `keyValidator._parse is not a function` errors
+- When MCP SDK upgrades to Zod v4, we can upgrade our dependency
+
 **Testing:** Validate individual fields from outputSchema:
 ```typescript
 const validation = MyToolOutputSchema.transactions.safeParse(result.structuredContent.transactions);
